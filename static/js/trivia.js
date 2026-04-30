@@ -13,7 +13,6 @@
     let current = 0, score = 0;
     const container = document.querySelector('.canvas-placeholder');
 
-    // Obtener el usuario una sola vez al inicio
     const userElement = document.getElementById('display-user') || document.querySelector('span[style*="color: red"]') || { innerText: "Leandro" };
     let user = userElement.innerText.replace("Jugador: ", "").trim();
 
@@ -27,7 +26,6 @@
         if (!container) return;
         container.innerHTML = ""; 
 
-        // Si ya no hay más preguntas, terminar
         if (current >= questions.length) {
             return end();
         }
@@ -97,19 +95,22 @@
             <p style="font-size: 1.5rem; margin-bottom: 20px;">Puntaje: ${score} / ${questions.length * 10}</p>
             <div style="display: flex; flex-direction: column; gap: 10px; width: 80%; max-width: 300px;">
                 <button id="btn-restart" class="btn-play" style="background: #00f0ff; color: #0d0221; font-weight:bold; padding: 12px; border: none; cursor: pointer; border-radius: 4px;">REINTENTAR</button>
-                <button onclick="window.location.href='/menu'" class="btn-play" style="background: #555; color: white; padding: 12px; border: none; cursor: pointer; border-radius: 4px;">VOLVER AL MENÚ</button>
+                <button id="btn-back-menu" class="btn-play" style="background: #555; color: white; padding: 12px; border: none; cursor: pointer; border-radius: 4px;">VOLVER AL MENÚ</button>
                 <button onclick="location.reload()" style="background: transparent; color: #aaa; border: none; font-size: 0.7rem; cursor: pointer; margin-top: 5px;">Cambiar de cuenta</button>
             </div>
         `;
         screen.style.display = 'flex';
 
-        // Configurar el botón reintentar para que solo reinicie las variables
+        // Configurar el botón VOLVER AL MENÚ con la ruta corregida
+        document.getElementById('btn-back-menu').onclick = () => {
+            window.location.href = "index.html"; 
+        };
+
         document.getElementById('btn-restart').onclick = () => {
             screen.style.display = 'none';
             resetGame();
         };
 
-        // Guardar puntaje
         fetch('/guardar_puntaje', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
