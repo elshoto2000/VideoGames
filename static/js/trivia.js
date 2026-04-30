@@ -9,41 +9,64 @@
 
     let current = 0, score = 0;
     const container = document.querySelector('.canvas-placeholder');
+    // Obtenemos el usuario de la interfaz
     const user = document.getElementById('display-user').innerText;
 
     function render() {
-        container.innerHTML = ""; // Limpieza total
-        if (current >= questions.length) return end();
+        // Limpieza total del contenedor antes de dibujar la siguiente pregunta o el final
+        container.innerHTML = ""; 
+
+        if (current >= questions.length) {
+            return end();
+        }
 
         const data = questions[current];
         const div = document.createElement('div');
-        div.style.cssText = "padding:20px; text-align:center; width:100%";
-        div.innerHTML = `<h2 style="margin-bottom:20px;">${data.q}</h2>`;
+        
+        // Estilos básicos para centrar el contenido de la trivia
+        div.style.cssText = "padding:20px; text-align:center; width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%;";
+        
+        div.innerHTML = `<h2 style="margin-bottom:20px; color:white; text-shadow: 0 0 10px var(--neon);">${data.q}</h2>`;
+
+        const optionsContainer = document.createElement('div');
+        optionsContainer.style.cssText = "display:flex; flex-wrap:wrap; justify-content:center; gap:10px;";
 
         data.a.forEach((opt, i) => {
             const b = document.createElement('button');
-            b.className = "btn-play";
-            b.style.margin = "5px";
+            b.className = "btn-play"; // Reutilizamos tu clase de CSS
             b.innerText = opt;
             b.onclick = () => {
                 if (i === data.c) score += 20;
                 current++;
                 render();
             };
-            div.appendChild(b);
+            optionsContainer.appendChild(b);
         });
+
+        div.appendChild(optionsContainer);
         container.appendChild(div);
     }
 
     function end() {
-        document.getElementById('game-over-screen').style.display = 'flex';
-        document.getElementById('final-score-msg').innerText = `Puntos: ${score}`;
+        // 1. Limpieza absoluta para que no queden botones "debajo" del overlay
+        container.innerHTML = ""; 
+
+        // 2. Activar el overlay de Game Over
+        const overlay = document.getElementById('game-over-screen');
+        if (overlay) {
+            overlay.style.display = 'flex';
+            const msg = document.getElementById('final-score-msg');
+            if (msg) msg.innerText = `Puntos: ${score}`;
+        }
+
+        // 3. Envío de datos al servidor
         fetch('/guardar_puntaje', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({nombre: user, puntos: score, juego: 'trivia'})
-        });
+            body: JSON.stringify({ nombre: user, puntos: score, juego: 'trivia' })
+        }).catch(err => console.error("Error al guardar trivia:", err));
     }
 
+    // Iniciar el renderizado
     render();
 })();
