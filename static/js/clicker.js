@@ -1,52 +1,59 @@
-const banco = [
-    { p: "¿Qué partícula tiene carga negativa?", r: ["Protón", "Neutrón", "Electrón"], c: 2 },
-    { p: "¿Cuál es la velocidad de la luz aprox?", r: ["300,000 km/s", "150,000 km/s"], c: 0 },
-    { p: "Si un agujero negro tiene más masa, ¿su radio de Schwarzschild...?", r: ["Aumenta", "Disminuye", "No cambia"], c: 0 },
-    { p: "¿Qué lenguaje usa Flask?", r: ["JS", "Python", "PHP"], c: 1 },
-    { p: "¿Cuántos bits hay en un byte?", r: ["4", "8", "16"], c: 1 }
-];
+(function() {
+    let score = 0, timeLeft = 10, active = false;
+    const container = document.querySelector('.canvas-placeholder');
+    const user = document.getElementById('display-user').innerText;
 
-let idx = 0, score = 0, racha = 1;
-const user = document.getElementById('display-user').innerText;
-
-function dibujarPregunta() {
-    const cont = document.querySelector('.canvas-placeholder');
-    if (idx >= banco.length) {
-        document.getElementById('game-over-screen').style.display = 'flex';
-        document.getElementById('final-score-msg').innerText = `Tu sabiduría: ${score} puntos`;
-        guardarPuntaje();
-        return;
-    }
-
-    const q = banco[idx];
-    cont.innerHTML = `
-        <div style="padding:20px; text-align:center; width:100%;">
-            <div style="color:var(--accent); font-weight:bold;">Racha: x${racha}</div>
-            <h2 style="margin:20px 0; font-size:1.4rem;">${q.p}</h2>
-            <div style="display:grid; gap:10px;">
-                ${q.r.map((opt, i) => `<button class="btn-play" onclick="chequear(${i})">${opt}</button>`).join('')}
+    container.innerHTML = `
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; width:100%; position:relative;">
+            <div id="stats" style="position:absolute; top:20px; text-align:center;">
+                <h1 id="c-count" style="font-size:4rem; color:var(--neon); margin:0;">0</h1>
+                <p id="c-timer" style="font-size:1.5rem; color:white;">10s</p>
             </div>
+            <button id="target" class="btn-play" style="padding:40px; border-radius:50%; font-size:1.5rem; transition:0.05s;">¡DALE!</button>
         </div>
     `;
-}
 
-function chequear(i) {
-    if (i === banco[idx].c) {
-        score += 10 * racha;
-        racha++;
-    } else {
-        racha = 1;
+    const btn = document.getElementById('target');
+    const countTxt = document.getElementById('c-count');
+    const timerTxt = document.getElementById('c-timer');
+
+    function move() {
+        const x = Math.random() * 60 + 20;
+        const y = Math.random() * 50 + 30;
+        btn.style.position = 'absolute';
+        btn.style.left = x + '%';
+        btn.style.top = y + '%';
     }
-    idx++;
-    dibujarPregunta();
-}
 
-async function guardarPuntaje() {
-    await fetch('/guardar_puntaje', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ nombre: user, puntos: score, juego: 'trivia' })
-    });
-}
+    btn.onclick = () => {
+        if (!active && timeLeft === 10) {
+            active = true;
+            let timer = setInterval(() => {
+                timeLeft--;
+                timerTxt.innerText = timeLeft + "s";
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    active = false;
+                    btn.style.display = "none";
+                    finish();
+                }
+            }, 1000);
+        }
+        if (active) {
+            score++;
+            countTxt.innerText = score;
+            move();
+        }
+    };
 
-dibujarPregunta();
+    function finish() {
+        const overlay = document.getElementById('game-over-screen');
+        overlay.style.display = 'flex';
+        document.getElementById('final-score-msg').innerText = `Hiciste ${score} clics`;
+        fetch('/guardar_puntaje', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({nombre: user, puntos: score, juego: 'clicker'})
+        });
+    }
+})();
