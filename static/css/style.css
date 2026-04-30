@@ -280,13 +280,16 @@ body {
 .game-main h2 { margin-bottom: 1.5rem; }
 
 .canvas-placeholder {
-    width: 100%;
-    min-height: 450px; /* Altura fija para que no se vea como línea */
-    background: #000;
-    position: relative;
-    overflow: hidden;
-    border: 3px solid var(--neon);
-    border-radius: 10px;
+    width: 95%;           /* Casi todo el ancho en celulares */
+    max-width: 500px;     /* Límite para que en PC se vea bien */
+    margin: 0 auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #0d0221;  /* El fondo oscuro */
+    border: 2px solid #00f0ff;
+    border-radius: 15px;
+    padding: 10px;        /* Espacio de respiro */
 }
 
 .overlay {
