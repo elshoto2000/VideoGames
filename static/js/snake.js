@@ -105,11 +105,17 @@ function dibujarComida() {
     ctx.shadowBlur = 0;
 }
 
-function morir() {
+async function morir() {
     juegoActivo = false;
-    guardarPuntaje(user, score, "Snake");
-    alert("Game Over! Puntos: " + score);
-    location.reload(); 
+    
+    // 1. Guardar el puntaje
+    await guardarPuntaje(user, score, "Snake");
+    
+    alert("¡Game Over! Puntos: " + score);
+    
+    // 2. En lugar de solo recargar, vamos a pedirle a Python los nuevos datos
+    // para que la tabla de al lado se llene solita.
+    location.reload(); // Esto refrescará la página y el ranking se cargará desde Python
 }
 
 // CONTROLES
