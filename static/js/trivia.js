@@ -22,6 +22,7 @@
         if (!container) return;
         container.innerHTML = ""; 
 
+        // Verificación estricta del final
         if (current >= questions.length) {
             return end();
         }
@@ -31,7 +32,7 @@
         div.style.cssText = "padding:20px; text-align:left; width:100%; display:flex; flex-direction:column; justify-content:center; height:100%; color:white; box-sizing: border-box;";
         
         div.innerHTML = `
-            <p style="color:var(--neon); font-size:0.8rem; margin-bottom:5px;">Pregunta ${current + 1} de ${questions.length}</p>
+            <p style="color:#00f0ff; font-size:0.8rem; margin-bottom:5px;">Pregunta ${current + 1} de ${questions.length}</p>
             <h2 style="margin-bottom:20px; font-size:1.2rem; line-height: 1.2;">${data.q}</h2>
         `;
 
@@ -52,11 +53,11 @@
                 
                 if (i === data.c) {
                     score += 10;
-                    b.style.borderColor = "#00f0ff"; // Color neón
+                    b.style.borderColor = "#00f0ff"; 
                     b.style.background = "rgba(0, 240, 255, 0.1)";
                     feedback.innerHTML = "✅";
                 } else {
-                    b.style.borderColor = "#ff4757"; // Color acento/error
+                    b.style.borderColor = "#ff4757"; 
                     b.style.background = "rgba(255, 71, 87, 0.1)";
                     feedback.innerHTML = "❌";
                     allButtons[data.c].style.borderColor = "#00f0ff";
@@ -65,7 +66,7 @@
 
                 setTimeout(() => {
                     current++;
-                    render();
+                    render(); // Render se encargará de ver si ya terminamos
                 }, 1000);
             };
             optionsContainer.appendChild(b);
@@ -76,20 +77,30 @@
     }
 
     function end() {
+        if (!container) return;
         container.innerHTML = ""; 
-        const overlay = document.getElementById('game-over-screen');
-        if (overlay) {
-            overlay.innerHTML = `
-                <h1 style="color: #00f0ff; text-shadow: 0 0 15px #00f0ff;">FIN DE TRIVIA</h1>
-                <p style="font-size: 1.5rem; margin-bottom: 20px;">Puntaje: ${score} / ${questions.length * 10}</p>
-                <div style="display: flex; flex-direction: column; gap: 10px; width: 80%;">
-                    <button onclick="location.reload()" class="btn-play" style="background: #00f0ff; color: #0d0221; font-weight:bold; padding: 10px; border: none; cursor: pointer;">REINTENTAR</button>
-                    <button onclick="window.location.href=window.location.href" class="btn-play" style="background: #555; color: white; font-size: 0.8rem; padding: 10px; border: none; cursor: pointer;">CAMBIAR DE CUENTA</button>
-                </div>
-            `;
-            overlay.style.display = 'flex';
+
+        // Si el elemento overlay no existe en el HTML, lo creamos dinámicamente
+        let overlay = document.getElementById('game-over-screen');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'game-over-screen';
+            // Estilos de emergencia si el CSS falla
+            overlay.style.cssText = "position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(13,2,33,0.95); display:flex; flex-direction:column; justify-content:center; align-items:center; z-index:9999; text-align:center; color:white;";
+            container.appendChild(overlay);
         }
 
+        overlay.innerHTML = `
+            <h1 style="color: #00f0ff; text-shadow: 0 0 15px #00f0ff; margin-bottom:10px;">FIN DE TRIVIA</h1>
+            <p style="font-size: 1.5rem; margin-bottom: 20px;">Puntaje: ${score} / ${questions.length * 10}</p>
+            <div style="display: flex; flex-direction: column; gap: 10px; width: 80%; max-width: 300px;">
+                <button onclick="location.reload()" class="btn-play" style="background: #00f0ff; color: #0d0221; font-weight:bold; padding: 12px; border: none; cursor: pointer; border-radius: 4px;">REINTENTAR</button>
+                <button onclick="window.location.href='/menu'" class="btn-play" style="background: #555; color: white; padding: 12px; border: none; cursor: pointer; border-radius: 4px;">VOLVER AL MENÚ</button>
+            </div>
+        `;
+        overlay.style.display = 'flex';
+
+        // Guardar puntaje en el servidor
         fetch('/guardar_puntaje', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -97,6 +108,6 @@
         }).catch(err => console.error("Error al guardar:", err));
     }
 
-    // Pequeño delay para asegurar que el DOM esté listo
-    setTimeout(render, 100);
+    // Iniciar con un pequeño margen de seguridad
+    setTimeout(render, 200);
 })();
