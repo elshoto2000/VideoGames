@@ -1,8 +1,21 @@
 const canvas = document.createElement('canvas');
 const ctx = canvas.getContext('2d');
-canvas.width = 400; canvas.height = 400;
-document.querySelector('.canvas-placeholder').innerHTML = "";
-document.querySelector('.canvas-placeholder').appendChild(canvas);
+
+// El tamaño interno del juego siempre será 400x400 para que la lógica no cambie
+canvas.width = 400; 
+canvas.height = 400;
+
+// ESTO ES LO QUE HACE QUE SE AJUSTE A CUALQUIER PANTALLA
+canvas.style.width = "100%";       // Se estira al ancho del contenedor azul
+canvas.style.height = "auto";      // Mantiene la proporción
+canvas.style.aspectRatio = "1/1";  // Se asegura de ser un cuadrado
+canvas.style.maxWidth = "500px";   // En PC no queremos que sea GIGANTE, máximo 500px
+canvas.style.display = "block";
+canvas.style.margin = "0 auto";    // Centrado
+
+const container = document.querySelector('.canvas-placeholder');
+container.innerHTML = "";
+container.appendChild(canvas);
 
 const user = document.getElementById('display-user').innerText;
 let snake = [{x: 200, y: 200}, {x: 180, y: 200}];
