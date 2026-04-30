@@ -52,15 +52,25 @@ function dibujarSerpiente() {
 
 function avanzarSerpiente() {
     const cabeza = {x: snake[0].x + dx, y: snake[0].y + dy};
+    
+    // Agregamos la cabeza al inicio
     snake.unshift(cabeza);
+
+    // Lógica de comida
     if (cabeza.x === food.x && cabeza.y === food.y) {
         score += 10;
-        speed = Math.max(50, speed - 2); // Aumenta velocidad
+        speed = Math.max(50, speed - 2); 
         snakeColor = `hsl(${Math.random() * 360}, 100%, 50%)`;
         food = {x: posRandom(), y: posRandom()};
-    } else { snake.pop(); }
+    } else { 
+        snake.pop(); 
+    }
 
-    if (cabeza.x < 0 || cabeza.x >= 400 || cabeza.y < 0 || cabeza.y >= 400 || chocó()) {
+    // --- CORRECCIÓN DE COLISIÓN (Paredes que matan) ---
+    // Usamos >= 400 y < 0 para que sea exacto con el tamaño del canvas[cite: 1]
+    const chocoPared = cabeza.x < 0 || cabeza.x >= 400 || cabeza.y < 0 || cabeza.y >= 400;
+
+    if (chocoPared || chocó()) {
         juegoActivo = false;
         finalizar();
     }
