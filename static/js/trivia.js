@@ -79,6 +79,7 @@
         container.appendChild(div);
     }
 
+    // ESTA ES LA FUNCIÓN ACTUALIZADA PARA MÓVILES
     function end() {
         container.innerHTML = ""; 
         
@@ -86,29 +87,40 @@
         if (!screen) {
             screen = document.createElement('div');
             screen.id = 'game-over-screen';
-            screen.style.cssText = "position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(13,2,33,0.95); display:flex; flex-direction:column; justify-content:center; align-items:center; z-index:9999; text-align:center; color:white; border-radius:15px;";
+            screen.style.cssText = `
+                position:absolute; top:0; left:0; width:100%; height:100%; 
+                background:rgba(13,2,33,0.98); display:flex; flex-direction:column; 
+                justify-content:center; align-items:center; z-index:9999; 
+                text-align:center; color:white; border-radius:15px; padding: 20px; box-sizing: border-box;
+            `;
             container.appendChild(screen);
         }
 
         screen.innerHTML = `
-            <h1 style="color: #00f0ff; text-shadow: 0 0 15px #00f0ff; margin-bottom:10px;">FIN DE TRIVIA</h1>
-            <p style="font-size: 1.5rem; margin-bottom: 20px;">Puntaje: ${score} / ${questions.length * 10}</p>
-            <div style="display: flex; flex-direction: column; gap: 10px; width: 80%; max-width: 300px;">
-                <button id="btn-restart" class="btn-play" style="background: #00f0ff; color: #0d0221; font-weight:bold; padding: 12px; border: none; cursor: pointer; border-radius: 4px;">REINTENTAR</button>
-                <button id="btn-back-menu" class="btn-play" style="background: #555; color: white; padding: 12px; border: none; cursor: pointer; border-radius: 4px;">VOLVER AL MENÚ</button>
-                <button onclick="location.reload()" style="background: transparent; color: #aaa; border: none; font-size: 0.7rem; cursor: pointer; margin-top: 5px;">Cambiar de cuenta</button>
+            <h1 style="color: #00f0ff; text-shadow: 0 0 10px #00f0ff; font-size: 1.8rem; margin: 0 0 10px 0;">FIN DE TRIVIA</h1>
+            <p style="font-size: 1.3rem; margin-bottom: 20px;">Puntaje: <span style="color:#00f0ff">${score} / ${questions.length * 10}</span></p>
+            
+            <div style="display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 280px;">
+                <button id="btn-restart-trivia" class="btn-play" style="background:#00f0ff; color:#0d0221; font-weight:bold; height: 50px; border:none; border-radius:8px; cursor:pointer; font-size: 1rem;">
+                    🎮 REINTENTAR
+                </button>
+                <button id="btn-menu-trivia" class="btn-play" style="background:#333; color:white; height: 50px; border:none; border-radius:8px; cursor:pointer; font-size: 1rem;">
+                    🏠 MENÚ PRINCIPAL
+                </button>
+                <button onclick="location.reload()" style="background:transparent; color:#888; border:none; font-size: 0.8rem; text-decoration:underline; cursor:pointer; margin-top: 10px;">
+                    Cambiar de cuenta
+                </button>
             </div>
         `;
         screen.style.display = 'flex';
 
-        // Configurar el botón VOLVER AL MENÚ con la ruta corregida
-        document.getElementById('btn-back-menu').onclick = () => {
-            window.location.href = "index.html"; 
-        };
-
-        document.getElementById('btn-restart').onclick = () => {
+        document.getElementById('btn-restart-trivia').onclick = () => {
             screen.style.display = 'none';
             resetGame();
+        };
+
+        document.getElementById('btn-menu-trivia').onclick = () => {
+            window.location.href = "index.html";
         };
 
         fetch('/guardar_puntaje', {
