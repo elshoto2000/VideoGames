@@ -33,18 +33,17 @@ def home():
 @app.route('/juego/<nombre_juego>')
 def cargar_juego(nombre_juego):
     conn = conectar_db()
-    # Sacamos los 3 rankings
+    # Importante: r_snake, r_trivia, r_clicker
     r_snake = conn.execute('SELECT nombre, puntos FROM ranking WHERE juego = "Snake" ORDER BY puntos DESC LIMIT 5').fetchall()
     r_trivia = conn.execute('SELECT nombre, puntos FROM ranking WHERE juego = "Trivia" ORDER BY puntos DESC LIMIT 5').fetchall()
     r_clicker = conn.execute('SELECT nombre, puntos FROM ranking WHERE juego = "Clicker" ORDER BY puntos DESC LIMIT 5').fetchall()
     conn.close()
 
-    # Los nombres de las variables aquí deben ser iguales a los del HTML
     return render_template('juego.html', 
-                       juego=nombre_juego, 
-                       ranking_snake=r_snake,   
-                       ranking_trivia=r_trivia,  
-                       ranking_clicker=r_clicker) 
+                           juego=nombre_juego, 
+                           ranking_snake=r_snake,   # <--- Este nombre debe ser igual al HTML
+                           ranking_trivia=r_trivia, 
+                           ranking_clicker=r_clicker)
 
 # Tu ruta de guardar_puntaje está perfecta con la lógica de UPSERT
 @app.route('/guardar_puntaje', methods=['POST'])
