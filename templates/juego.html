@@ -78,26 +78,45 @@
     </div>
 
     <script>
-        // Esta función hace el cambio de pantalla
-        function iniciarJuego(event) {
-            event.preventDefault(); // No recargar la página
-            const userInput = document.getElementById('username').value;
-            
-            // Validar que no esté vacío (por si acaso)
-            if(userInput.trim() === "") return alert("Pon un nombre válido");
-
-            // Pasamos el nombre a la pantalla de juego
-            document.getElementById('display-user').innerText = userInput;
-            
-            // Efecto de transición
-            document.getElementById('auth-screen').style.display = 'none';
-            document.getElementById('game-screen').style.display = 'block';
-
-            // Cargamos dinámicamente el script del juego (snake.js, clicker.js, etc.)
-            const script = document.createElement('script');
-            script.src = `/static/js/{{ juego }}.js`; 
-            document.body.appendChild(script);
+    // 1. Esto se ejecuta apenas carga la página
+    window.onload = function() {
+        const nombreGuardado = localStorage.getItem('arcade_user');
+        if (nombreGuardado) {
+            // Si ya existe el nombre, saltamos el registro automáticamente
+            document.getElementById('username').value = nombreGuardado;
+            ejecutarEntradaAlJuego(nombreGuardado);
         }
-    </script>
+    };
+
+    // 2. Función que se activa al dar click al botón "Entrar" (Login)
+    function iniciarJuego(event) {
+        event.preventDefault();
+        const userInput = document.getElementById('username').value;
+        
+        if(userInput.trim() === "") return alert("Pon un nombre válido");
+
+        // Guardamos en la memoria del navegador
+        localStorage.setItem('arcade_user', userInput);
+        ejecutarEntradaAlJuego(userInput);
+    }
+
+    // 3. La lógica compartida para entrar a la pantalla del juego
+    function ejecutarEntradaAlJuego(nombre) {
+        document.getElementById('display-user').innerText = nombre;
+        document.getElementById('auth-screen').style.display = 'none';
+        document.getElementById('game-screen').style.display = 'block';
+
+        // Carga el archivo .js del juego (snake.js, trivia.js, o clicker.js)
+        const script = document.createElement('script');
+        script.src = `/static/js/{{ juego }}.js`; 
+        document.body.appendChild(script);
+    }
+
+    // 4. Función para el botón "CAMBIAR CUENTA"
+    function borrarYSalir() {
+        localStorage.removeItem('arcade_user'); // Borra el nombre guardado
+        window.location.href = "/"; // Te manda al inicio real
+    }
+</script>
 </body>
 </html>
