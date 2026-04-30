@@ -32,19 +32,16 @@ def home():
 
 @app.route('/juego/<nombre_juego>')
 def cargar_juego(nombre_juego):
-    # Intentamos obtener el usuario de la URL por si acaso reintentan
-    nombre_usuario = request.args.get('user', '')
-
     conn = conectar_db()
-    # Sacamos el Top 5 de cada juego por separado
+    # Sacamos los 3 rankings
     r_snake = conn.execute('SELECT nombre, puntos FROM ranking WHERE juego = "Snake" ORDER BY puntos DESC LIMIT 5').fetchall()
     r_trivia = conn.execute('SELECT nombre, puntos FROM ranking WHERE juego = "Trivia" ORDER BY puntos DESC LIMIT 5').fetchall()
     r_clicker = conn.execute('SELECT nombre, puntos FROM ranking WHERE juego = "Clicker" ORDER BY puntos DESC LIMIT 5').fetchall()
     conn.close()
 
+    # Los nombres de las variables aquí deben ser iguales a los del HTML
     return render_template('juego.html', 
                            juego=nombre_juego, 
-                           usuario=nombre_usuario,
                            ranking_snake=r_snake,
                            ranking_trivia=r_trivia,
                            ranking_clicker=r_clicker)
