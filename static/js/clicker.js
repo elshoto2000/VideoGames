@@ -20,14 +20,14 @@
     const timerTxt = document.getElementById('c-timer');
 
     function move() {
-        // Mantenemos el botón dentro de rangos seguros (20% a 80%) para que no se salga del canvas
-        const x = Math.random() * 60 + 20;
-        const y = Math.random() * 50 + 30;
-        btn.style.position = 'absolute';
-        btn.style.left = x + '%';
-        btn.style.top = y + '%';
-        btn.style.transform = 'translate(-50%, -50%)'; // Centra el botón en el punto aleatorio
-    }
+    // Valores de 10 a 90 para que el botón nunca toque los bordes del borde neón
+    const x = Math.random() * 80 + 10;
+    const y = Math.random() * 80 + 10;
+    btn.style.position = 'absolute';
+    btn.style.left = x + '%';
+    btn.style.top = y + '%';
+    btn.style.transform = 'translate(-50%, -50%)';
+}
 
     btn.onclick = () => {
         // Iniciar el juego con el primer clic
