@@ -3,7 +3,7 @@
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta charset="UTF-8">
-    <title>Arcade | {{ juego }}</title>
+    <title>Arcade | {{ juego|capitalize }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
@@ -17,88 +17,92 @@
         </ul>
     </nav>
 
-    <div id="auth-screen" class="auth-container">
+    <!-- PANTALLA DE IDENTIFICACIÓN -->
+    <div id="auth-screen" class="auth-container" style="display: none;">
         <div class="auth-card">
             <h2>Vas a jugar: <span style="text-transform: capitalize; color: var(--accent);">{{ juego }}</span></h2>
             <p>Ingresa tu nombre para el Ranking</p>
             
-            <form id="loginForm" onsubmit="iniciarJuego(event)">
+            <form id="loginForm" onsubmit="event.preventDefault(); guardarYEntrar();">
                 <input type="text" id="username" placeholder="Tu nombre de guerrero..." required maxlength="12">
                 <button type="submit" class="btn-auth">¡ENTRAR A JUGAR!</button>
             </form>
         </div>
     </div>
 
+    <!-- PANTALLA DEL JUEGO -->
     <div id="game-screen" style="display: none;">
         <div class="game-layout">
-            
             <div class="game-main">
                 <h2>Jugador: <span id="display-user" style="color: var(--accent);"></span></h2>
                 
-               <div class="game-container">
-    <!-- Contenedor del Juego -->
-    <div class="canvas-placeholder">
-        <!-- Aquí va tu canvas o contenido del juego -->
-        
-        <div id="game-over-screen" style="display: none; text-align: center;">
-            <h1>¡FIN DEL JUEGO!</h1>
-            <p id="final-score-msg"></p>
-            
-            <!-- BOTONES DENTRO DEL GAME OVER -->
-            <button class="btn-play" onclick="window.location.reload()">REINTENTAR</button>
-            <button class="btn-play" onclick="borrarYSalir()" style="background: var(--muted);">CAMBIAR CUENTA</button>
+                <div class="game-container">
+                    <div class="canvas-placeholder">
+                        <!-- Aquí se inyecta el canvas o el juego vía JS -->
+                        <div id="game-over-screen" style="display: none;">
+                            <h1>¡FIN DEL JUEGO!</h1>
+                            <p id="final-score-msg"></p>
+                            <button class="btn-play" onclick="window.location.reload()">REINTENTAR</button>
+                            <button class="btn-play" onclick="borrarYSalir()" style="background: var(--muted); margin-top:10px;">CAMBIAR CUENTA</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RANKING LATERAL DINÁMICO -->
+            <div class="ranking-side">
+                <h3>🏆 TOP 5 - {{ juego|upper }}</h3>
+                <ul id="ranking-list">
+                    {% set j = juego.lower() %}
+                    {% if j == 'snake' %}
+                        {% for fila in ranking_snake %}
+                            <li><span>{{ loop.index }}. {{ fila.nombre }}</span> <b>{{ fila.puntos }}</b></li>
+                        {% else %}
+                            <li>Nadie ha jugado aún...</li>
+                        {% endfor %}
+                    {% elif j == 'trivia' %}
+                        {% for fila in ranking_trivia %}
+                            <li><span>{{ loop.index }}. {{ fila.nombre }}</span> <b>{{ fila.puntos }}</b></li>
+                        {% else %}
+                            <li>Nadie ha jugado aún...</li>
+                        {% endfor %}
+                    {% elif j == 'clicker' %}
+                        {% for fila in ranking_clicker %}
+                            <li><span>{{ loop.index }}. {{ fila.nombre }}</span> <b>{{ fila.puntos }}</b></li>
+                        {% else %}
+                            <li>Nadie ha jugado aún...</li>
+                        {% endfor %}
+                    {% endif %}
+                </ul>
+            </div>
         </div>
     </div>
-
-    <!-- RANKING LATERAL -->
-    <div class="ranking-side">
-        <h3>🏆 TOP 5 - {{ juego|upper }}</h3>
-        <ul id="ranking-list">
-            {% set j = juego.lower() %}
-            
-            {% if j == 'snake' %}
-                {% for fila in ranking_snake %}
-                    <li>{{ loop.index }}. {{ fila.nombre }} - {{ fila.puntos }}</li>
-                {% else %}
-                    <li>Nadie ha jugado aún en Snake...</li>
-                {% endfor %}
-            {% elif j == 'trivia' %}
-                {% for fila in ranking_trivia %}
-                    <li>{{ loop.index }}. {{ fila.nombre }} - {{ fila.puntos }}</li>
-                {% else %}
-                    <li>Nadie ha jugado aún en Trivia...</li>
-                {% endfor %}
-            {% elif j == 'clicker' %}
-                {% for fila in ranking_clicker %}
-                    <li>{{ loop.index }}. {{ fila.nombre }} - {{ fila.puntos }}</li>
-                {% else %}
-                    <li>Nadie ha jugado aún en Clicker...</li>
-                {% endfor %}
-            {% endif %}
-        </ul>
-    </div>
-</div>
 
     <script>
     window.onload = function() {
         const nombreGuardado = localStorage.getItem('arcade_user');
-        // Si hay un nombre y no estamos intentando cambiar de cuenta, entramos directo
         if (nombreGuardado && !sessionStorage.getItem('flag_cambio')) {
-            document.getElementById('username').value = nombreGuardado;
             ejecutarEntradaAlJuego(nombreGuardado);
         } else {
-            // Si no hay nombre o venimos de "Cambiar Cuenta", mostramos el registro
             sessionStorage.removeItem('flag_cambio');
-            document.getElementById('auth-screen').style.display = 'block';
+            document.getElementById('auth-screen').style.display = 'flex';
         }
     };
+
+    function guardarYEntrar() {
+        const nombre = document.getElementById('username').value.trim();
+        if (nombre) {
+            localStorage.setItem('arcade_user', nombre);
+            ejecutarEntradaAlJuego(nombre);
+        }
+    }
 
     function ejecutarEntradaAlJuego(nombre) {
         document.getElementById('display-user').innerText = nombre;
         document.getElementById('auth-screen').style.display = 'none';
         document.getElementById('game-screen').style.display = 'block';
 
-        // Carga el script del juego actual
+        // Carga el archivo JS correspondiente al juego
         const script = document.createElement('script');
         script.src = `/static/js/{{ juego }}.js`; 
         document.body.appendChild(script);
@@ -106,9 +110,9 @@
 
     function borrarYSalir() {
         localStorage.removeItem('arcade_user');
-        sessionStorage.setItem('flag_cambio', 'true'); // Marcamos que queremos un usuario nuevo
+        sessionStorage.setItem('flag_cambio', 'true');
         window.location.href = "/";
     }
-</script>
+    </script>
 </body>
 </html>
