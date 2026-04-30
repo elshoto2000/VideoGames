@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <title>Arcade | {{ juego }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">
+            <img src="{{ url_for('static', filename='img/favicon.gif') }}" alt="Icono" class="nav-gif">
+            <span>Arcade</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="/">Volver al Menú</a></li>
+        </ul>
+    </nav>
+
+    <div id="auth-screen" class="auth-container">
+        <div class="auth-card">
+            <h2>Vas a jugar: <span style="text-transform: capitalize; color: var(--accent);">{{ juego }}</span></h2>
+            <p>Ingresa tu nombre para el Ranking</p>
+            
+            <form id="loginForm" onsubmit="iniciarJuego(event)">
+                <input type="text" id="username" placeholder="Tu nombre de guerrero..." required maxlength="12">
+                <button type="submit" class="btn-auth">¡ENTRAR A JUGAR!</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="game-screen" style="display: none;">
+        <div class="game-layout">
+            
+            <div class="game-main">
+                <h2>Jugador: <span id="display-user" style="color: var(--accent);"></span></h2>
+                
+                <div class="canvas-placeholder"></div>
+
+                <div id="game-over-screen" style="display: none;">
+    <h1>¡FIN DEL JUEGO!</h1>
+    <p id="final-score-msg"></p>
+    <button class="btn-play" onclick="window.location.reload()">REINTENTAR</button>
+    <a href="/" class="btn-play" style="background: var(--muted); text-decoration: none; display: inline-block;">VOLVER AL MENÚ</a>
+</div>
+            </div>
+
+            <div class="ranking-side">
+                <h3>🏆 TOP GLOBAL</h3>
+                <ul id="ranking-list">
+                    <li>Nadie ha jugado aún...</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Esta función hace el cambio de pantalla
+        function iniciarJuego(event) {
+            event.preventDefault(); // No recargar la página
+            const userInput = document.getElementById('username').value;
+            
+            // Validar que no esté vacío (por si acaso)
+            if(userInput.trim() === "") return alert("Pon un nombre válido");
+
+            // Pasamos el nombre a la pantalla de juego
+            document.getElementById('display-user').innerText = userInput;
+            
+            // Efecto de transición
+            document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'block';
+
+            // Cargamos dinámicamente el script del juego (snake.js, clicker.js, etc.)
+            const script = document.createElement('script');
+            script.src = `/static/js/{{ juego }}.js`; 
+            document.body.appendChild(script);
+        }
+    </script>
+</body>
+</html>

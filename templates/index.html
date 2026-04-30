@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arcade | Menú</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">
+            <img src="{{ url_for('static', filename='img/favicon.gif') }}" class="nav-gif">
+            <span>Arcade</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="#inicio">Inicio</a></li>
+            <li><a href="#juegos">Juegos</a></li>
+            <li><a href="#ranking">Top Global</a></li>
+        </ul>
+    </nav>
+
+    <header id="inicio" class="hero-section">
+        <div class="hero-content">
+            <div class="hero-text">
+                <h1>¡Bienvenido al Arcade!</h1>
+                <p>Demuestra que eres el mejor del curso en cada desafío. Aquí la precisión y la rapidez lo son todo. ¿Estás listo para dejar tu marca en el ranking global?</p>
+            </div>
+            <div class="hero-image">
+                <img src="{{ url_for('static', filename='img/trofeo.gif') }}" alt="Copa Arcade" class="floating-cup">
+            </div>
+        </div>
+    </header>
+
+    <hr class="separator">
+
+    <section id="juegos" class="games-showcase">
+        <h2 class="section-title">Nuestros Juegos</h2>
+
+        <div class="game-entry">
+            <div class="game-info">
+                <h3>Snake Clásico</h3>
+                <p>La culebrita de toda la vida. Controla tu apetito, crece sin límites y, sobre todo, ¡no choques con las paredes ni con tu propio cuerpo!</p>
+                <a href="/juego/snake" class="btn-play">Jugar ahora</a>
+            </div>
+            <div class="game-preview">
+                <img src="{{ url_for('static', filename='img/snake-preview.gif') }}" alt="Snake Preview">
+            </div>
+        </div>
+
+        <div class="game-entry reverse">
+            <div class="game-info">
+                <h3>Trivia Master</h3>
+                <p>Pon a prueba tu cerebro. Responde preguntas de cultura general y física antes de que el tiempo se agote. El conocimiento es poder.</p>
+                <a href="/juego/trivia" class="btn-play">Jugar ahora</a>
+            </div>
+            <div class="game-preview">
+                <img src="{{ url_for('static', filename='img/trivia-preview.gif') }}" alt="Trivia Preview">
+            </div>
+        </div>
+
+        <div class="game-entry">
+    <div class="game-info">
+        <h3>Clicker Hero</h3>
+        <p>¿Qué tan rápido son tus dedos? Tienes 10 segundos para lograr el récord de clics. ¡No rompas el mouse!</p>
+        <a href="/juego/clicker" class="btn-play">Jugar ahora</a>
+    </div>
+    <div class="game-preview">
+        <img src="{{ url_for('static', filename='img/clicker-preview.gif') }}" alt="Clicker Preview">
+    </div>
+</div>
+    </section>
+
+    <section id="ranking" class="global-ranking-section">
+        <h2 class="section-title">🏆 Top Global</h2>
+        <div class="ranking-container">
+            <p>Aquí se mostrarán los mejores puntajes de todos los juegos combinados.</p>
+            </div>
+    </section>
+
+    <footer class="footer">
+        <p>&copy; 2026 ArcadeGames - Proyect 1</p>
+    </footer>
+<script>
+async function cargarRankings() {
+    const res = await fetch('/obtener_ranking');
+    const data = await res.json();
+    const container = document.querySelector('.ranking-container');
+    
+    const juegos = ['snake', 'trivia', 'clicker'];
+    let html = '<div style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;">';
+
+    juegos.forEach(j => {
+        const topJuego = data.ranking.filter(item => item.juego === j).slice(0, 5);
+        html += `
+            <div class="ranking-card" style="background: var(--bg-soft); padding: 15px; border-radius: 10px; min-width: 200px; border: 1px solid var(--border)">
+                <h3 style="color: var(--neon); margin-bottom: 10px;">Top ${j.toUpperCase()}</h3>
+                <ul style="list-style: none; padding: 0; text-align: left;">
+                    ${topJuego.map(i => `<li style="display:flex; justify-content:space-between"><span>${i.nombre}</span> <b>${i.puntos}</b></li>`).join('') || '<li>Nadie aún</li>'}
+                </ul>
+            </div>
+        `;
+    });
+    container.innerHTML = html + '</div>';
+}
+window.onload = cargarRankings;
+</script>
+</body>
+</html>
