@@ -48,20 +48,27 @@
             <div class="ranking-side">
     <h3>🏆 TOP 5 - {{ juego|upper }}</h3>
     <ul id="ranking-list">
-        {% if juego == 'snake' %}
-            {% for fila in ranking_snake %}
-                <li>{{ loop.index }}. {{ fila.nombre }} - {{ fila.puntos }}</li>
-            {% endfor %}
-        {% elif juego == 'trivia' %}
-            {% for fila in ranking_trivia %}
-                <li>{{ loop.index }}. {{ fila.nombre }} - {{ fila.puntos }}</li>
-            {% endfor %}
-        {% elif juego == 'clicker' %}
-            {% for fila in ranking_clicker %}
-                <li>{{ loop.index }}. {{ fila.nombre }} - {{ fila.puntos }}</li>
-            {% endfor %}
-        {% endif %}
-    </ul>
+    <!-- Usamos .lower() para que no importe si es 'Snake' o 'snake' -->
+    {% if juego.lower() == 'snake' %}
+        {% for fila in ranking_snake %}
+            <li>{{ loop.index }}. {{ fila.nombre }} - {{ fila.puntos }}</li>
+        {% else %}
+            <li>Nadie ha jugado aún...</li>
+        {% endfor %}
+    {% elif juego.lower() == 'trivia' %}
+        {% for fila in ranking_trivia %}
+            <li>{{ loop.index }}. {{ fila.nombre }} - {{ fila.puntos }}</li>
+        {% else %}
+            <li>Nadie ha jugado aún...</li>
+        {% endfor %}
+    {% elif juego.lower() == 'clicker' %}
+        {% for fila in ranking_clicker %}
+            <li>{{ loop.index }}. {{ fila.nombre }} - {{ fila.puntos }}</li>
+        {% else %}
+            <li>Nadie ha jugado aún...</li>
+        {% endfor %}
+    {% endif %}
+</ul>
 
     <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 10px;">
         <button onclick="location.reload()" style="background: #00f0ff; color: black; border: none; padding: 10px; cursor: pointer; font-weight: bold; border-radius: 5px;">
