@@ -5,7 +5,6 @@
     let gameActive = false;
     const container = document.querySelector('.canvas-placeholder');
 
-    // Obtener el usuario de forma segura
     const userElement = document.getElementById('display-user') || document.querySelector('span[style*="color: red"]') || { innerText: "Leandro" };
     let user = userElement.innerText.replace("Jugador: ", "").trim();
 
@@ -28,25 +27,29 @@
     function renderGame() {
         if (!container) return;
         container.innerHTML = `
-            <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:white;">
+            <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:white; padding: 20px; box-sizing: border-box;">
                 <p id="timer-display" style="color:#00f0ff; font-size:1.2rem; margin-bottom:10px;">Tiempo: ${timeLeft}s</p>
-                <div id="click-target" style="width:120px; height:120px; background:#00f0ff; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow: 0 0 20px #00f0ff; user-select:none;">
-                    <span style="color:#0d0221; font-weight:bold; font-size:2rem;">+1</span>
+                <div id="click-target" style="width:140px; height:140px; background:#00f0ff; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow: 0 0 25px #00f0ff; user-select:none; transition: transform 0.05s;">
+                    <span style="color:#0d0221; font-weight:bold; font-size:2.5rem;">+1</span>
                 </div>
-                <p style="margin-top:20px; font-size:1.5rem;">Clicks: <span id="click-count">0</span></p>
+                <p style="margin-top:20px; font-size:1.5rem;">Clicks: <span id="click-count" style="color:#00f0ff; font-weight:bold;">0</span></p>
             </div>
         `;
 
         const target = document.getElementById('click-target');
-        target.onclick = () => {
+        // Usar touchstart para una respuesta más rápida en móviles
+        const handleInteraction = (e) => {
+            if (e.type === 'touchstart') e.preventDefault();
             if (gameActive) {
                 clicks++;
                 document.getElementById('click-count').innerText = clicks;
-                // Efecto visual de click
-                target.style.transform = "scale(0.95)";
+                target.style.transform = "scale(0.9)";
                 setTimeout(() => target.style.transform = "scale(1)", 50);
             }
         };
+
+        target.onclick = handleInteraction;
+        target.ontouchstart = handleInteraction;
     }
 
     function updateTimer() {
@@ -59,33 +62,46 @@
         clearInterval(timerId);
         container.innerHTML = ""; 
 
-        // Crear pantalla final dinámica
         let screen = document.getElementById('game-over-screen');
         if (!screen) {
             screen = document.createElement('div');
             screen.id = 'game-over-screen';
-            screen.style.cssText = "position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(13,2,33,0.95); display:flex; flex-direction:column; justify-content:center; align-items:center; z-index:9999; text-align:center; color:white; border-radius:15px;";
+            screen.style.cssText = `
+                position:absolute; top:0; left:0; width:100%; height:100%; 
+                background:rgba(13,2,33,0.98); display:flex; flex-direction:column; 
+                justify-content:center; align-items:center; z-index:9999; 
+                text-align:center; color:white; border-radius:15px; padding: 20px; box-sizing: border-box;
+            `;
             container.appendChild(screen);
         }
 
         screen.innerHTML = `
-            <h1 style="color: #00f0ff; text-shadow: 0 0 15px #00f0ff; margin-bottom:10px;">TIEMPO AGOTADO</h1>
-            <p style="font-size: 1.5rem; margin-bottom: 20px;">Total de Clicks: ${clicks}</p>
-            <div style="display: flex; flex-direction: column; gap: 10px; width: 80%; max-width: 300px;">
-                <button id="btn-restart-clicker" class="btn-play" style="background: #00f0ff; color: #0d0221; font-weight:bold; padding: 12px; border: none; cursor: pointer; border-radius: 4px;">REINTENTAR</button>
-                <button onclick="window.location.href='/menu'" class="btn-play" style="background: #555; color: white; padding: 12px; border: none; cursor: pointer; border-radius: 4px;">VOLVER AL MENÚ</button>
-                <button onclick="location.reload()" style="background: transparent; color: #aaa; border: none; font-size: 0.7rem; cursor: pointer; margin-top: 5px;">Cambiar de cuenta</button>
+            <h1 style="color: #00f0ff; text-shadow: 0 0 10px #00f0ff; font-size: 1.8rem; margin: 0 0 10px 0;">TIEMPO AGOTADO</h1>
+            <p style="font-size: 1.3rem; margin-bottom: 20px;">Total de Clicks: <span style="color:#00f0ff">${clicks}</span></p>
+            
+            <div style="display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 280px;">
+                <button id="btn-restart-clicker" class="btn-play" style="background:#00f0ff; color:#0d0221; font-weight:bold; height: 50px; border:none; border-radius:8px; cursor:pointer; font-size: 1rem;">
+                    🎮 REINTENTAR
+                </button>
+                <button id="btn-menu-clicker" class="btn-play" style="background:#333; color:white; height: 50px; border:none; border-radius:8px; cursor:pointer; font-size: 1rem;">
+                    🏠 MENÚ PRINCIPAL
+                </button>
+                <button onclick="location.reload()" style="background:transparent; color:#888; border:none; font-size: 0.8rem; text-decoration:underline; cursor:pointer; margin-top: 10px;">
+                    Cambiar de cuenta
+                </button>
             </div>
         `;
         screen.style.display = 'flex';
 
-        // Reiniciar juego sin recargar página
         document.getElementById('btn-restart-clicker').onclick = () => {
             screen.style.display = 'none';
             startGame();
         };
 
-        // Guardar en la base de datos
+        document.getElementById('btn-menu-clicker').onclick = () => {
+            window.location.href = "index.html";
+        };
+
         fetch('/guardar_puntaje', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -93,6 +109,5 @@
         }).catch(err => console.error("Error al guardar:", err));
     }
 
-    // Iniciar automáticamente
     setTimeout(startGame, 200);
 })();
