@@ -82,43 +82,32 @@
     <script>
     window.onload = function() {
         const nombreGuardado = localStorage.getItem('arcade_user');
-        
-        // CORRECCIÓN: Solo saltamos al juego si el nombre existe Y NO venimos de darle a "Cambiar Cuenta"
-        if (nombreGuardado && !sessionStorage.getItem('cambiando_cuenta')) {
+        // Si hay un nombre y no estamos intentando cambiar de cuenta, entramos directo
+        if (nombreGuardado && !sessionStorage.getItem('flag_cambio')) {
             document.getElementById('username').value = nombreGuardado;
             ejecutarEntradaAlJuego(nombreGuardado);
         } else {
-            // Si venimos de cambiar cuenta, mostramos el registro y limpiamos la marca
-            sessionStorage.removeItem('cambiando_cuenta');
+            // Si no hay nombre o venimos de "Cambiar Cuenta", mostramos el registro
+            sessionStorage.removeItem('flag_cambio');
             document.getElementById('auth-screen').style.display = 'block';
-            document.getElementById('game-screen').style.display = 'none';
         }
     };
-
-    function iniciarJuego(event) {
-        event.preventDefault();
-        const userInput = document.getElementById('username').value;
-        if(userInput.trim() === "") return alert("Pon un nombre válido");
-
-        localStorage.setItem('arcade_user', userInput);
-        ejecutarEntradaAlJuego(userInput);
-    }
 
     function ejecutarEntradaAlJuego(nombre) {
         document.getElementById('display-user').innerText = nombre;
         document.getElementById('auth-screen').style.display = 'none';
         document.getElementById('game-screen').style.display = 'block';
 
+        // Carga el script del juego actual
         const script = document.createElement('script');
         script.src = `/static/js/{{ juego }}.js`; 
         document.body.appendChild(script);
     }
 
-    // FUNCIÓN CORREGIDA PARA EL BOTÓN ROJO
     function borrarYSalir() {
-        localStorage.removeItem('arcade_user'); // Borramos el nombre de la memoria
-        sessionStorage.setItem('cambiando_cuenta', 'true'); // Marcamos que queremos registrar uno nuevo
-        window.location.href = "/"; // Nos manda al menú principal
+        localStorage.removeItem('arcade_user');
+        sessionStorage.setItem('flag_cambio', 'true'); // Marcamos que queremos un usuario nuevo
+        window.location.href = "/";
     }
 </script>
 </body>
