@@ -13,16 +13,21 @@
     let current = 0, score = 0;
     const container = document.querySelector('.canvas-placeholder');
 
-    // Intentar obtener el usuario de forma segura
-    let user = "Jugador";
+    // Obtener el usuario una sola vez al inicio
     const userElement = document.getElementById('display-user') || document.querySelector('span[style*="color: red"]') || { innerText: "Leandro" };
-    user = userElement.innerText.replace("Jugador: ", "").trim();
+    let user = userElement.innerText.replace("Jugador: ", "").trim();
+
+    function resetGame() {
+        current = 0;
+        score = 0;
+        render();
+    }
 
     function render() {
         if (!container) return;
         container.innerHTML = ""; 
 
-        // Verificación estricta del final
+        // Si ya no hay más preguntas, terminar
         if (current >= questions.length) {
             return end();
         }
@@ -66,7 +71,7 @@
 
                 setTimeout(() => {
                     current++;
-                    render(); // Render se encargará de ver si ya terminamos
+                    render(); 
                 }, 1000);
             };
             optionsContainer.appendChild(b);
@@ -77,37 +82,40 @@
     }
 
     function end() {
-        if (!container) return;
         container.innerHTML = ""; 
-
-        // Si el elemento overlay no existe en el HTML, lo creamos dinámicamente
-        let overlay = document.getElementById('game-over-screen');
-        if (!overlay) {
-            overlay = document.createElement('div');
-            overlay.id = 'game-over-screen';
-            // Estilos de emergencia si el CSS falla
-            overlay.style.cssText = "position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(13,2,33,0.95); display:flex; flex-direction:column; justify-content:center; align-items:center; z-index:9999; text-align:center; color:white;";
-            container.appendChild(overlay);
+        
+        let screen = document.getElementById('game-over-screen');
+        if (!screen) {
+            screen = document.createElement('div');
+            screen.id = 'game-over-screen';
+            screen.style.cssText = "position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(13,2,33,0.95); display:flex; flex-direction:column; justify-content:center; align-items:center; z-index:9999; text-align:center; color:white; border-radius:15px;";
+            container.appendChild(screen);
         }
 
-        overlay.innerHTML = `
+        screen.innerHTML = `
             <h1 style="color: #00f0ff; text-shadow: 0 0 15px #00f0ff; margin-bottom:10px;">FIN DE TRIVIA</h1>
             <p style="font-size: 1.5rem; margin-bottom: 20px;">Puntaje: ${score} / ${questions.length * 10}</p>
             <div style="display: flex; flex-direction: column; gap: 10px; width: 80%; max-width: 300px;">
-                <button onclick="location.reload()" class="btn-play" style="background: #00f0ff; color: #0d0221; font-weight:bold; padding: 12px; border: none; cursor: pointer; border-radius: 4px;">REINTENTAR</button>
+                <button id="btn-restart" class="btn-play" style="background: #00f0ff; color: #0d0221; font-weight:bold; padding: 12px; border: none; cursor: pointer; border-radius: 4px;">REINTENTAR</button>
                 <button onclick="window.location.href='/menu'" class="btn-play" style="background: #555; color: white; padding: 12px; border: none; cursor: pointer; border-radius: 4px;">VOLVER AL MENÚ</button>
+                <button onclick="location.reload()" style="background: transparent; color: #aaa; border: none; font-size: 0.7rem; cursor: pointer; margin-top: 5px;">Cambiar de cuenta</button>
             </div>
         `;
-        overlay.style.display = 'flex';
+        screen.style.display = 'flex';
 
-        // Guardar puntaje en el servidor
+        // Configurar el botón reintentar para que solo reinicie las variables
+        document.getElementById('btn-restart').onclick = () => {
+            screen.style.display = 'none';
+            resetGame();
+        };
+
+        // Guardar puntaje
         fetch('/guardar_puntaje', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ nombre: user, puntos: score, juego: 'trivia' })
-        }).catch(err => console.error("Error al guardar:", err));
+        });
     }
 
-    // Iniciar con un pequeño margen de seguridad
     setTimeout(render, 200);
 })();
