@@ -74,28 +74,40 @@
         if (!screen) {
             screen = document.createElement('div');
             screen.id = 'game-over-screen';
-            screen.style.cssText = "position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(13,2,33,0.95); display:flex; flex-direction:column; justify-content:center; align-items:center; z-index:9999; text-align:center; color:white; border-radius:15px;";
+            screen.style.cssText = `
+                position:absolute; top:0; left:0; width:100%; height:100%; 
+                background:rgba(13,2,33,0.98); display:flex; flex-direction:column; 
+                justify-content:center; align-items:center; z-index:9999; 
+                text-align:center; color:white; border-radius:15px; padding: 20px; box-sizing: border-box;
+            `;
             container.appendChild(screen);
         }
 
         screen.innerHTML = `
-            <h1 style="color: #00f0ff;">GAME OVER</h1>
-            <p style="font-size: 1.5rem;">Puntos: ${score}</p>
-            <div style="display: flex; flex-direction: column; gap: 10px; width: 80%; max-width: 300px; margin-top: 20px;">
-                <button id="btn-restart-snake" class="btn-play" style="background:#00f0ff; color:#0d0221; font-weight:bold; padding:12px; border:none; border-radius:4px; cursor:pointer;">REINTENTAR</button>
-                <button id="btn-to-menu" class="btn-play" style="background:#555; color:white; padding:12px; border:none; border-radius:4px; cursor:pointer;">VOLVER AL MENÚ</button>
+            <h1 style="color: #00f0ff; text-shadow: 0 0 10px #00f0ff; font-size: 1.8rem; margin: 0 0 10px 0;">¡PARTIDA TERMINADA!</h1>
+            <p style="font-size: 1.3rem; margin-bottom: 20px;">Puntos: <span style="color:#00f0ff">${score}</span></p>
+            
+            <div style="display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 280px;">
+                <button id="btn-restart-final" class="btn-play" style="background:#00f0ff; color:#0d0221; font-weight:bold; height: 50px; border:none; border-radius:8px; cursor:pointer; font-size: 1rem;">
+                    🎮 REINTENTAR
+                </button>
+                <button id="btn-menu-final" class="btn-play" style="background:#333; color:white; height: 50px; border:none; border-radius:8px; cursor:pointer; font-size: 1rem;">
+                    🏠 MENÚ PRINCIPAL
+                </button>
+                <button onclick="location.reload()" style="background:transparent; color:#888; border:none; font-size: 0.8rem; text-decoration:underline; cursor:pointer; margin-top: 10px;">
+                    Cambiar de cuenta
+                </button>
             </div>
         `;
         screen.style.display = 'flex';
 
-        document.getElementById('btn-restart-snake').onclick = () => {
+        document.getElementById('btn-restart-final').onclick = () => {
             screen.style.display = 'none';
             init();
         };
 
-        // Corregido: Si /menu falla, probamos con "/" o "index.html"
-        document.getElementById('btn-to-menu').onclick = () => {
-            window.location.href = "index.html"; // Cambia esto si tu menú tiene otro nombre
+        document.getElementById('btn-menu-final').onclick = () => {
+            window.location.href = "index.html";
         };
 
         fetch('/guardar_puntaje', {
@@ -114,7 +126,7 @@
         if (e.key === "ArrowRight" && dx === 0) { dx = 20; dy = 0; lockInput = true; }
     };
 
-    // --- CONTROLES TÁCTILES (SWIPE) ---
+    // --- CONTROLES TÁCTILES ---
     canvas.addEventListener('touchstart', e => {
         touchStartX = e.changedTouches[0].screenX;
         touchStartY = e.changedTouches[0].screenY;
@@ -122,20 +134,17 @@
 
     canvas.addEventListener('touchend', e => {
         if (lockInput || !gameRunning) return;
-        
         let touchEndX = e.changedTouches[0].screenX;
         let touchEndY = e.changedTouches[0].screenY;
-        
         let diffX = touchEndX - touchStartX;
         let diffY = touchEndY - touchStartY;
 
-        // Determinar si el deslizamiento fue más horizontal o vertical
         if (Math.abs(diffX) > Math.abs(diffY)) {
-            if (diffX > 30 && dx === 0) { dx = 20; dy = 0; lockInput = true; } // Derecha
-            else if (diffX < -30 && dx === 0) { dx = -20; dy = 0; lockInput = true; } // Izquierda
+            if (diffX > 30 && dx === 0) { dx = 20; dy = 0; lockInput = true; }
+            else if (diffX < -30 && dx === 0) { dx = -20; dy = 0; lockInput = true; }
         } else {
-            if (diffY > 30 && dy === 0) { dx = 0; dy = 20; lockInput = true; } // Abajo
-            else if (diffY < -30 && dy === 0) { dx = 0; dy = -20; lockInput = true; } // Arriba
+            if (diffY > 30 && dy === 0) { dx = 0; dy = 20; lockInput = true; }
+            else if (diffY < -30 && dy === 0) { dx = 0; dy = -20; lockInput = true; }
         }
     }, false);
 
