@@ -1,65 +1,73 @@
+import os
 from flask import Flask, render_template, request, jsonify
 import sqlite3
 
 app = Flask(__name__)
 
-def conectar_db():
-    conn = sqlite3.connect('database.db')
+# Configuración de la base de datos en una ruta que Render entienda bien
+basedir = os.path.abspath(os.path.dirname(__file__))
+DATABASE = os.path.join(basedir, 'database.db')
+
+def get_db_connection():
+    conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
     return conn
 
-def inicializar_db():
-    conn = conectar_db()
-    # Esta línea crea la columna 'juego' que Flask no encuentra (el error amarillo)
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS ranking (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nombre TEXT,
-            puntos INTEGER,
-            juego TEXT,
-            UNIQUE(nombre, juego)
-        )
-    ''')
-    conn.commit()
-    conn.close()
+# Crear la tabla si no existe al arrancar
+def init_db():
+    with get_db_connection() as conn:
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS puntajes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nombre TEXT NOT NULL,
+                puntos INTEGER NOT NULL,
+                juego TEXT NOT NULL
+            )
+        ''')
+        conn.commit()
 
-inicializar_db()
+init_db()
 
 @app.route('/')
-def home():
-    return render_template('index.html')
-
-@app.route('/juego/<nombre_juego>')
-def cargar_juego(nombre_juego):
-    return render_template('juego.html', juego=nombre_juego)
+def index():
+    # Aquí puedes pasar los mejores puntajes de Snake para la tabla de al lado
+    conn = get_db_connection()
+    ranking_snake = conn.execute(
+        'SELECT nombre, puntos FROM puntajes WHERE juego = ? ORDER BY puntos DESC LIMIT 5', 
+        ('Snake',)
+    ).fetchall()
+    conn.close()
+    
+    # Supongamos que pasas el usuario logueado. Si no, pon uno por defecto.
+    return render_template('index.html', ranking=ranking_snake, usuario="Leandro")
 
 @app.route('/guardar_puntaje', methods=['POST'])
 def guardar_puntaje():
-    datos = request.json
-    nombre, puntos, juego = datos.get('nombre'), datos.get('puntos'), datos.get('juego')
-    
-    conn = conectar_db()
-    try:
-        # Lógica de "UPSERT": Actualiza si existe y es mayor, o inserta si es nuevo
-        usuario = conn.execute('SELECT puntos FROM ranking WHERE nombre = ? AND juego = ?', (nombre, juego)).fetchone()
-        if usuario:
-            if puntos > usuario['puntos']:
-                conn.execute('UPDATE ranking SET puntos = ? WHERE nombre = ? AND juego = ?', (puntos, nombre, juego))
-        else:
-            conn.execute('INSERT INTO ranking (nombre, puntos, juego) VALUES (?, ?, ?)', (nombre, puntos, juego))
-        conn.commit()
-        return jsonify({"status": "success"})
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
-    finally:
-        conn.close()
+    datos = request.get_json()
+    nombre = datos.get('nombre', 'Invitado')
+    puntos = datos.get('puntos', 0)
+    juego = datos.get('juego', 'Snake')
 
-@app.route('/obtener_ranking')
-def obtener_ranking():
-    conn = conectar_db()
-    ranking = conn.execute('SELECT nombre, puntos, juego FROM ranking ORDER BY puntos DESC LIMIT 50').fetchall()
+    if nombre and puntos >= 0:
+        conn = get_db_connection()
+        conn.execute('INSERT INTO puntajes (nombre, puntos, juego) VALUES (?, ?, ?)',
+                     (nombre, puntos, juego))
+        conn.commit()
+        conn.close()
+        return jsonify({"status": "success"}), 200
+    
+    return jsonify({"status": "error"}), 400
+
+# Ruta extra para que el JavaScript pueda pedir los datos nuevos sin refrescar toda la página
+@app.route('/obtener_ranking/<juego>')
+def obtener_ranking(juego):
+    conn = get_db_connection()
+    top = conn.execute(
+        'SELECT nombre, puntos FROM puntajes WHERE juego = ? ORDER BY puntos DESC LIMIT 5', 
+        (juego,)
+    ).fetchall()
     conn.close()
-    return jsonify({"ranking": [dict(row) for row in ranking]})
+    return jsonify([dict(ix) for ix in top])
 
 if __name__ == '__main__':
     app.run(debug=True)
