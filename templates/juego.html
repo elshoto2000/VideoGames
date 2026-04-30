@@ -48,24 +48,24 @@
             <div class="ranking-side">
     <h3>🏆 TOP 5 - {{ juego|upper }}</h3>
     <ul id="ranking-list">
-    <!-- Usamos .lower() para que no importe si es 'Snake' o 'snake' -->
+    <!-- Usamos .lower() para ignorar mayúsculas y corregimos los nombres de las listas -->
     {% if juego.lower() == 'snake' %}
         {% for fila in ranking_snake %}
             <li>{{ loop.index }}. {{ fila.nombre }} - {{ fila.puntos }}</li>
         {% else %}
-            <li>Nadie ha jugado aún...</li>
+            <li>Nadie ha jugado aún en Snake...</li>
         {% endfor %}
     {% elif juego.lower() == 'trivia' %}
         {% for fila in ranking_trivia %}
             <li>{{ loop.index }}. {{ fila.nombre }} - {{ fila.puntos }}</li>
         {% else %}
-            <li>Nadie ha jugado aún...</li>
+            <li>Nadie ha jugado aún en Trivia...</li>
         {% endfor %}
     {% elif juego.lower() == 'clicker' %}
         {% for fila in ranking_clicker %}
             <li>{{ loop.index }}. {{ fila.nombre }} - {{ fila.puntos }}</li>
         {% else %}
-            <li>Nadie ha jugado aún...</li>
+            <li>Nadie ha jugado aún en Clicker...</li>
         {% endfor %}
     {% endif %}
 </ul>
@@ -85,44 +85,45 @@
     </div>
 
     <script>
-    // 1. Esto se ejecuta apenas carga la página
     window.onload = function() {
         const nombreGuardado = localStorage.getItem('arcade_user');
-        if (nombreGuardado) {
-            // Si ya existe el nombre, saltamos el registro automáticamente
+        
+        // CORRECCIÓN: Solo saltamos al juego si el nombre existe Y NO venimos de darle a "Cambiar Cuenta"
+        if (nombreGuardado && !sessionStorage.getItem('cambiando_cuenta')) {
             document.getElementById('username').value = nombreGuardado;
             ejecutarEntradaAlJuego(nombreGuardado);
+        } else {
+            // Si venimos de cambiar cuenta, mostramos el registro y limpiamos la marca
+            sessionStorage.removeItem('cambiando_cuenta');
+            document.getElementById('auth-screen').style.display = 'block';
+            document.getElementById('game-screen').style.display = 'none';
         }
     };
 
-    // 2. Función que se activa al dar click al botón "Entrar" (Login)
     function iniciarJuego(event) {
         event.preventDefault();
         const userInput = document.getElementById('username').value;
-        
         if(userInput.trim() === "") return alert("Pon un nombre válido");
 
-        // Guardamos en la memoria del navegador
         localStorage.setItem('arcade_user', userInput);
         ejecutarEntradaAlJuego(userInput);
     }
 
-    // 3. La lógica compartida para entrar a la pantalla del juego
     function ejecutarEntradaAlJuego(nombre) {
         document.getElementById('display-user').innerText = nombre;
         document.getElementById('auth-screen').style.display = 'none';
         document.getElementById('game-screen').style.display = 'block';
 
-        // Carga el archivo .js del juego (snake.js, trivia.js, o clicker.js)
         const script = document.createElement('script');
         script.src = `/static/js/{{ juego }}.js`; 
         document.body.appendChild(script);
     }
 
-    // 4. Función para el botón "CAMBIAR CUENTA"
+    // FUNCIÓN CORREGIDA PARA EL BOTÓN ROJO
     function borrarYSalir() {
-        localStorage.removeItem('arcade_user'); // Borra el nombre guardado
-        window.location.href = "/"; // Te manda al inicio real
+        localStorage.removeItem('arcade_user'); // Borramos el nombre de la memoria
+        sessionStorage.setItem('cambiando_cuenta', 'true'); // Marcamos que queremos registrar uno nuevo
+        window.location.href = "/"; // Nos manda al menú principal
     }
 </script>
 </body>
