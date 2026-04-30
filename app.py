@@ -27,20 +27,36 @@ inicializar_db()
 
 @app.route('/')
 def home():
+    # En el inicio, también mandamos el ranking global si quieres
     return render_template('index.html')
 
 @app.route('/juego/<nombre_juego>')
 def cargar_juego(nombre_juego):
-    return render_template('juego.html', juego=nombre_juego)
+    # Agarramos el usuario de la URL (ej: /juego/snake?user=Leandro)
+    nombre_usuario = request.args.get('user', 'Invitado')
+    
+    conn = conectar_db()
+    # Sacamos el Top 5 de cada juego por separado
+    top_snake = conn.execute('SELECT nombre, puntos FROM ranking WHERE juego = "Snake" ORDER BY puntos DESC LIMIT 5').fetchall()
+    top_trivia = conn.execute('SELECT nombre, puntos FROM ranking WHERE juego = "Trivia" ORDER BY puntos DESC LIMIT 5').fetchall()
+    top_clicker = conn.execute('SELECT nombre, puntos FROM ranking WHERE juego = "Clicker" ORDER BY puntos DESC LIMIT 5').fetchall()
+    conn.close()
 
+    # IMPORTANTE: Enviamos todo al HTML
+    return render_template('juego.html', 
+                           juego=nombre_juego, 
+                           usuario=nombre_usuario,
+                           ranking_snake=top_snake,
+                           ranking_trivia=top_trivia,
+                           ranking_clicker=top_clicker)
+
+# Tu ruta de guardar_puntaje está perfecta con la lógica de UPSERT
 @app.route('/guardar_puntaje', methods=['POST'])
 def guardar_puntaje():
     datos = request.json
     nombre, puntos, juego = datos.get('nombre'), datos.get('puntos'), datos.get('juego')
-    
     conn = conectar_db()
     try:
-        # Lógica de "UPSERT": Actualiza si existe y es mayor, o inserta si es nuevo
         usuario = conn.execute('SELECT puntos FROM ranking WHERE nombre = ? AND juego = ?', (nombre, juego)).fetchone()
         if usuario:
             if puntos > usuario['puntos']:
