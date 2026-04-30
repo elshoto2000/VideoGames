@@ -80,39 +80,51 @@
 
     <script>
     window.onload = function() {
+        // Obtenemos el nombre pero NO entramos automáticamente
+        // Para que siempre se vea la pantalla de registro al cargar el juego.
+        document.getElementById('auth-screen').style.display = 'flex';
+        document.getElementById('game-screen').style.display = 'none';
+
+        // Si ya hay un nombre guardado, lo ponemos en el input por comodidad
         const nombreGuardado = localStorage.getItem('arcade_user');
-        if (nombreGuardado && !sessionStorage.getItem('flag_cambio')) {
-            ejecutarEntradaAlJuego(nombreGuardado);
-        } else {
-            sessionStorage.removeItem('flag_cambio');
-            document.getElementById('auth-screen').style.display = 'flex';
+        if (nombreGuardado) {
+            document.getElementById('username').value = nombreGuardado;
         }
     };
 
     function guardarYEntrar() {
         const nombre = document.getElementById('username').value.trim();
         if (nombre) {
+            // Guardamos/Actualizamos el nombre
             localStorage.setItem('arcade_user', nombre);
+            
+            // Pasamos a la lógica de carga del juego
             ejecutarEntradaAlJuego(nombre);
         }
     }
 
     function ejecutarEntradaAlJuego(nombre) {
         document.getElementById('display-user').innerText = nombre;
+        
+        // Ocultamos registro y mostramos pantalla de juego
         document.getElementById('auth-screen').style.display = 'none';
         document.getElementById('game-screen').style.display = 'block';
 
+        // CARGA LIMPIA: Eliminamos cualquier script de juego previo si existiera
+        const scriptAnterior = document.getElementById('script-del-juego');
+        if (scriptAnterior) scriptAnterior.remove();
+
         // Carga el archivo JS correspondiente al juego
         const script = document.createElement('script');
-        script.src = `/static/js/{{ juego }}.js`; 
+        script.id = 'script-del-juego'; // ID para poder identificarlo y limpiarlo
+        script.src = `/static/js/{{ juego }}.js?v=${new Date().getTime()}`; // El timestamp evita que el navegador use una versión vieja (caché)
         document.body.appendChild(script);
     }
 
     function borrarYSalir() {
         localStorage.removeItem('arcade_user');
-        sessionStorage.setItem('flag_cambio', 'true');
         window.location.href = "/";
     }
-    </script>
+</script>
 </body>
 </html>
