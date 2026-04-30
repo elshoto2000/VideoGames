@@ -41,10 +41,10 @@ def cargar_juego(nombre_juego):
 
     # Los nombres de las variables aquí deben ser iguales a los del HTML
     return render_template('juego.html', 
-                           juego=nombre_juego, 
-                           ranking_snake=r_snake,
-                           ranking_trivia=r_trivia,
-                           ranking_clicker=r_clicker)
+                       juego=nombre_juego, 
+                       ranking_snake=r_snake,   
+                       ranking_trivia=r_trivia,  
+                       ranking_clicker=r_clicker) 
 
 # Tu ruta de guardar_puntaje está perfecta con la lógica de UPSERT
 @app.route('/guardar_puntaje', methods=['POST'])
