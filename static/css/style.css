@@ -276,16 +276,16 @@ body {
 
 .canvas-placeholder {
     position: relative;
-    width: 400px; /* Tamaño fijo igual al Snake para consistencia */
+    width: 400px;
     height: 400px;
     background: #0d0221;
     border: 3px solid var(--neon);
     border-radius: 15px;
-    overflow: hidden; /* Importante para que nada salga de aquí */
+    overflow: hidden;
+    margin: 0 auto;
     display: flex;
     justify-content: center;
     align-items: center;
-    margin: 0 auto;
 }
 
 .overlay {
@@ -407,12 +407,11 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(13, 2, 33, 0.95);
+    background: rgba(13, 2, 33, 0.98);
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    z-index: 999; /* Por encima de todo */
-    text-align: center;
+    z-index: 1000;
     padding: 20px;
 }
 
