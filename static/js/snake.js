@@ -77,38 +77,34 @@
     }
 
     function gameOver() {
-        gameRunning = false;
-        
-        // Dibujamos un fondo oscuro sobre el canvas
-        ctx.fillStyle = "rgba(13, 2, 33, 0.8)";
-        ctx.fillRect(0, 0, 400, 400);
-
-        const screen = document.getElementById('game-over-screen');
-        
-        // Inyectamos el diseño con tus botones específicos
-        screen.innerHTML = `
-            <h1 style="color: var(--accent); text-shadow: 0 0 15px var(--accent); margin-bottom: 10px;">GAME OVER</h1>
-            <p style="font-size: 1.5rem; margin-bottom: 20px;">Puntos: ${score}</p>
-            
-            <div style="display: flex; flex-direction: column; gap: 10px; width: 80%;">
-                <button onclick="location.reload()" class="btn-play" style="background: var(--neon); color: #0d0221; font-weight: bold;">
-                    REINTENTAR
-                </button>
-                <button onclick="window.location.href=window.location.href" class="btn-play" style="background: var(--muted); font-size: 0.8rem; opacity: 0.8;">
-                    CAMBIAR DE CUENTA
-                </button>
-            </div>
-        `;
-        
-        screen.style.display = 'flex';
-
-        // Guardar en base de datos (Un solo fetch limpio)
-        fetch('/guardar_puntaje', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({nombre: user, puntos: score, juego: 'snake'})
-        }).catch(err => console.error("Error al guardar:", err));
+    gameRunning = false;
+    const container = document.querySelector('.canvas-placeholder');
+    
+    // Si el div no existe en el HTML, lo creamos por código
+    let screen = document.getElementById('game-over-screen');
+    if (!screen) {
+        screen = document.createElement('div');
+        screen.id = 'game-over-screen';
+        container.appendChild(screen);
     }
+
+    screen.innerHTML = `
+        <h1 style="color: #00f0ff; text-shadow: 0 0 15px #00f0ff;">GAME OVER</h1>
+        <p style="font-size: 1.5rem; color: white;">Puntos: ${score}</p>
+        <div style="display: flex; flex-direction: column; gap: 10px; width: 80%; margin-top: 20px;">
+            <button onclick="location.reload()" class="btn-play" style="background: #00f0ff; color: #0d0221; font-weight:bold; padding:12px; border:none; cursor:pointer;">REINTENTAR</button>
+            <button onclick="window.location.href=window.location.href" class="btn-play" style="background: #555; color: white; padding:12px; border:none; cursor:pointer;">CAMBIAR DE CUENTA</button>
+        </div>
+    `;
+    screen.style.display = 'flex';
+
+    // Guardado forzado
+    fetch('/guardar_puntaje', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({nombre: user, puntos: score, juego: 'snake'})
+    }).then(() => console.log("Puntaje guardado correctamente"));
+}
 
     // Controles
     window.onkeydown = e => {
