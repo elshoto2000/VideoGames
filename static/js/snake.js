@@ -1,30 +1,20 @@
 const canvas = document.createElement('canvas');
 const ctx = canvas.getContext('2d');
 
-// El tamaño interno del juego siempre será 400x400 para que la lógica no cambie
 canvas.width = 400; 
 canvas.height = 400;
-
-// ESTO ES LO QUE HACE QUE SE AJUSTE A CUALQUIER PANTALLA
-canvas.style.width = "100%";       // Se estira al ancho del contenedor azul
-canvas.style.height = "auto";      // Mantiene la proporción
-canvas.style.aspectRatio = "1/1";  // Se asegura de ser un cuadrado
-canvas.style.maxWidth = "500px";   // En PC no queremos que sea GIGANTE, máximo 500px
-canvas.style.display = "block";
-canvas.style.margin = "0 auto";    // Centrado
+canvas.className = "snake-canvas"; // Para estilos CSS
 
 const container = document.querySelector('.canvas-placeholder');
-container.innerHTML = "";
+container.innerHTML = ""; 
 container.appendChild(canvas);
 
 const user = document.getElementById('display-user').innerText;
 let snake = [{x: 200, y: 200}, {x: 180, y: 200}];
-let food = {x: 0, y: 0};
+let food = {x: 40, y: 40};
 let dx = 20, dy = 0, score = 0, speed = 150, juegoActivo = true;
-let snakeColor = '#00f0ff';
 
-const posRandom = () => Math.floor(Math.random() * 19 + 1) * 20;
-food = {x: posRandom(), y: posRandom()};
+const posRandom = () => Math.floor(Math.random() * 19) * 20;
 
 function main() {
     if (!juegoActivo) return;
@@ -44,8 +34,8 @@ function limpiarCanvas() {
 
 function dibujarSerpiente() {
     snake.forEach(p => {
-        ctx.fillStyle = snakeColor;
-        ctx.shadowBlur = 10; ctx.shadowColor = snakeColor;
+        ctx.fillStyle = "#00f0ff";
+        ctx.shadowBlur = 10; ctx.shadowColor = "#00f0ff";
         ctx.fillRect(p.x, p.y, 18, 18);
     });
 }
@@ -53,31 +43,26 @@ function dibujarSerpiente() {
 function avanzarSerpiente() {
     const cabeza = {x: snake[0].x + dx, y: snake[0].y + dy};
     
-    // Agregamos la cabeza al inicio
+    // --- CORRECCIÓN: Colisión con paredes ---
+    if (cabeza.x < 0 || cabeza.x >= 400 || cabeza.y < 0 || cabeza.y >= 400 || chocó(cabeza)) {
+        juegoActivo = false;
+        finalizar();
+        return;
+    }
+
     snake.unshift(cabeza);
 
-    // Lógica de comida
     if (cabeza.x === food.x && cabeza.y === food.y) {
         score += 10;
-        speed = Math.max(50, speed - 2); 
-        snakeColor = `hsl(${Math.random() * 360}, 100%, 50%)`;
+        speed = Math.max(60, speed - 2); 
         food = {x: posRandom(), y: posRandom()};
     } else { 
         snake.pop(); 
     }
-
-    // --- CORRECCIÓN DE COLISIÓN (Paredes que matan) ---
-    // Usamos >= 400 y < 0 para que sea exacto con el tamaño del canvas[cite: 1]
-    const chocoPared = cabeza.x < 0 || cabeza.x >= 400 || cabeza.y < 0 || cabeza.y >= 400;
-
-    if (chocoPared || chocó()) {
-        juegoActivo = false;
-        finalizar();
-    }
 }
 
-function chocó() {
-    return snake.slice(1).some(p => p.x === snake[0].x && p.y === snake[0].y);
+function chocó(cabeza) {
+    return snake.some(p => p.x === cabeza.x && p.y === cabeza.y);
 }
 
 function dibujarComida() {
@@ -88,8 +73,8 @@ function dibujarComida() {
 function finalizar() {
     const overlay = document.getElementById('game-over-screen');
     overlay.style.display = 'flex';
-    document.getElementById('final-score-msg').innerText = `Récord de Neón: ${score} puntos`;
-    guardarPuntaje(user, score, 'snake');
+    document.getElementById('final-score-msg').innerText = `Puntaje: ${score}`;
+    guardarPuntaje(user, score, 'snake'); // Enviamos en minúscula[cite: 1]
 }
 
 window.onkeydown = e => {
@@ -100,53 +85,11 @@ window.onkeydown = e => {
 };
 
 async function guardarPuntaje(nombre, puntos, juego) {
-    try {
-        const respuesta = await fetch('/guardar_puntaje', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                nombre: nombre,
-                puntos: puntos,
-                juego: juego
-            })
-        });
-        
-        const resultado = await respuesta.json();
-        if (resultado.status === "success") {
-            console.log("Puntaje guardado con éxito");
-        }
-    } catch (error) {
-        console.error("Error al guardar puntaje:", error);
-    }
+    await fetch('/guardar_puntaje', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({nombre, puntos, juego})
+    });
 }
-
-// ... (Aquí está tu código actual de dibujar serpiente, comer manzana, etc.) ...
-
-// --- AQUÍ PEGAS EL CÓDIGO DE SWIPE ---
-let touchstartX = 0;
-let touchstartY = 0;
-
-document.addEventListener('touchstart', e => {
-    touchstartX = e.changedTouches[0].screenX;
-    touchstartY = e.changedTouches[0].screenY;
-}, {passive: true});
-
-document.addEventListener('touchend', e => {
-    let touchendX = e.changedTouches[0].screenX;
-    let touchendY = e.changedTouches[0].screenY;
-    
-    let swipeX = touchendX - touchstartX;
-    let swipeY = touchendY - touchstartY;
-
-    if (Math.abs(swipeX) > Math.abs(swipeY)) {
-        if (swipeX > 0 && dx === 0) { dx = 20; dy = 0; } // Derecha
-        else if (swipeX < 0 && dx === 0) { dx = -20; dy = 0; } // Izquierda
-    } else {
-        if (swipeY > 0 && dy === 0) { dy = 20; dx = 0; } // Abajo
-        else if (swipeY < 0 && dy === 0) { dy = -20; dx = 0; } // Arriba
-    }
-});
 
 main();
