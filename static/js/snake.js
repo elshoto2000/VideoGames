@@ -77,18 +77,35 @@
     }
 
     function gameOver() {
-        gameRunning = false; // Detiene el bucle
-        
-        // Limpiar el canvas para que resalte el mensaje final
-        ctx.fillStyle = "#0d0221";
-        ctx.fillRect(0, 0, 400, 400);
+    gameRunning = false;
+    ctx.fillStyle = "rgba(13, 2, 33, 0.8)";
+    ctx.fillRect(0, 0, 400, 400);
 
-        // Mostrar pantalla de Game Over
-        const screen = document.getElementById('game-over-screen');
-        if (screen) {
-            screen.style.display = 'flex';
-            document.getElementById('final-score-msg').innerText = `Puntos: ${score}`;
-        }
+    const screen = document.getElementById('game-over-screen');
+    
+    // Inyectamos los botones específicos que pediste
+    screen.innerHTML = `
+        <h1 style="color: var(--accent); text-shadow: 0 0 15px var(--accent); margin-bottom: 10px;">GAME OVER</h1>
+        <p id="final-score-msg" style="font-size: 1.5rem; margin-bottom: 20px;">Puntos: ${score}</p>
+        
+        <div style="display: flex; flex-direction: column; gap: 10px; width: 80%;">
+            <button onclick="location.reload()" class="btn-play" style="background: var(--neon); color: #0d0221;">
+                REINTENTAR
+            </button>
+            <button onclick="window.location.href=window.location.href" class="btn-play" style="background: var(--muted); font-size: 0.8rem;">
+                CAMBIAR DE CUENTA
+            </button>
+        </div>
+    `;
+    
+    screen.style.display = 'flex';
+
+    fetch('/guardar_puntaje', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({nombre: user, puntos: score, juego: 'snake'})
+    });
+}
 
         // Guardar en base de datos
         fetch('/guardar_puntaje', {
