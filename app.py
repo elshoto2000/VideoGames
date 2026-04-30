@@ -1,61 +1,65 @@
-import os
 from flask import Flask, render_template, request, jsonify
 import sqlite3
 
 app = Flask(__name__)
 
-basedir = os.path.abspath(os.path.dirname(__file__))
-DATABASE = os.path.join(basedir, 'database.db')
-
-def get_db_connection():
-    conn = sqlite3.connect(DATABASE)
+def conectar_db():
+    conn = sqlite3.connect('database.db')
     conn.row_factory = sqlite3.Row
     return conn
 
-def init_db():
-    with get_db_connection() as conn:
-        conn.execute('''
-            CREATE TABLE IF NOT EXISTS puntajes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                nombre TEXT NOT NULL,
-                puntos INTEGER NOT NULL,
-                juego TEXT NOT NULL
-            )
-        ''')
-        conn.commit()
+def inicializar_db():
+    conn = conectar_db()
+    # Esta línea crea la columna 'juego' que Flask no encuentra (el error amarillo)
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS ranking (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre TEXT,
+            puntos INTEGER,
+            juego TEXT,
+            UNIQUE(nombre, juego)
+        )
+    ''')
+    conn.commit()
+    conn.close()
 
-init_db()
+inicializar_db()
 
 @app.route('/')
-def index():
-    conn = get_db_connection()
-    # Traemos los tops de cada juego por separado
-    top_snake = conn.execute('SELECT nombre, puntos FROM puntajes WHERE juego = "Snake" ORDER BY puntos DESC LIMIT 5').fetchall()
-    top_pong = conn.execute('SELECT nombre, puntos FROM puntajes WHERE juego = "Pong" ORDER BY puntos DESC LIMIT 5').fetchall()
-    # Puedes agregar más juegos aquí...
-    
-    conn.close()
-    
-    return render_template('index.html', 
-                           ranking_snake=top_snake, 
-                           ranking_pong=top_pong, 
-                           usuario="Leandro") # Aquí puedes usar tu variable de usuario real
+def home():
+    return render_template('index.html')
+
+@app.route('/juego/<nombre_juego>')
+def cargar_juego(nombre_juego):
+    return render_template('juego.html', juego=nombre_juego)
 
 @app.route('/guardar_puntaje', methods=['POST'])
 def guardar_puntaje():
-    datos = request.get_json()
-    nombre = datos.get('nombre')
-    puntos = datos.get('puntos')
-    juego = datos.get('juego')
-
-    if nombre and puntos is not None:
-        conn = get_db_connection()
-        conn.execute('INSERT INTO puntajes (nombre, puntos, juego) VALUES (?, ?, ?)',
-                     (nombre, puntos, juego))
+    datos = request.json
+    nombre, puntos, juego = datos.get('nombre'), datos.get('puntos'), datos.get('juego')
+    
+    conn = conectar_db()
+    try:
+        # Lógica de "UPSERT": Actualiza si existe y es mayor, o inserta si es nuevo
+        usuario = conn.execute('SELECT puntos FROM ranking WHERE nombre = ? AND juego = ?', (nombre, juego)).fetchone()
+        if usuario:
+            if puntos > usuario['puntos']:
+                conn.execute('UPDATE ranking SET puntos = ? WHERE nombre = ? AND juego = ?', (puntos, nombre, juego))
+        else:
+            conn.execute('INSERT INTO ranking (nombre, puntos, juego) VALUES (?, ?, ?)', (nombre, puntos, juego))
         conn.commit()
+        return jsonify({"status": "success"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
         conn.close()
-        return jsonify({"status": "success"}), 200
-    return jsonify({"status": "error"}), 400
+
+@app.route('/obtener_ranking')
+def obtener_ranking():
+    conn = conectar_db()
+    ranking = conn.execute('SELECT nombre, puntos, juego FROM ranking ORDER BY puntos DESC LIMIT 50').fetchall()
+    conn.close()
+    return jsonify({"ranking": [dict(row) for row in ranking]})
 
 if __name__ == '__main__':
     app.run(debug=True)
