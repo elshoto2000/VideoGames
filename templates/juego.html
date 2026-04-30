@@ -46,11 +46,42 @@
             </div>
 
             <div class="ranking-side">
-                <h3>🏆 TOP GLOBAL</h3>
-                <ul id="ranking-list">
-                    <li>Nadie ha jugado aún...</li>
-                </ul>
-            </div>
+    <h3>🏆 TOP 5 - {{ juego|upper }}</h3>
+    <ul id="ranking-list">
+        {% if juego == 'snake' %}
+            {% for fila in ranking_snake %}
+                <li>{{ loop.index }}. {{ fila.nombre }} - {{ fila.puntos }}</li>
+            {% else %}
+                <li>Nadie ha jugado aún...</li>
+            {% endfor %}
+        {% elif juego == 'trivia' %}
+            {% for fila in ranking_trivia %}
+                <li>{{ loop.index }}. {{ fila.nombre }} - {{ fila.puntos }}</li>
+            {% else %}
+                <li>Nadie ha jugado aún...</li>
+            {% endfor %}
+        {% elif juego == 'clicker' %}
+            {% for fila in ranking_clicker %}
+                <li>{{ loop.index }}. {{ fila.nombre }} - {{ fila.puntos }}</li>
+            {% else %}
+                <li>Nadie ha jugado aún...</li>
+            {% endfor %}
+        {% endif %}
+    </ul>
+
+    <!-- BOTONES DE INTERFAZ ABAJO DEL RANKING -->
+    <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 10px;">
+        <!-- REINTENTAR: Recarga la página y mantiene el juego actual -->
+        <button onclick="location.reload()" style="background: #00f0ff; color: black; border: none; padding: 10px; cursor: pointer; font-weight: bold; border-radius: 5px;">
+            🔄 REINTENTAR
+        </button>
+
+        <!-- VOLVER/CAMBIAR CUENTA: Te manda al registro (index) -->
+        <a href="/" style="background: #ff0055; color: white; text-align: center; text-decoration: none; padding: 10px; font-weight: bold; border-radius: 5px;">
+            👤 CAMBIAR CUENTA
+        </a>
+    </div>
+</div>
         </div>
     </div>
 
