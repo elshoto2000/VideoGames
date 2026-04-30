@@ -99,4 +99,32 @@ async function guardarPuntaje(nombre, puntos, juego) {
     }
 }
 
+// ... (Aquí está tu código actual de dibujar serpiente, comer manzana, etc.) ...
+
+// --- AQUÍ PEGAS EL CÓDIGO DE SWIPE ---
+let touchstartX = 0;
+let touchstartY = 0;
+
+document.addEventListener('touchstart', e => {
+    touchstartX = e.changedTouches[0].screenX;
+    touchstartY = e.changedTouches[0].screenY;
+});
+
+document.addEventListener('touchend', e => {
+    let touchendX = e.changedTouches[0].screenX;
+    let touchendY = e.changedTouches[0].screenY;
+    
+    let dx = touchendX - touchstartX;
+    let dy = touchendY - touchstartY;
+
+    // Esto detecta si el movimiento fue más horizontal o vertical
+    if (Math.abs(dx) > Math.abs(dy)) {
+        if (dx > 0 && d !== 'LEFT') d = 'RIGHT';
+        else if (dx < 0 && d !== 'RIGHT') d = 'LEFT';
+    } else {
+        if (dy > 0 && d !== 'UP') d = 'DOWN';
+        else if (dy < 0 && d !== 'DOWN') d = 'UP';
+    }
+});
+
 main();
