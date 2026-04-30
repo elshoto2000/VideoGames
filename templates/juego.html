@@ -35,54 +35,49 @@
             <div class="game-main">
                 <h2>Jugador: <span id="display-user" style="color: var(--accent);"></span></h2>
                 
-                <div class="canvas-placeholder"></div>
-
-                <div id="game-over-screen" style="display: none;">
-    <h1>¡FIN DEL JUEGO!</h1>
-    <p id="final-score-msg"></p>
-    <button class="btn-play" onclick="window.location.reload()">REINTENTAR</button>
-    <a href="/" class="btn-play" style="background: var(--muted); text-decoration: none; display: inline-block;">VOLVER AL MENÚ</a>
-</div>
-            </div>
-
-            <div class="ranking-side">
-    <h3>🏆 TOP 5 - {{ juego|upper }}</h3>
-    <ul id="ranking-list">
-    <!-- Usamos .lower() para ignorar mayúsculas y corregimos los nombres de las listas -->
-    {% if juego.lower() == 'snake' %}
-        {% for fila in ranking_snake %}
-            <li>{{ loop.index }}. {{ fila.nombre }} - {{ fila.puntos }}</li>
-        {% else %}
-            <li>Nadie ha jugado aún en Snake...</li>
-        {% endfor %}
-    {% elif juego.lower() == 'trivia' %}
-        {% for fila in ranking_trivia %}
-            <li>{{ loop.index }}. {{ fila.nombre }} - {{ fila.puntos }}</li>
-        {% else %}
-            <li>Nadie ha jugado aún en Trivia...</li>
-        {% endfor %}
-    {% elif juego.lower() == 'clicker' %}
-        {% for fila in ranking_clicker %}
-            <li>{{ loop.index }}. {{ fila.nombre }} - {{ fila.puntos }}</li>
-        {% else %}
-            <li>Nadie ha jugado aún en Clicker...</li>
-        {% endfor %}
-    {% endif %}
-</ul>
-
-    <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 10px;">
-        <button onclick="location.reload()" style="background: #00f0ff; color: black; border: none; padding: 10px; cursor: pointer; font-weight: bold; border-radius: 5px;">
-            🔄 REINTENTAR
-        </button>
-
-        <!-- CAMBIO: Usamos una función JS para salir correctamente -->
-        <button onclick="borrarYSalir()" style="background: #ff0055; color: white; border: none; padding: 10px; cursor: pointer; font-weight: bold; border-radius: 5px;">
-            👤 CAMBIAR CUENTA
-        </button>
-    </div>
-</div>
+               <div class="game-container">
+    <!-- Contenedor del Juego -->
+    <div class="canvas-placeholder">
+        <!-- Aquí va tu canvas o contenido del juego -->
+        
+        <div id="game-over-screen" style="display: none; text-align: center;">
+            <h1>¡FIN DEL JUEGO!</h1>
+            <p id="final-score-msg"></p>
+            
+            <!-- BOTONES DENTRO DEL GAME OVER -->
+            <button class="btn-play" onclick="window.location.reload()">REINTENTAR</button>
+            <button class="btn-play" onclick="borrarYSalir()" style="background: var(--muted);">CAMBIAR CUENTA</button>
         </div>
     </div>
+
+    <!-- RANKING LATERAL -->
+    <div class="ranking-side">
+        <h3>🏆 TOP 5 - {{ juego|upper }}</h3>
+        <ul id="ranking-list">
+            {% set j = juego.lower() %}
+            
+            {% if j == 'snake' %}
+                {% for fila in ranking_snake %}
+                    <li>{{ loop.index }}. {{ fila.nombre }} - {{ fila.puntos }}</li>
+                {% else %}
+                    <li>Nadie ha jugado aún en Snake...</li>
+                {% endfor %}
+            {% elif j == 'trivia' %}
+                {% for fila in ranking_trivia %}
+                    <li>{{ loop.index }}. {{ fila.nombre }} - {{ fila.puntos }}</li>
+                {% else %}
+                    <li>Nadie ha jugado aún en Trivia...</li>
+                {% endfor %}
+            {% elif j == 'clicker' %}
+                {% for fila in ranking_clicker %}
+                    <li>{{ loop.index }}. {{ fila.nombre }} - {{ fila.puntos }}</li>
+                {% else %}
+                    <li>Nadie ha jugado aún en Clicker...</li>
+                {% endfor %}
+            {% endif %}
+        </ul>
+    </div>
+</div>
 
     <script>
     window.onload = function() {
