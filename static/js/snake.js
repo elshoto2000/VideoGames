@@ -1,11 +1,16 @@
 (function() {
     const container = document.querySelector('.canvas-placeholder');
     if (!container) return;
-    container.innerHTML = ""; 
 
-    const canvas = document.createElement('canvas');
+    // No limpiamos todo el container para no borrar el div #game-over-screen que ya existe en tu HTML
+    // Solo nos aseguramos de que el canvas sea el primer hijo
+    let canvas = container.querySelector('canvas');
+    if (!canvas) {
+        canvas = document.createElement('canvas');
+        container.prepend(canvas);
+    }
+    
     const ctx = canvas.getContext('2d');
-    container.appendChild(canvas);
 
     function resizeCanvas() {
         const size = Math.min(container.clientWidth, container.clientHeight, 400);
@@ -20,7 +25,7 @@
     
     let snake, foods, dx, dy, score, speed, gameRunning;
     let lockInput = false;
-    let totalApplesEaten = 0; // Contador para llegar a las 5000
+    let totalApplesEaten = 0; 
     let currentColor = "#00f0ff";
     const neonColors = ["#00f0ff", "#ff00ff", "#00ff00", "#ffff00", "#ff8000"];
 
@@ -37,7 +42,10 @@
         gameRunning = true;
         lockInput = false;
         
-        // --- CAMBIO AQUÍ: Solo 5 manzanas al inicio ---
+        // Ocultar pantalla de game over al iniciar
+        const screen = document.getElementById('game-over-screen');
+        if (screen) screen.style.display = 'none';
+
         for(let i=0; i < 5; i++) spawnFood();
         game();
     }
@@ -61,7 +69,6 @@
             foods.splice(foodIndex, 1);
             currentColor = neonColors[Math.floor(Math.random() * neonColors.length)];
             
-            // --- CAMBIO AQUÍ: Aparece una nueva solo cuando comes una ---
             if (totalApplesEaten < 5000) {
                 spawnFood();
             }
@@ -117,59 +124,70 @@
     }
 
     function actualizarRankingLateral(juego) {
-    fetch('/obtener_ranking')
-    .then(res => res.json())
-    .then(data => {
-        // Filtrar y ordenar los mejores 5
-        const topJuego = data.ranking
-            .filter(r => r.juego.toLowerCase() === juego.toLowerCase())
-            .sort((a, b) => b.puntos - a.puntos)
-            .slice(0, 5);
+        fetch('/obtener_ranking')
+        .then(res => res.json())
+        .then(data => {
+            const topJuego = data.ranking
+                .filter(r => r.juego.toLowerCase() === juego.toLowerCase())
+                .sort((a, b) => b.puntos - a.puntos)
+                .slice(0, 5);
 
-        // USAMOS EL ID QUE TIENES EN TU HTML: 'ranking-list'
-        const listaHtml = document.getElementById('ranking-list'); 
-        
-        if (listaHtml) {
-            listaHtml.innerHTML = topJuego.map((r, index) => `
-                <li>
-                    <span>${index + 1}. ${r.nombre}</span> 
-                    <b>${r.puntos}</b>
-                </li>
-            `).join('');
-        }
-    })
-    .catch(err => console.error("Error al actualizar ranking:", err));
-}
+            const listaHtml = document.getElementById('ranking-list'); 
+            if (listaHtml) {
+                listaHtml.innerHTML = topJuego.map((r, index) => `
+                    <li>
+                        <span>${index + 1}. ${r.nombre}</span> 
+                        <b>${r.puntos}</b>
+                    </li>
+                `).join('');
+            }
+        })
+        .catch(err => console.error("Error al actualizar ranking:", err));
+    }
 
     function gameOver() {
         gameRunning = false;
-        
-        // GUARDADO INMEDIATO
+
+        // 1. Guardar en MongoDB
         fetch('/guardar_puntaje', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({nombre: user, puntos: score, juego: 'snake'})
-        })
-        .then(() => {
-            // Refrescamos el ranking de la derecha nada más morir
-            actualizarRankingEnVivo();
+            body: JSON.stringify({
+                nombre: user, 
+                puntos: score, 
+                juego: 'snake'
+            })
+        }).then(() => {
+            actualizarRankingLateral('snake'); 
         });
 
-        let screen = document.getElementById('game-over-screen') || document.createElement('div');
-        screen.id = 'game-over-screen';
-        screen.style.cssText = `position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(13,2,33,0.95); display:flex; flex-direction:column; justify-content:center; align-items:center; z-index:9999; color:white; text-align:center; border-radius:15px;`;
+        // 2. Usar los elementos que YA ESTÁN en tu HTML
+        const screen = document.getElementById('game-over-screen');
+        const finalScoreMsg = document.getElementById('final-score-msg');
+        const h1GameOver = screen.querySelector('h1');
+        const btnRetry = screen.querySelector('button:not([style*="background"])'); // El primer botón
+
+        if (finalScoreMsg) finalScoreMsg.innerText = `Lograste ${score} puntos`;
         
-        screen.innerHTML = `
-            <h2 style="color:${currentColor}; margin-bottom:10px;">¡COLISIÓN!</h2>
-            <p style="font-size:1.2rem;">Puntos: ${score}</p>
-            <p style="font-size:0.9rem; color:#888; margin-bottom:20px;">Puntaje guardado en el ranking</p>
-            <button id="retry" style="padding:15px 30px; background:${currentColor}; border:none; border-radius:5px; font-weight:bold; cursor:pointer; color:#0d0221;">REINTENTAR</button>
-        `;
-        container.appendChild(screen);
-        document.getElementById('retry').onclick = () => { screen.remove(); init(); };
+        // 3. Aplicar estilo neón dinámico al morir
+        if (h1GameOver) {
+            h1GameOver.style.color = currentColor;
+            h1GameOver.style.textShadow = `0 0 15px ${currentColor}`;
+        }
+        if (btnRetry) {
+            btnRetry.style.background = currentColor;
+            btnRetry.style.boxShadow = `0 0 10px ${currentColor}`;
+        }
+
+        if (screen) {
+            screen.style.display = 'flex'; // Usamos flex para centrar
+            screen.style.flexDirection = 'column';
+            screen.style.justifyContent = 'center';
+            screen.style.alignItems = 'center';
+        }
     }
 
-    // --- CONTROLES ---
+    // --- CONTROLES (Mantenidos igual) ---
     let touchStartX = 0;
     let touchStartY = 0;
 
