@@ -112,8 +112,23 @@
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({nombre: user, puntos: score, juego: 'snake'})
+        }).then(() => {
+            // Esta es la parte clave: recargamos el ranking lateral
+            actualizarRankingLateral('snake');
         });
-    }
+
+        function actualizarRankingLateral(juego) {
+            fetch('/obtener_ranking')
+            .then(res => res.json())
+            .then(data => {
+                // Filtramos solo los del juego actual y tomamos los mejores 5
+                const topJuego = data.ranking.filter(r => r.juego === juego).slice(0, 5);
+                const listaHtml = document.querySelector('.ranking-lateral ul'); // Asegúrate que esta sea tu clase
+                if (listaHtml) {
+                    listaHtml.innerHTML = topJuego.map(r => `<li>${r.nombre}: ${r.puntos}</li>`).join('');
+                }
+            });
+        }
 
     window.onkeydown = e => {
         if (lockInput || !gameRunning) return;
