@@ -112,28 +112,23 @@
     }
 
     function gameOver() {
-        gameRunning = false;
-        let screen = document.getElementById('game-over-screen') || document.createElement('div');
-        screen.id = 'game-over-screen';
-        screen.style.cssText = `position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(13,2,33,0.95); display:flex; flex-direction:column; justify-content:center; align-items:center; z-index:9999; color:white; text-align:center;`;
-        
-        screen.innerHTML = `
-            <h2 style="color:${currentColor}">GAME OVER</h2>
-            <p>Puntos: ${score}</p>
-            <button id="retry" style="padding:15px 30px; background:${currentColor}; border:none; border-radius:5px; font-weight:bold;">REINTENTAR</button>
-        `;
-        container.appendChild(screen);
-        document.getElementById('retry').onclick = () => { screen.remove(); init(); };
+    gameRunning = false; // Detiene el movimiento
+    
+    // 1. Mostramos la pantalla de Game Over inmediatamente
+    let screen = document.getElementById('game-over-screen');
+    // ... (código para mostrar puntos y botones) ...
+    screen.style.display = 'flex';
 
-        fetch('/guardar_puntaje', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({nombre: user, puntos: score, juego: 'snake'})
-        }).then(() => {
-            if (typeof actualizarRankingLateral === 'function') actualizarRankingLateral('snake');
-        });
-    }
-
+    // 2. Guardamos en el servidor e instantáneamente refrescamos la tabla lateral
+    fetch('/guardar_puntaje', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({nombre: user, puntos: score, juego: 'snake'})
+    }).then(() => {
+        // ESTO es lo que hace que aparezca al lado sin esperar a nada más
+        actualizarRankingLateral('snake'); 
+    });
+}
     // --- CONTROLES TÁCTILES (SWIPE) ---
     let touchStartX = 0;
     let touchStartY = 0;
