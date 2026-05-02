@@ -104,11 +104,27 @@
         document.getElementById('btn-restart-trivia').onclick = () => { screen.style.display = 'none'; resetGame(); };
         document.getElementById('btn-menu-trivia').onclick = () => { window.location.href = "index.html"; };
 
-        fetch('/guardar_puntaje', {
+       fetch('/guardar_puntaje', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ nombre: user, puntos: score, juego: 'trivia' })
+            // CORRECCIÓN: Cambiar 'snake' por 'trivia'
+            body: JSON.stringify({nombre: user, puntos: score, juego: 'trivia'}) 
+        }).then(() => {
+            actualizarRankingLateral('trivia'); // CORRECCIÓN: 'trivia'
         });
+
+        // Asegúrate de que esta función esté definida dentro del scope de la Trivia
+        function actualizarRankingLateral(juego) {
+            fetch('/obtener_ranking')
+            .then(res => res.json())
+            .then(data => {
+                const topJuego = data.ranking.filter(r => r.juego === juego).slice(0, 5);
+                const listaHtml = document.querySelector('.ranking-lateral ul');
+                if (listaHtml) {
+                    listaHtml.innerHTML = topJuego.map(r => `<li>${r.nombre}: ${r.puntos}</li>`).join('');
+                }
+            });
+        }
     }
 
     shuffleQuestions();
