@@ -1,29 +1,44 @@
 (function() {
+    const container = document.querySelector('.canvas-placeholder');
+    if (!container) return;
+    container.innerHTML = ""; 
+
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    canvas.width = 400; 
-    canvas.height = 400;
-    
-    const container = document.querySelector('.canvas-placeholder');
-    container.innerHTML = ""; 
     container.appendChild(canvas);
 
-    const userElement = document.getElementById('display-user') || { innerText: "herrera" };
+    // --- AJUSTE DE PANTALLA RESPONSIVO ---
+    function resizeCanvas() {
+        const size = Math.min(container.clientWidth, container.clientHeight, 400);
+        canvas.width = size;
+        canvas.height = size;
+        gridSize = size / 20; // Ajustamos la cuadrícula proporcionalmente
+    }
+
+    let gridSize = 20;
+    const userElement = document.getElementById('display-user') || { innerText: "Leandro" };
     const user = userElement.innerText.replace("Jugador: ", "").trim();
     
     let snake, foods, dx, dy, score, speed, gameRunning;
     let lockInput = false;
-    let touchStartX = 0;
-    let touchStartY = 0;
+    let currentColor = "#00f0ff";
+    const neonColors = ["#00f0ff", "#ff00ff", "#00ff00", "#ffff00", "#ff8000"];
 
     function init() {
-        snake = [{x: 200, y: 200}, {x: 180, y: 200}, {x: 160, y: 200}];
+        resizeCanvas();
+        // Posiciones iniciales basadas en el tamaño del grid
+        snake = [
+            {x: gridSize * 10, y: gridSize * 10},
+            {x: gridSize * 9, y: gridSize * 10},
+            {x: gridSize * 8, y: gridSize * 10}
+        ];
         foods = [];
-        dx = 20; dy = 0; score = 0; speed = 130;
+        dx = gridSize; dy = 0; score = 0; speed = 130;
         gameRunning = true;
         lockInput = false;
-        // Generamos 3 manzanas iniciales
-        for(let i=0; i<3; i++) spawnFood();
+        
+        // Llenamos de manzanas (máximo 200 para que no explote el procesador del móvil)
+        for(let i=0; i < 200; i++) spawnFood();
         game();
     }
 
@@ -31,21 +46,21 @@
         if (!gameRunning) return;
         const head = {x: snake[0].x + dx, y: snake[0].y + dy};
 
-        if (head.x < 0 || head.x >= 400 || head.y < 0 || head.y >= 400 || 
+        // Colisión con paredes (ahora dinámicas)
+        if (head.x < 0 || head.x >= canvas.width || head.y < 0 || head.y >= canvas.height || 
             snake.some(seg => seg.x === head.x && seg.y === head.y)) {
             return gameOver(); 
         }
 
         snake.unshift(head);
-        
-        // Revisar si comió alguna de las manzanas
         const foodIndex = foods.findIndex(f => f.x === head.x && f.y === head.y);
         
         if (foodIndex !== -1) {
             score += 10;
-            speed = Math.max(70, speed - 1);
-            foods.splice(foodIndex, 1); // Quitar la manzana comida
-            spawnFood(); // Poner una nueva
+            speed = Math.max(60, speed - 1);
+            foods.splice(foodIndex, 1);
+            currentColor = neonColors[Math.floor(Math.random() * neonColors.length)];
+            spawnFood(); // Reponemos la manzana
         } else {
             snake.pop();
         }
@@ -56,105 +71,107 @@
     }
 
     function spawnFood() {
-        let newFood;
-        while(true) {
-            newFood = {
-                x: Math.floor(Math.random() * 19) * 20,
-                y: Math.floor(Math.random() * 19) * 20
-            };
-            // Evitar que aparezca sobre la serpiente u otra manzana
-            const collision = snake.some(s => s.x === newFood.x && s.y === newFood.y) ||
-                              foods.some(f => f.x === newFood.x && f.y === newFood.y);
-            if(!collision) break;
+        let newFood = {
+            x: Math.floor(Math.random() * 20) * gridSize,
+            y: Math.floor(Math.random() * 20) * gridSize
+        };
+        if(!snake.some(s => s.x === newFood.x && s.y === newFood.y)) {
+            foods.push(newFood);
         }
-        foods.push(newFood);
     }
 
     function draw() {
         ctx.fillStyle = "#0d0221";
-        ctx.fillRect(0, 0, 400, 400);
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        // Dibujar todas las manzanas
+        // Manzanas Neón
         ctx.fillStyle = "#ff4757";
         foods.forEach(f => {
-            ctx.fillRect(f.x, f.y, 18, 18);
+            ctx.beginPath();
+            ctx.arc(f.x + gridSize/2, f.y + gridSize/2, gridSize/2 - 2, 0, Math.PI * 2);
+            ctx.fill();
         });
 
+        // Serpiente con Brillo
         snake.forEach((seg, i) => {
-            ctx.fillStyle = i === 0 ? "#00f0ff" : "#009db0";
-            ctx.fillRect(seg.x, seg.y, 18, 18);
+            ctx.fillStyle = i === 0 ? currentColor : "rgba(255,255,255,0.3)";
+            if(i === 0) {
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = currentColor;
+            }
+            ctx.fillRect(seg.x + 1, seg.y + 1, gridSize - 2, gridSize - 2);
+            ctx.shadowBlur = 0;
+
+            // Ojitos
+            if (i === 0) {
+                ctx.fillStyle = "white";
+                ctx.fillRect(seg.x + 4, seg.y + 4, 4, 4);
+                ctx.fillRect(seg.x + gridSize - 8, seg.y + 4, 4, 4);
+            }
         });
     }
 
     function gameOver() {
         gameRunning = false;
-        let screen = document.getElementById('game-over-screen');
-        if (!screen) {
-            screen = document.createElement('div');
-            screen.id = 'game-over-screen';
-            screen.style.cssText = "position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(13,2,33,0.98); display:flex; flex-direction:column; justify-content:center; align-items:center; z-index:9999; text-align:center; color:white; border-radius:15px; padding: 20px; box-sizing: border-box;";
-            container.appendChild(screen);
-        }
-
+        let screen = document.getElementById('game-over-screen') || document.createElement('div');
+        screen.id = 'game-over-screen';
+        screen.style.cssText = `position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(13,2,33,0.95); display:flex; flex-direction:column; justify-content:center; align-items:center; z-index:9999; color:white; text-align:center;`;
+        
         screen.innerHTML = `
-            <h1 style="color: #00f0ff; text-shadow: 0 0 10px #00f0ff; font-size: 1.8rem; margin: 0 0 10px 0;">¡PARTIDA TERMINADA!</h1>
-            <p style="font-size: 1.3rem; margin-bottom: 20px;">Puntos: <span style="color:#00f0ff">${score}</span></p>
-            <div style="display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 280px;">
-                <button id="btn-restart-final" style="background:#00f0ff; color:#0d0221; font-weight:bold; height: 50px; border:none; border-radius:8px; cursor:pointer;">🎮 REINTENTAR</button>
-                <button id="btn-menu-final" style="background:#333; color:white; height: 50px; border:none; border-radius:8px; cursor:pointer;">🏠 MENÚ PRINCIPAL</button>
-            </div>
+            <h2 style="color:${currentColor}">GAME OVER</h2>
+            <p>Puntos: ${score}</p>
+            <button id="retry" style="padding:15px 30px; background:${currentColor}; border:none; border-radius:5px; font-weight:bold;">REINTENTAR</button>
         `;
-        screen.style.display = 'flex';
-        document.getElementById('btn-restart-final').onclick = () => { screen.style.display = 'none'; init(); };
-        document.getElementById('btn-menu-final').onclick = () => { window.location.href = "index.html"; };
+        container.appendChild(screen);
+        document.getElementById('retry').onclick = () => { screen.remove(); init(); };
 
         fetch('/guardar_puntaje', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({nombre: user, puntos: score, juego: 'snake'})
         }).then(() => {
-            // Esta es la parte clave: recargamos el ranking lateral
-            actualizarRankingLateral('snake');
+            if (typeof actualizarRankingLateral === 'function') actualizarRankingLateral('snake');
         });
+    }
 
-        function actualizarRankingLateral(juego) {
-            fetch('/obtener_ranking')
-            .then(res => res.json())
-            .then(data => {
-                // Filtramos solo los del juego actual y tomamos los mejores 5
-                const topJuego = data.ranking.filter(r => r.juego === juego).slice(0, 5);
-                const listaHtml = document.querySelector('.ranking-lateral ul'); // Asegúrate que esta sea tu clase
-                if (listaHtml) {
-                    listaHtml.innerHTML = topJuego.map(r => `<li>${r.nombre}: ${r.puntos}</li>`).join('');
-                }
-            });
-        }
-
-    window.onkeydown = e => {
-        if (lockInput || !gameRunning) return;
-        if (e.key === "ArrowUp" && dy === 0) { dx = 0; dy = -20; lockInput = true; }
-        if (e.key === "ArrowDown" && dy === 0) { dx = 0; dy = 20; lockInput = true; }
-        if (e.key === "ArrowLeft" && dx === 0) { dx = -20; dy = 0; lockInput = true; }
-        if (e.key === "ArrowRight" && dx === 0) { dx = 20; dy = 0; lockInput = true; }
-    };
+    // --- CONTROLES TÁCTILES (SWIPE) ---
+    let touchStartX = 0;
+    let touchStartY = 0;
 
     canvas.addEventListener('touchstart', e => {
         touchStartX = e.changedTouches[0].screenX;
         touchStartY = e.changedTouches[0].screenY;
-    }, false);
+        e.preventDefault();
+    }, {passive: false});
 
     canvas.addEventListener('touchend', e => {
         if (lockInput || !gameRunning) return;
-        let diffX = e.changedTouches[0].screenX - touchStartX;
-        let diffY = e.changedTouches[0].screenY - touchStartY;
-        if (Math.abs(diffX) > Math.abs(diffY)) {
-            if (diffX > 30 && dx === 0) { dx = 20; dy = 0; lockInput = true; }
-            else if (diffX < -30 && dx === 0) { dx = -20; dy = 0; lockInput = true; }
+        let dxTouch = e.changedTouches[0].screenX - touchStartX;
+        let dyTouch = e.changedTouches[0].screenY - touchStartY;
+
+        if (Math.abs(dxTouch) > Math.abs(dyTouch)) {
+            if (dxTouch > 30 && dx === 0) { dx = gridSize; dy = 0; }
+            else if (dxTouch < -30 && dx === 0) { dx = -gridSize; dy = 0; }
         } else {
-            if (diffY > 30 && dy === 0) { dx = 0; dy = 20; lockInput = true; }
-            else if (diffY < -30 && dy === 0) { dx = 0; dy = -20; lockInput = true; }
+            if (dyTouch > 30 && dy === 0) { dx = 0; dy = gridSize; }
+            else if (dyTouch < -30 && dy === 0) { dx = 0; dy = -gridSize; }
         }
+        lockInput = true;
     }, false);
+
+    // --- CONTROLES TECLADO ---
+    window.onkeydown = e => {
+        if (lockInput || !gameRunning) return;
+        const key = e.key;
+        if (key === "ArrowUp" && dy === 0) { dx = 0; dy = -gridSize; }
+        if (key === "ArrowDown" && dy === 0) { dx = 0; dy = gridSize; }
+        if (key === "ArrowLeft" && dx === 0) { dx = -gridSize; dy = 0; }
+        if (key === "ArrowRight" && dx === 0) { dx = gridSize; dy = 0; }
+        lockInput = true;
+    };
+
+    // Ajustar si el usuario voltea el teléfono
+    window.addEventListener('resize', resizeCanvas);
 
     init();
 })();
