@@ -146,46 +146,41 @@
     }
 
     function gameOver() {
-        gameRunning = false;
+    gameRunning = false;
 
-        // 1. Guardar en MongoDB
-        fetch('/guardar_puntaje', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                nombre: user, 
-                puntos: score, 
-                juego: 'snake'
-            })
-        }).then(() => {
-            actualizarRankingLateral('snake'); 
-        });
+    fetch('/guardar_puntaje', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ nombre: user, puntos: score, juego: 'snake' })
+    }).then(() => {
+        actualizarRankingLateral('snake'); 
+    });
 
-        // 2. Usar los elementos que YA ESTÁN en tu HTML
-        const screen = document.getElementById('game-over-screen');
-        const finalScoreMsg = document.getElementById('final-score-msg');
-        const h1GameOver = screen.querySelector('h1');
-        const btnRetry = screen.querySelector('button:not([style*="background"])'); // El primer botón
+    const screen = document.getElementById('game-over-screen');
+    const finalScoreMsg = document.getElementById('final-score-msg');
+    const btnRetry = screen.querySelector('.btn-play'); // Seleccionamos el botón de reintentar
 
-        if (finalScoreMsg) finalScoreMsg.innerText = `Lograste ${score} puntos`;
-        
-        // 3. Aplicar estilo neón dinámico al morir
-        if (h1GameOver) {
-            h1GameOver.style.color = currentColor;
-            h1GameOver.style.textShadow = `0 0 15px ${currentColor}`;
+    if (finalScoreMsg) finalScoreMsg.innerText = `Lograste ${score} puntos`;
+
+    // --- CORRECCIÓN AQUÍ ---
+    // Quitamos el reload() y hacemos que ejecute init() directamente
+    btnRetry.onclick = (e) => {
+        e.preventDefault();
+        screen.style.display = 'none';
+        init(); // Reinicia el juego sin cargar la página
+    };
+
+    if (screen) {
+        screen.style.display = 'flex';
+        // Aplicamos los colores neón que te gustaron
+        const h1 = screen.querySelector('h1');
+        if (h1) {
+            h1.style.color = currentColor;
+            h1.style.textShadow = `0 0 15px ${currentColor}`;
         }
-        if (btnRetry) {
-            btnRetry.style.background = currentColor;
-            btnRetry.style.boxShadow = `0 0 10px ${currentColor}`;
-        }
-
-        if (screen) {
-            screen.style.display = 'flex'; // Usamos flex para centrar
-            screen.style.flexDirection = 'column';
-            screen.style.justifyContent = 'center';
-            screen.style.alignItems = 'center';
-        }
+        btnRetry.style.background = currentColor;
     }
+}
 
     // --- CONTROLES (Mantenidos igual) ---
     let touchStartX = 0;
