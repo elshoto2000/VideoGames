@@ -116,28 +116,30 @@
         });
     }
 
-    // --- SOLUCIÓN AL RANKING ---
-    function actualizarRankingEnVivo() {
-        fetch('/obtener_ranking')
-        .then(res => res.json())
-        .then(data => {
-            // Buscamos la lista que está al lado del juego
-            const listaHtml = document.querySelector('.ranking-lateral ul');
-            if (listaHtml) {
-                const topSnake = data.ranking
-                    .filter(r => r.juego === 'snake')
-                    .sort((a, b) => b.puntos - a.puntos)
-                    .slice(0, 5);
-                
-                listaHtml.innerHTML = topSnake.map(r => `
-                    <li style="color:white; margin-bottom:5px;">
-                        ${r.nombre}: <span style="color:#00f0ff">${r.puntos}</span>
-                    </li>
-                `).join('');
-            }
-        })
-        .catch(err => console.error("Error al refrescar ranking:", err));
-    }
+    function actualizarRankingLateral(juego) {
+    fetch('/obtener_ranking')
+    .then(res => res.json())
+    .then(data => {
+        // Filtrar y ordenar los mejores 5
+        const topJuego = data.ranking
+            .filter(r => r.juego.toLowerCase() === juego.toLowerCase())
+            .sort((a, b) => b.puntos - a.puntos)
+            .slice(0, 5);
+
+        // USAMOS EL ID QUE TIENES EN TU HTML: 'ranking-list'
+        const listaHtml = document.getElementById('ranking-list'); 
+        
+        if (listaHtml) {
+            listaHtml.innerHTML = topJuego.map((r, index) => `
+                <li>
+                    <span>${index + 1}. ${r.nombre}</span> 
+                    <b>${r.puntos}</b>
+                </li>
+            `).join('');
+        }
+    })
+    .catch(err => console.error("Error al actualizar ranking:", err));
+}
 
     function gameOver() {
         gameRunning = false;
