@@ -7,12 +7,11 @@
     const ctx = canvas.getContext('2d');
     container.appendChild(canvas);
 
-    // --- AJUSTE DE PANTALLA RESPONSIVO ---
     function resizeCanvas() {
         const size = Math.min(container.clientWidth, container.clientHeight, 400);
         canvas.width = size;
         canvas.height = size;
-        gridSize = size / 20; // Ajustamos la cuadrícula proporcionalmente
+        gridSize = size / 20;
     }
 
     let gridSize = 20;
@@ -21,12 +20,12 @@
     
     let snake, foods, dx, dy, score, speed, gameRunning;
     let lockInput = false;
+    let totalApplesEaten = 0; // Contador para llegar a las 5000
     let currentColor = "#00f0ff";
     const neonColors = ["#00f0ff", "#ff00ff", "#00ff00", "#ffff00", "#ff8000"];
 
     function init() {
         resizeCanvas();
-        // Posiciones iniciales basadas en el tamaño del grid
         snake = [
             {x: gridSize * 10, y: gridSize * 10},
             {x: gridSize * 9, y: gridSize * 10},
@@ -34,11 +33,12 @@
         ];
         foods = [];
         dx = gridSize; dy = 0; score = 0; speed = 130;
+        totalApplesEaten = 0;
         gameRunning = true;
         lockInput = false;
         
-        // Llenamos de manzanas (máximo 200 para que no explote el procesador del móvil)
-        for(let i=0; i < 200; i++) spawnFood();
+        // --- CAMBIO AQUÍ: Solo 5 manzanas al inicio ---
+        for(let i=0; i < 5; i++) spawnFood();
         game();
     }
 
@@ -46,7 +46,6 @@
         if (!gameRunning) return;
         const head = {x: snake[0].x + dx, y: snake[0].y + dy};
 
-        // Colisión con paredes (ahora dinámicas)
         if (head.x < 0 || head.x >= canvas.width || head.y < 0 || head.y >= canvas.height || 
             snake.some(seg => seg.x === head.x && seg.y === head.y)) {
             return gameOver(); 
@@ -57,10 +56,15 @@
         
         if (foodIndex !== -1) {
             score += 10;
+            totalApplesEaten++;
             speed = Math.max(60, speed - 1);
             foods.splice(foodIndex, 1);
             currentColor = neonColors[Math.floor(Math.random() * neonColors.length)];
-            spawnFood(); // Reponemos la manzana
+            
+            // --- CAMBIO AQUÍ: Aparece una nueva solo cuando comes una ---
+            if (totalApplesEaten < 5000) {
+                spawnFood();
+            }
         } else {
             snake.pop();
         }
@@ -71,20 +75,23 @@
     }
 
     function spawnFood() {
-        let newFood = {
-            x: Math.floor(Math.random() * 20) * gridSize,
-            y: Math.floor(Math.random() * 20) * gridSize
-        };
-        if(!snake.some(s => s.x === newFood.x && s.y === newFood.y)) {
-            foods.push(newFood);
-        }
+        let newFood;
+        let collision;
+        do {
+            newFood = {
+                x: Math.floor(Math.random() * 20) * gridSize,
+                y: Math.floor(Math.random() * 20) * gridSize
+            };
+            collision = snake.some(s => s.x === newFood.x && s.y === newFood.y) ||
+                        foods.some(f => f.x === newFood.x && f.y === newFood.y);
+        } while (collision);
+        foods.push(newFood);
     }
 
     function draw() {
         ctx.fillStyle = "#0d0221";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        // Manzanas Neón
         ctx.fillStyle = "#ff4757";
         foods.forEach(f => {
             ctx.beginPath();
@@ -92,7 +99,6 @@
             ctx.fill();
         });
 
-        // Serpiente con Brillo
         snake.forEach((seg, i) => {
             ctx.fillStyle = i === 0 ? currentColor : "rgba(255,255,255,0.3)";
             if(i === 0) {
@@ -102,7 +108,6 @@
             ctx.fillRect(seg.x + 1, seg.y + 1, gridSize - 2, gridSize - 2);
             ctx.shadowBlur = 0;
 
-            // Ojitos
             if (i === 0) {
                 ctx.fillStyle = "white";
                 ctx.fillRect(seg.x + 4, seg.y + 4, 4, 4);
@@ -111,25 +116,58 @@
         });
     }
 
-    function gameOver() {
-    gameRunning = false; // Detiene el movimiento
-    
-    // 1. Mostramos la pantalla de Game Over inmediatamente
-    let screen = document.getElementById('game-over-screen');
-    // ... (código para mostrar puntos y botones) ...
-    screen.style.display = 'flex';
+    // --- SOLUCIÓN AL RANKING ---
+    function actualizarRankingEnVivo() {
+        fetch('/obtener_ranking')
+        .then(res => res.json())
+        .then(data => {
+            // Buscamos la lista que está al lado del juego
+            const listaHtml = document.querySelector('.ranking-lateral ul');
+            if (listaHtml) {
+                const topSnake = data.ranking
+                    .filter(r => r.juego === 'snake')
+                    .sort((a, b) => b.puntos - a.puntos)
+                    .slice(0, 5);
+                
+                listaHtml.innerHTML = topSnake.map(r => `
+                    <li style="color:white; margin-bottom:5px;">
+                        ${r.nombre}: <span style="color:#00f0ff">${r.puntos}</span>
+                    </li>
+                `).join('');
+            }
+        })
+        .catch(err => console.error("Error al refrescar ranking:", err));
+    }
 
-    // 2. Guardamos en el servidor e instantáneamente refrescamos la tabla lateral
-    fetch('/guardar_puntaje', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({nombre: user, puntos: score, juego: 'snake'})
-    }).then(() => {
-        // ESTO es lo que hace que aparezca al lado sin esperar a nada más
-        actualizarRankingLateral('snake'); 
-    });
-}
-    // --- CONTROLES TÁCTILES (SWIPE) ---
+    function gameOver() {
+        gameRunning = false;
+        
+        // GUARDADO INMEDIATO
+        fetch('/guardar_puntaje', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({nombre: user, puntos: score, juego: 'snake'})
+        })
+        .then(() => {
+            // Refrescamos el ranking de la derecha nada más morir
+            actualizarRankingEnVivo();
+        });
+
+        let screen = document.getElementById('game-over-screen') || document.createElement('div');
+        screen.id = 'game-over-screen';
+        screen.style.cssText = `position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(13,2,33,0.95); display:flex; flex-direction:column; justify-content:center; align-items:center; z-index:9999; color:white; text-align:center; border-radius:15px;`;
+        
+        screen.innerHTML = `
+            <h2 style="color:${currentColor}; margin-bottom:10px;">¡COLISIÓN!</h2>
+            <p style="font-size:1.2rem;">Puntos: ${score}</p>
+            <p style="font-size:0.9rem; color:#888; margin-bottom:20px;">Puntaje guardado en el ranking</p>
+            <button id="retry" style="padding:15px 30px; background:${currentColor}; border:none; border-radius:5px; font-weight:bold; cursor:pointer; color:#0d0221;">REINTENTAR</button>
+        `;
+        container.appendChild(screen);
+        document.getElementById('retry').onclick = () => { screen.remove(); init(); };
+    }
+
+    // --- CONTROLES ---
     let touchStartX = 0;
     let touchStartY = 0;
 
@@ -143,30 +181,23 @@
         if (lockInput || !gameRunning) return;
         let dxTouch = e.changedTouches[0].screenX - touchStartX;
         let dyTouch = e.changedTouches[0].screenY - touchStartY;
-
         if (Math.abs(dxTouch) > Math.abs(dyTouch)) {
-            if (dxTouch > 30 && dx === 0) { dx = gridSize; dy = 0; }
-            else if (dxTouch < -30 && dx === 0) { dx = -gridSize; dy = 0; }
+            if (dxTouch > 30 && dx === 0) { dx = gridSize; dy = 0; lockInput = true; }
+            else if (dxTouch < -30 && dx === 0) { dx = -gridSize; dy = 0; lockInput = true; }
         } else {
-            if (dyTouch > 30 && dy === 0) { dx = 0; dy = gridSize; }
-            else if (dyTouch < -30 && dy === 0) { dx = 0; dy = -gridSize; }
+            if (dyTouch > 30 && dy === 0) { dx = 0; dy = gridSize; lockInput = true; }
+            else if (dyTouch < -30 && dy === 0) { dx = 0; dy = -gridSize; lockInput = true; }
         }
-        lockInput = true;
     }, false);
 
-    // --- CONTROLES TECLADO ---
     window.onkeydown = e => {
         if (lockInput || !gameRunning) return;
-        const key = e.key;
-        if (key === "ArrowUp" && dy === 0) { dx = 0; dy = -gridSize; }
-        if (key === "ArrowDown" && dy === 0) { dx = 0; dy = gridSize; }
-        if (key === "ArrowLeft" && dx === 0) { dx = -gridSize; dy = 0; }
-        if (key === "ArrowRight" && dx === 0) { dx = gridSize; dy = 0; }
-        lockInput = true;
+        if (e.key === "ArrowUp" && dy === 0) { dx = 0; dy = -gridSize; lockInput = true; }
+        if (e.key === "ArrowDown" && dy === 0) { dx = 0; dy = gridSize; lockInput = true; }
+        if (e.key === "ArrowLeft" && dx === 0) { dx = -gridSize; dy = 0; lockInput = true; }
+        if (e.key === "ArrowRight" && dx === 0) { dx = gridSize; dy = 0; lockInput = true; }
     };
 
-    // Ajustar si el usuario voltea el teléfono
     window.addEventListener('resize', resizeCanvas);
-
     init();
 })();
