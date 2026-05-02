@@ -106,8 +106,25 @@
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ nombre: user, puntos: clicks, juego: 'clicker' })
-        }).catch(err => console.error("Error al guardar:", err));
+        })
+        .then(() => {
+            // AGREGAR ESTO:
+            actualizarRankingLateral('clicker');
+        })
+        .catch(err => console.error("Error al guardar:", err));
     }
 
+    // AGREGAR LA FUNCIÓN AQUÍ TAMBIÉN (dentro del IIFE):
+    function actualizarRankingLateral(juego) {
+        fetch('/obtener_ranking')
+        .then(res => res.json())
+        .then(data => {
+            const topJuego = data.ranking.filter(r => r.juego === juego).slice(0, 5);
+            const listaHtml = document.querySelector('.ranking-lateral ul');
+            if (listaHtml) {
+                listaHtml.innerHTML = topJuego.map(r => `<li>${r.nombre}: ${r.puntos}</li>`).join('');
+            }
+        });
+    }
     setTimeout(startGame, 200);
 })();
