@@ -1,30 +1,18 @@
 from flask import Flask, render_template, request, jsonify
-import sqlite3
+from pymongo import MongoClient
+import os
 
 app = Flask(__name__)
 
-def conectar_db():
-    conn = sqlite3.connect('database.db')
-    conn.row_factory = sqlite3.Row
-    return conn
+# 1. Configuración de MongoDB Atlas
+# Tu cadena de conexión ya con la contraseña apu20082009
+MONGO_URI = "mongodb+srv://herreraleandro628:apu20082009@cluster0.q4tnkcc.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 
-def inicializar_db():
-    conn = conectar_db()
-    # Mantenemos la estructura, asegurando que 'juego' sea la clave para filtrar
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS ranking (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nombre TEXT,
-            puntos INTEGER,
-            juego TEXT,
-            UNIQUE(nombre, juego)
-        )
-    ''')
-    conn.commit()
-    conn.close()
+client = MongoClient(MONGO_URI)
+db = client.arcade_db
+puntajes_col = db.puntajes
 
-# Ejecutamos la creación de la tabla al iniciar
-inicializar_db()
+print("✅ Conectado exitosamente a MongoDB Atlas")
 
 @app.route('/')
 def home():
@@ -32,15 +20,12 @@ def home():
 
 @app.route('/juego/<nombre_juego>')
 def cargar_juego(nombre_juego):
-    # Forzamos que el nombre del juego esté en minúsculas para la consulta SQL
     nombre_juego_busqueda = nombre_juego.lower() 
     
-    conn = conectar_db()
-    # Consultas corregidas para buscar siempre en minúsculas
-    r_snake = conn.execute('SELECT nombre, puntos FROM ranking WHERE juego = "snake" ORDER BY puntos DESC LIMIT 5').fetchall()
-    r_trivia = conn.execute('SELECT nombre, puntos FROM ranking WHERE juego = "trivia" ORDER BY puntos DESC LIMIT 5').fetchall()
-    r_clicker = conn.execute('SELECT nombre, puntos FROM ranking WHERE juego = "clicker" ORDER BY puntos DESC LIMIT 5').fetchall()
-    conn.close()
+    # Obtenemos los rankings directamente de MongoDB para cada juego
+    r_snake = list(puntajes_col.find({"juego": "snake"}).sort("puntos", -1).limit(5))
+    r_trivia = list(puntajes_col.find({"juego": "trivia"}).sort("puntos", -1).limit(5))
+    r_clicker = list(puntajes_col.find({"juego": "clicker"}).sort("puntos", -1).limit(5))
 
     return render_template('juego.html', 
                            juego=nombre_juego, 
@@ -53,34 +38,32 @@ def guardar_puntaje():
     datos = request.json
     nombre = datos.get('nombre')
     puntos = datos.get('puntos')
-    # Guardamos el identificador del juego siempre en minúsculas para consistencia
     juego = datos.get('juego').lower() 
     
-    conn = conectar_db()
     try:
-        # Lógica de UPSERT: Solo actualiza si el nuevo puntaje es mayor[cite: 1]
-        usuario = conn.execute('SELECT puntos FROM ranking WHERE nombre = ? AND juego = ?', (nombre, juego)).fetchone()
-        
-        if usuario:
-            if puntos > usuario['puntos']:
-                conn.execute('UPDATE ranking SET puntos = ? WHERE nombre = ? AND juego = ?', (puntos, nombre, juego))
-        else:
-            conn.execute('INSERT INTO ranking (nombre, puntos, juego) VALUES (?, ?, ?)', (nombre, puntos, juego))
-        
-        conn.commit()
+        # Lógica de UPSERT en MongoDB:
+        # Si el usuario ya existe en ese juego, solo actualiza si el puntaje es mayor.
+        puntajes_col.update_one(
+            {"nombre": nombre, "juego": juego},
+            {"$max": {"puntos": puntos}},
+            upsert=True
+        )
         return jsonify({"status": "success"})
     except Exception as e:
+        print(f"Error al guardar: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
-    finally:
-        conn.close()
 
 @app.route('/obtener_ranking')
 def obtener_ranking():
-    conn = conectar_db()
-    # Esta ruta es la que alimenta el Top Global del index.html[cite: 3]
-    ranking = conn.execute('SELECT nombre, puntos, juego FROM ranking ORDER BY puntos DESC LIMIT 50').fetchall()
-    conn.close()
-    return jsonify({"ranking": [dict(row) for row in ranking]})
+    # Obtenemos el Top Global de MongoDB
+    # Convertimos el cursor de Mongo a una lista y limpiamos el campo '_id' que no es serializable
+    ranking = list(puntajes_col.find().sort("puntos", -1).limit(50))
+    for r in ranking:
+        r['_id'] = str(r['_id']) 
+        
+    return jsonify({"ranking": ranking})
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Usar el puerto que Render asigne o el 5000 por defecto
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
