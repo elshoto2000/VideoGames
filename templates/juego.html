@@ -122,9 +122,12 @@
     }
 
     function borrarYSalir() {
-        localStorage.removeItem('arcade_user');
-        window.location.href = "/";
-    }
+    // Esto borra el nombre actual
+    localStorage.removeItem('arcade_user'); 
+    // Al recargar la página, como ya no hay 'arcade_user', 
+    // el sistema te pedirá el nombre de nuevo automáticamente.
+    window.location.reload(); 
+}
 </script>
 </body>
 </html>
