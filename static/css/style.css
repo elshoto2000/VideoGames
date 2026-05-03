@@ -151,8 +151,13 @@ body {
   box-shadow: 0 10px 40px rgba(255,71,87,0.2);
 }
 
-.game-entry.reverse { direction: rtl; }
-.game-entry.reverse > * { direction: ltr; }
+.game-entry.reverse {
+  direction: rtl; /* Voltea el orden de las columnas del grid */
+}
+
+.game-entry.reverse > * {
+  direction: ltr; /* Devuelve el texto a su dirección normal para que no se vea raro */
+}
 
 .game-info h3 {
   font-size: 2rem;
