@@ -175,10 +175,19 @@
         document.getElementById('btn-restart').onclick = showMenu;
         
         fetch('/guardar_puntaje', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({nombre: user, puntos: score, juego: 'trivia'}) 
-        });
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({nombre: user, puntos: score, juego: 'trivia'}) 
+})
+.then(response => {
+    if (response.ok) {
+        // OPCIÓN A: Recargar la página para que Flask renderice la tabla de nuevo
+        // setTimeout(() => { window.location.reload(); }, 1500);
+
+        // OPCIÓN B: Si tienes una función en tu script global que cargue la tabla, llámala aquí.
+        console.log("Puntaje guardado con éxito");
+    }
+});
     }
 
     showMenu();
