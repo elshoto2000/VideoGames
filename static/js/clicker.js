@@ -5,8 +5,8 @@
     let gameActive = false;
     const container = document.querySelector('.canvas-placeholder');
 
-    // Selección del usuario (basado en tu estructura actual)
-    const userElement = document.getElementById('display-user') || { innerText: "Leandro" };
+    // 1. CORRECCIÓN: Obtener el nombre real del usuario que entró
+    const userElement = document.getElementById('display-user') || { innerText: "Invitado" };
     let user = userElement.innerText.replace("Jugador: ", "").trim();
 
     function startGame() {
@@ -62,12 +62,10 @@
         gameActive = false;
         clearInterval(timerId);
 
-        // Pantalla de Game Over limpia: Solo Reintentar y Cambiar Cuenta
         container.innerHTML = `
             <div id="game-over-screen" style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%; width:100%; text-align:center; color:white; background:rgba(13,2,33,0.98); border-radius:15px; padding: 20px; box-sizing: border-box;">
                 <h1 style="color: #00f0ff; text-shadow: 0 0 10px #00f0ff; font-size: 1.8rem; margin: 0 0 10px 0;">TIEMPO AGOTADO</h1>
                 <p style="font-size: 1.3rem; margin-bottom: 20px;">Total de Clicks: <span style="color:#00f0ff">${clicks}</span></p>
-                
                 <div style="display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 250px;">
                     <button id="btn-restart-clicker" style="background:#00f0ff; color:#0d0221; font-weight:bold; height: 50px; border:none; border-radius:8px; cursor:pointer; font-size: 1rem;">
                         🎮 REINTENTAR
@@ -81,29 +79,30 @@
 
         document.getElementById('btn-restart-clicker').onclick = startGame;
 
-        // Guardar puntaje y actualizar ranking con la misma lógica que Snake/Trivia
+        // 2. CORRECCIÓN: Enviar las variables correctas (user y clicks)
         fetch('/guardar_puntaje', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-        nombre: nombreUsuario, // El nombre que el usuario puso al inicio
-        puntos: puntajeFinal,
-        juego: 'snake' // Asegúrate de que sea 'snake' o 'clicker' en minúsculas
-    })
-})
-.then(response => response.json())
-.then(data => {
-    if(data.status === "success") {
-        console.log("¡Puntaje guardado!");
-        // Aquí podrías llamar a una función para refrescar la tablita lateral
-    }
-});
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                nombre: user, 
+                puntos: clicks,
+                juego: 'clicker' // Cambiado de 'snake' a 'clicker'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if(data.status === "success") {
+                console.log("¡Puntaje guardado!");
+                // 3. CORRECCIÓN: Actualizar el ranking lateral inmediatamente
+                actualizarRankingLateral('clicker');
+            }
+        });
+    } // <-- Te faltaba esta llave de cierre
 
     function actualizarRankingLateral(juego) {
         fetch('/obtener_ranking')
         .then(res => res.json())
         .then(data => {
-            // Misma lógica de filtrado y ordenamiento que en Trivia
             const topJuego = data.ranking
                 .filter(r => r.juego.toLowerCase() === juego.toLowerCase())
                 .sort((a, b) => b.puntos - a.puntos)
@@ -122,6 +121,5 @@
         .catch(err => console.error("Error al actualizar ranking:", err));
     }
 
-    // Pequeño delay para asegurar que el container esté listo
     setTimeout(startGame, 200);
 })();
