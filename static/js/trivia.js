@@ -161,34 +161,58 @@
         container.appendChild(div);
     }
 
-    function showEnd() {
-        container.innerHTML = `
-            <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; width:100%; text-align:center; color:white; padding:20px; box-sizing:border-box;">
-                <h1 style="color:#00f0ff; text-shadow:0 0 10px #00f0ff; font-size:1.5rem; margin-bottom:10px;">¡COMPLETADO!</h1>
-                <p style="font-size:1.2rem; margin-bottom:20px;">Puntaje: <span style="color:#00f0ff">${score}</span></p>
-                <div style="display:flex; flex-direction:column; gap:10px; width:100%; max-width:250px;">
-                    <button id="btn-restart" style="padding:15px; background:#00f0ff; color:#0d0221; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">OTRA CATEGORÍA</button>
-                    <button onclick="window.location.reload()" style="padding:15px; background:#333; color:white; border:none; border-radius:8px; cursor:pointer;">SALIR</button>
-                </div>
-            </div>
-        `;
-        document.getElementById('btn-restart').onclick = showMenu;
-        
-        fetch('/guardar_puntaje', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({nombre: user, puntos: score, juego: 'trivia'}) 
-})
-.then(response => {
-    if (response.ok) {
-        // OPCIÓN A: Recargar la página para que Flask renderice la tabla de nuevo
-        // setTimeout(() => { window.location.reload(); }, 1500);
+    function actualizarRankingLateral(juego) {
+        fetch('/obtener_ranking')
+        .then(res => res.json())
+        .then(data => {
+            // Filtramos por el juego "trivia" y ordenamos
+            const topJuego = data.ranking
+                .filter(r => r.juego.toLowerCase() === juego.toLowerCase())
+                .sort((a, b) => b.puntos - a.puntos)
+                .slice(0, 5);
 
-        // OPCIÓN B: Si tienes una función en tu script global que cargue la tabla, llámala aquí.
-        console.log("Puntaje guardado con éxito");
+            const listaHtml = document.getElementById('ranking-list'); 
+            if (listaHtml) {
+                listaHtml.innerHTML = topJuego.map((r, index) => `
+                    <li>
+                        <span>${index + 1}. ${r.nombre}</span> 
+                        <b>${r.puntos}</b>
+                    </li>
+                `).join('');
+            }
+        })
+        .catch(err => console.error("Error al actualizar ranking:", err));
     }
-});
+    
+    async function showEnd() { // Añadimos 'async' aquí
+    container.innerHTML = `
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; width:100%; text-align:center; color:white; padding:20px; box-sizing:border-box;">
+            <h1 style="color:#00f0ff; text-shadow:0 0 10px #00f0ff; font-size:1.5rem; margin-bottom:10px;">¡COMPLETADO!</h1>
+            <p style="font-size:1.2rem; margin-bottom:20px;">Puntaje: <span style="color:#00f0ff">${score}</span></p>
+            <div style="display:flex; flex-direction:column; gap:10px; width:100%; max-width:250px;">
+                <button id="btn-restart" style="padding:15px; background:#00f0ff; color:#0d0221; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">OTRA CATEGORÍA</button>
+                <button onclick="window.location.reload()" style="padding:15px; background:#333; color:white; border:none; border-radius:8px; cursor:pointer;">SALIR</button>
+            </div>
+        </div>
+    `;
+    document.getElementById('btn-restart').onclick = showMenu;
+    
+    try {
+        // Esperamos a que el envío termine
+        const response = await fetch('/guardar_puntaje', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({nombre: user, puntos: score, juego: 'trivia'}) 
+        });
+
+        if (response.ok) {
+            // Solo cuando el servidor confirme (OK), pedimos el ranking
+            actualizarRankingLateral('trivia'); 
+        }
+    } catch (error) {
+        console.error("Error guardando puntaje:", error);
     }
+}
 
     showMenu();
 })();
