@@ -37,12 +37,12 @@
         `;
 
         const target = document.getElementById('click-target');
-        // Usar touchstart para una respuesta más rápida en móviles
         const handleInteraction = (e) => {
             if (e.type === 'touchstart') e.preventDefault();
             if (gameActive) {
                 clicks++;
-                document.getElementById('click-count').innerText = clicks;
+                const countDisplay = document.getElementById('click-count');
+                if (countDisplay) countDisplay.innerText = clicks;
                 target.style.transform = "scale(0.9)";
                 setTimeout(() => target.style.transform = "scale(1)", 50);
             }
@@ -60,71 +60,58 @@
     function endGame() {
         gameActive = false;
         clearInterval(timerId);
-        container.innerHTML = ""; 
 
-        let screen = document.getElementById('game-over-screen');
-        if (!screen) {
-            screen = document.createElement('div');
-            screen.id = 'game-over-screen';
-            screen.style.cssText = `
-                position:absolute; top:0; left:0; width:100%; height:100%; 
-                background:rgba(13,2,33,0.98); display:flex; flex-direction:column; 
-                justify-content:center; align-items:center; z-index:9999; 
-                text-align:center; color:white; border-radius:15px; padding: 20px; box-sizing: border-box;
-            `;
-            container.appendChild(screen);
-        }
-
-        screen.innerHTML = `
-            <h1 style="color: #00f0ff; text-shadow: 0 0 10px #00f0ff; font-size: 1.8rem; margin: 0 0 10px 0;">TIEMPO AGOTADO</h1>
-            <p style="font-size: 1.3rem; margin-bottom: 20px;">Total de Clicks: <span style="color:#00f0ff">${clicks}</span></p>
-            
-            <div style="display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 280px;">
-                <button id="btn-restart-clicker" class="btn-play" style="background:#00f0ff; color:#0d0221; font-weight:bold; height: 50px; border:none; border-radius:8px; cursor:pointer; font-size: 1rem;">
-                    🎮 REINTENTAR
-                </button>
-                <button id="btn-menu-clicker" class="btn-play" style="background:#333; color:white; height: 50px; border:none; border-radius:8px; cursor:pointer; font-size: 1rem;">
-                    🏠 MENÚ PRINCIPAL
-                </button>
-                <button onclick="location.reload()" style="background:transparent; color:#888; border:none; font-size: 0.8rem; text-decoration:underline; cursor:pointer; margin-top: 10px;">
-                    Cambiar de cuenta
-                </button>
+        // Limpiar contenedor y mostrar pantalla final
+        container.innerHTML = `
+            <div id="game-over-screen" style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%; width:100%; text-align:center; color:white; background:rgba(13,2,33,0.98); border-radius:15px; padding: 20px; box-sizing: border-box;">
+                <h1 style="color: #00f0ff; text-shadow: 0 0 10px #00f0ff; font-size: 1.8rem; margin: 0 0 10px 0;">TIEMPO AGOTADO</h1>
+                <p style="font-size: 1.3rem; margin-bottom: 20px;">Total de Clicks: <span style="color:#00f0ff">${clicks}</span></p>
+                
+                <div style="display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 250px;">
+                    <button id="btn-restart-clicker" style="background:#00f0ff; color:#0d0221; font-weight:bold; height: 50px; border:none; border-radius:8px; cursor:pointer; font-size: 1rem;">
+                        🎮 REINTENTAR
+                    </button>
+                    <button onclick="location.reload()" style="background:transparent; color:#888; border:none; font-size: 0.8rem; text-decoration:underline; cursor:pointer; margin-top: 5px;">
+                        Cambiar de cuenta
+                    </button>
+                </div>
             </div>
         `;
-        screen.style.display = 'flex';
 
-        document.getElementById('btn-restart-clicker').onclick = () => {
-            screen.style.display = 'none';
-            startGame();
-        };
+        document.getElementById('btn-restart-clicker').onclick = startGame;
 
-        document.getElementById('btn-menu-clicker').onclick = () => {
-            window.location.href = "index.html";
-        };
-
+        // Guardar puntaje y actualizar ranking lateral
         fetch('/guardar_puntaje', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ nombre: user, puntos: clicks, juego: 'clicker' })
         })
         .then(() => {
-            // AGREGAR ESTO:
             actualizarRankingLateral('clicker');
         })
         .catch(err => console.error("Error al guardar:", err));
     }
 
-    // AGREGAR LA FUNCIÓN AQUÍ TAMBIÉN (dentro del IIFE):
     function actualizarRankingLateral(juego) {
         fetch('/obtener_ranking')
         .then(res => res.json())
         .then(data => {
-            const topJuego = data.ranking.filter(r => r.juego === juego).slice(0, 5);
-            const listaHtml = document.querySelector('.ranking-lateral ul');
+            const topJuego = data.ranking
+                .filter(r => r.juego.toLowerCase() === juego.toLowerCase())
+                .sort((a, b) => b.puntos - a.puntos)
+                .slice(0, 5);
+            
+            const listaHtml = document.getElementById('ranking-list'); 
             if (listaHtml) {
-                listaHtml.innerHTML = topJuego.map(r => `<li>${r.nombre}: ${r.puntos}</li>`).join('');
+                listaHtml.innerHTML = topJuego.map((r, index) => `
+                    <li>
+                        <span>${index + 1}. ${r.nombre}</span> 
+                        <b>${r.puntos}</b>
+                    </li>
+                `).join('');
             }
         });
     }
+
     setTimeout(startGame, 200);
 })();
