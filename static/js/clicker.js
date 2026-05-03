@@ -5,7 +5,8 @@
     let gameActive = false;
     const container = document.querySelector('.canvas-placeholder');
 
-    const userElement = document.getElementById('display-user') || document.querySelector('span[style*="color: red"]') || { innerText: "Leandro" };
+    // Selección del usuario (basado en tu estructura actual)
+    const userElement = document.getElementById('display-user') || { innerText: "Leandro" };
     let user = userElement.innerText.replace("Jugador: ", "").trim();
 
     function startGame() {
@@ -61,7 +62,7 @@
         gameActive = false;
         clearInterval(timerId);
 
-        // Limpiar contenedor y mostrar pantalla final
+        // Pantalla de Game Over limpia: Solo Reintentar y Cambiar Cuenta
         container.innerHTML = `
             <div id="game-over-screen" style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%; width:100%; text-align:center; color:white; background:rgba(13,2,33,0.98); border-radius:15px; padding: 20px; box-sizing: border-box;">
                 <h1 style="color: #00f0ff; text-shadow: 0 0 10px #00f0ff; font-size: 1.8rem; margin: 0 0 10px 0;">TIEMPO AGOTADO</h1>
@@ -72,7 +73,7 @@
                         🎮 REINTENTAR
                     </button>
                     <button onclick="location.reload()" style="background:transparent; color:#888; border:none; font-size: 0.8rem; text-decoration:underline; cursor:pointer; margin-top: 5px;">
-                        Cambiar de cuenta
+                        Entrar con otra cuenta
                     </button>
                 </div>
             </div>
@@ -80,14 +81,16 @@
 
         document.getElementById('btn-restart-clicker').onclick = startGame;
 
-        // Guardar puntaje y actualizar ranking lateral
+        // Guardar puntaje y actualizar ranking con la misma lógica que Snake/Trivia
         fetch('/guardar_puntaje', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ nombre: user, puntos: clicks, juego: 'clicker' })
         })
-        .then(() => {
-            actualizarRankingLateral('clicker');
+        .then(res => {
+            if (res.ok) {
+                actualizarRankingLateral('clicker');
+            }
         })
         .catch(err => console.error("Error al guardar:", err));
     }
@@ -96,6 +99,7 @@
         fetch('/obtener_ranking')
         .then(res => res.json())
         .then(data => {
+            // Misma lógica de filtrado y ordenamiento que en Trivia
             const topJuego = data.ranking
                 .filter(r => r.juego.toLowerCase() === juego.toLowerCase())
                 .sort((a, b) => b.puntos - a.puntos)
@@ -110,8 +114,10 @@
                     </li>
                 `).join('');
             }
-        });
+        })
+        .catch(err => console.error("Error al actualizar ranking:", err));
     }
 
+    // Pequeño delay para asegurar que el container esté listo
     setTimeout(startGame, 200);
 })();
