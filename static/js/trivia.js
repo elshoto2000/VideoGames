@@ -10,7 +10,6 @@
         // --- 15 PREGUNTAS NUEVAS ---
         { q: "¿Qué significa el 5 en HTML5?", a: ["Versión 5", "5 lenguajes", "5 navegadores", "5 años"], c: 0 },
         { q: "¿Cuál es la velocidad de la luz aprox.?", a: ["300,000 km/s", "150,000 km/s", "1,000,000 km/s", "343 m/s"], c: 0 },
-        { q: "¿Qué etiqueta HTML se usa para enlaces?", a: ["<link>", "<a>", "<href>", "<url>"], c: 1 },
         { q: "¿Qué planeta es conocido como el Lucero del Alba?", a: ["Marte", "Mercurio", "Venus", "Júpiter"], c: 2 },
         { q: "¿Cómo se llama la fuerza que atrae objetos al centro de la Tierra?", a: ["Fricción", "Gravedad", "Magnética", "Inercia"], c: 1 },
         { q: "¿Qué lenguaje se ejecuta en el lado del cliente?", a: ["PHP", "Python", "JavaScript", "SQL"], c: 2 },
