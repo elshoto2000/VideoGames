@@ -15,7 +15,7 @@
         <ul class="nav-links">
             <li><a href="#inicio">Inicio</a></li>
             <li><a href="#juegos">Juegos</a></li>
-            <li><a href="#ranking">Top Global</a></li>
+            <li><a href="/ranking">Top Global</a></li>
         </ul>
     </nav>
 
@@ -70,51 +70,8 @@
         </div>
     </section>
 
-    <section id="ranking" class="global-ranking-section">
-        <h2 class="section-title">🏆 Top Global</h2>
-        <div class="ranking-container">
-            <p>Cargando mejores puntajes...</p>
-        </div>
-    </section>
-
-    <footer class="footer">
+   <footer class="footer">
         <p>&copy; 2026 ArcadeGames - Proyecto Escolar</p>
     </footer>
-
-    <script>
-    async function cargarRankings() {
-        try {
-            const res = await fetch('/obtener_ranking');
-            const data = await res.json();
-            const container = document.querySelector('.ranking-container');
-            
-            // Los nombres de los juegos deben estar en minúsculas para coincidir con la DB
-            const juegos = ['snake', 'trivia', 'clicker'];
-            let html = '<div style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;">';
-
-            juegos.forEach(j => {
-                // Filtramos asegurando que la comparación sea efectiva
-                const topJuego = data.ranking.filter(item => item.juego.toLowerCase() === j).slice(0, 5);
-                
-                html += `
-                    <div class="ranking-card" style="background: var(--bg-soft); padding: 15px; border-radius: 10px; min-width: 220px; border: 1px solid var(--border)">
-                        <h3 style="color: var(--neon); margin-bottom: 10px; text-transform: uppercase;">Top ${j}</h3>
-                        <ul style="list-style: none; padding: 0; text-align: left;">
-                            ${topJuego.map((i, index) => `
-                                <li style="display:flex; justify-content:space-between; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.1)">
-                                    <span>${index + 1}. ${i.nombre}</span> 
-                                    <b style="color: var(--accent)">${i.puntos}</b>
-                                </li>`).join('') || '<li>Nadie aún</li>'}
-                        </ul>
-                    </div>
-                `;
-            });
-            container.innerHTML = html + '</div>';
-        } catch (e) {
-            console.error("Error cargando ranking:", e);
-        }
-    }
-    window.onload = cargarRankings;
-    </script>
 </body>
 </html>
