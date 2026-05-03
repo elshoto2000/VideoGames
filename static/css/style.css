@@ -427,3 +427,56 @@ body {
     margin-bottom: 25px;
 }
 
+.section-divider {
+    width: 100%;
+    overflow: hidden;
+    line-height: 0;
+}
+
+.section-divider svg {
+    display: block;
+    width: calc(100% + 1.3px);
+    height: 70px; /* Ajusta la altura de la onda */
+}
+
+/* Color de la onda que coincida con el fondo de la siguiente sección */
+.wave-fill {
+    fill: #0d0221; 
+}
+
+.ranking-table-container {
+    max-height: 400px; /* Límite de altura */
+    overflow-y: auto;  /* Activa el scroll */
+}
+
+/* Personalización de la barrita (Scrollbar) */
+.ranking-table-container::-webkit-scrollbar {
+    width: 8px;
+}
+.ranking-table-container::-webkit-scrollbar-thumb {
+    background: var(--neon); /* Color cian que ya usas */
+    border-radius: 10px;
+    box-shadow: 0 0 5px var(--neon);
+}
+
+.podium-container {
+    display: flex;
+    align-items: flex-end; /* Los bloques se "apoyan" en el suelo */
+    justify-content: center;
+    gap: 10px;
+    height: 300px;
+}
+
+/* Alturas diferentes para el efecto de escalera */
+.first .step { height: 160px; background: #ffd700; box-shadow: 0 0 20px #ffd700; }
+.second .step { height: 120px; background: #c0c0c0; }
+.third .step { height: 80px; background: #cd7f32; }
+
+@media (max-width: 900px) {
+    .game-section {
+        grid-template-columns: 1fr; /* Una sola columna en móviles */
+    }
+    .podium-container {
+        order: -1; /* El podio sale primero */
+    }
+}
