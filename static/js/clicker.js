@@ -83,17 +83,21 @@
 
         // Guardar puntaje y actualizar ranking con la misma lógica que Snake/Trivia
         fetch('/guardar_puntaje', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ nombre: user, puntos: clicks, juego: 'clicker' })
-        })
-        .then(res => {
-            if (res.ok) {
-                actualizarRankingLateral('clicker');
-            }
-        })
-        .catch(err => console.error("Error al guardar:", err));
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+        nombre: nombreUsuario, // El nombre que el usuario puso al inicio
+        puntos: puntajeFinal,
+        juego: 'snake' // Asegúrate de que sea 'snake' o 'clicker' en minúsculas
+    })
+})
+.then(response => response.json())
+.then(data => {
+    if(data.status === "success") {
+        console.log("¡Puntaje guardado!");
+        // Aquí podrías llamar a una función para refrescar la tablita lateral
     }
+});
 
     function actualizarRankingLateral(juego) {
         fetch('/obtener_ranking')
