@@ -63,7 +63,12 @@ def obtener_ranking():
         
     return jsonify({"ranking": ranking})
 
+@app.route('/ranking')
+def ver_ranking():
+    return render_template('ranking.html')
+
 if __name__ == '__main__':
     # Usar el puerto que Render asigne o el 5000 por defecto
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+    
