@@ -51,22 +51,22 @@
             { q: "¿Cuál es el lenguaje de la IA?", a: ["Python", "HTML", "CSS", "SQL"], c: 0 },
             { q: "¿Qué es la RAM?", a: ["Memoria de video", "Memoria temporal", "Disco duro", "Procesador"], c: 1 }
         ],
-        "Anime (Nivel Experto)": [
-    { q: "Mi linaje lucha contra un vampiro que robó el cuerpo de mi antepasado.", a: ["Castlevania", "JoJo's Bizarre Adventure", "Vampire Knight", "Hellsing"], c: 1 },
-    { q: "En Egipto, mi grupo tiene 50 días para derrotar a un enemigo que detiene el tiempo.", a: ["Stardust Crusaders (JJBA)", "Yu-Gi-Oh", "Magi", "Blue Exorcist"], c: 0 },
-    { q: "Soy un intercambio equivalente: perdí un brazo y a mi hermano le quité el cuerpo.", a: ["Naruto", "Fullmetal Alchemist", "Soul Eater", "D.Gray-man"], c: 1 },
-    { q: "Un espíritu llamado 'Stand' protege mi cuerpo, el mío se llama Star Platinum.", a: ["Persona 5", "Shaman King", "JoJo's Bizarre Adventure", "Bleach"], c: 2 },
-    { q: "Tengo 40 segundos para escribir tu nombre si recuerdo tu cara.", a: ["Death Note", "Monster", "Code Geass", "Psycho-Pass"], c: 0 },
-    { q: "Para ganar, debo sentarme en un robot gigante mientras mi padre me grita.", a: ["Gundam", "Darling in the Franxx", "Evangelion", "Mazinger Z"], c: 2 },
-    { q: "Soy un pirata que no sabe nadar y mi cuerpo se estira como goma.", a: ["One Piece", "Dragon Ball", "Bleach", "Fairy Tail"], c: 0 },
-    { q: "Un calvo que termina todas sus peleas con un solo movimiento.", a: ["Dragon Ball", "One Punch Man", "Mob Psycho 100", "Hunter x Hunter"], c: 1 },
-    { q: "Soy un mafioso italiano de 15 años que tiene el sueño de ser una 'Gang-Star'.", a: ["Golden Wind (JJBA)", "91 Days", "Baccano!", "Banana Fish"], c: 0 },
-    { q: "Uso una máscara de gas y mis enemigos son titanes que comen humanos.", a: ["Attack on Titan", "Kabaneri", "Black Clover", "Tokyo Ghoul"], c: 0 },
-    { q: "Soy un ninja con un zorro de nueve colas sellado en mi interior.", a: ["Naruto", "Boruto", "Jujutsu Kaisen", "Bleach"], c: 0 },
-    { q: "Viajamos en un tren infinito donde el fuego protege a los pasajeros.", a: ["Demon Slayer", "Fire Force", "Promare", "Dororo"], c: 0 },
-    { q: "Uso el estilo de tres espadas y siempre me pierdo en el camino.", a: ["Bleach", "One Piece", "Samurai Champloo", "Gintama"], c: 1 },
-    { q: "Un mundo de realidad virtual donde morir en el juego es morir de verdad.", a: ["Log Horizon", "Sword Art Online", "Accel World", "Overlord"], c: 1 },
-    { q: "Soy un estudiante que heredó el poder del héroe número uno.", a: ["Naruto", "My Hero Academia", "Black Clover", "One Punch Man"], c: 1 }
+        "Anime": [
+    { q: "¿Quién robó el cuerpo de Jonathan Joestar para sobrevivir un siglo en el fondo del mar?", a: ["Dio Brando", "Kars", "Yoshikage Kira", "Enrico Pucci"], c: 0 },
+    { q: "Nombre de la técnica de respiración que Jonathan y Joseph usaban antes de la aparición de los Stands.", a: ["Haki", "Hamón", "Nen", "Ki"], c: 1 },
+    { q: "Lugar donde Giorno Giovanna busca ascender para eliminar el tráfico de drogas.", a: ["Passione", "Morioh", "Green Dolphin Street", "Nápoles"], c: 0 },
+    { q: "¿Cómo se llama el Stand de Jotaro Kujo que posee la misma habilidad que The World?", a: ["Hierophant Green", "Magician's Red", "Star Platinum", "Silver Chariot"], c: 2 },
+    { q: "¿Cuál es el verdadero nombre del 'Alquimista de Acero'?", a: ["Roy Mustang", "Alphonse Elric", "Edward Elric", "Van Hohenheim"], c: 2 },
+    { q: "Ciudad amurallada donde la humanidad se refugia del acoso de los Titanes.", a: ["Shiganshina", "Sina", "Rose", "Paradis"], c: 3 },
+    { q: "¿Quién es el autor del cuaderno que cayó en el mundo humano por aburrimiento de Ryuk?", a: ["Light Yagami", "L Lawliet", "Misa Amane", "Rem"], c: 0 },
+    { q: "Nombre del sistema que mide el coeficiente de criminalidad de los ciudadanos.", a: ["Sybil", "Hologram", "Enforcement", "Dominator"], c: 0 },
+    { q: "¿Qué personaje de JoJo's solo quiere vivir una vida tranquila en Morioh?", a: ["Okuyasu Nijimura", "Rohan Kishibe", "Yoshikage Kira", "Koichi Hirose"], c: 2 },
+    { q: "Nación de donde proviene el ninja que busca convertirse en Hokage.", a: ["Aldea de la Lluvia", "Konohagakure", "Sunagakure", "Kumogakure"], c: 1 },
+    { q: "Nombre del EVA pilotado por el 'Third Child' en la lucha contra los Ángeles.", a: ["Unidad 00", "Unidad 02", "Unidad 01", "Unidad 05"], c: 2 },
+    { q: "¿Cuál es el nombre del capitán de la tripulación de los Sombrero de Paja?", a: ["Roronoa Zoro", "Monkey D. Luffy", "Vinsmoke Sanji", "Portgas D. Ace"], c: 1 },
+    { q: "¿Cómo se llama el bar donde los trabajadores de Anteiku se reúnen?", a: ["Touka", "Helter Skelter", "Anteiku", "Quinx"], c: 2 },
+    { q: "Entidad que reside dentro de Yuji Itadori tras comerse un dedo maldito.", a: ["Mahito", "Jogo", "Sukuna", "Hanami"], c: 2 },
+    { q: "Nombre del fenómeno que transportó a miles de jugadores a Aincrad.", a: ["The Seed", "FullDive", "Sword Art Online", "Link Start"], c: 2 }
 ],
     "Dibujos Animados": [
         { q: "¿Cómo se llama el mejor amigo de Bob Esponja?", a: ["Calamardo", "Patricio", "Arenita", "Don Cangrejo"], c: 1 },
