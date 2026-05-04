@@ -59,25 +59,50 @@
     }
 
     function endGame() {
-        gameActive = false;
-        clearInterval(timerId);
+    gameActive = false;
+    clearInterval(timerId);
 
-        container.innerHTML = `
-            <div id="game-over-screen" style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%; width:100%; text-align:center; color:white; background:rgba(13,2,33,0.98); border-radius:15px; padding: 20px; box-sizing: border-box;">
-                <h1 style="color: #00f0ff; text-shadow: 0 0 10px #00f0ff; font-size: 1.8rem; margin: 0 0 10px 0;">TIEMPO AGOTADO</h1>
-                <p style="font-size: 1.3rem; margin-bottom: 20px;">Total de Clicks: <span style="color:#00f0ff">${clicks}</span></p>
-                <div style="display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 250px;">
-                    <button id="btn-restart-clicker" style="background:#00f0ff; color:#0d0221; font-weight:bold; height: 50px; border:none; border-radius:8px; cursor:pointer; font-size: 1rem;">
-                        🎮 REINTENTAR
-                    </button>
-                    <button onclick="location.reload()" style="background:transparent; color:#888; border:none; font-size: 0.8rem; text-decoration:underline; cursor:pointer; margin-top: 5px;">
-                        Entrar con otra cuenta
-                    </button>
-                </div>
-            </div>
-        `;
+    container.innerHTML = `
+        <div id="game-over-screen" style="
+            display:flex; 
+            flex-direction:column; 
+            justify-content:center; 
+            align-items:center; 
+            width:100%; 
+            height:100%; 
+            position:absolute; 
+            top:0; left:0; 
+            background:rgba(13,2,33,0.95); 
+            padding: 10px; 
+            box-sizing: border-box;
+            border: 2px solid #00f0ff;
+            border-radius: 15px;">
+            
+            <h2 style="color: #00f0ff; text-shadow: 0 0 10px #00f0ff; font-size: 1.5rem; margin-bottom: 10px;">TIEMPO AGOTADO</h2>
+            <p style="font-size: 1.2rem; color: white; margin-bottom: 15px;">Clicks: <span style="color:#00f0ff; font-weight:bold;">${clicks}</span></p>
+            
+            <button id="btn-restart-clicker" style="
+                width: 80%; 
+                max-width: 200px;
+                background:#00f0ff; 
+                color:#0d0221; 
+                font-weight:bold; 
+                padding: 12px; 
+                border:none; 
+                border-radius:8px; 
+                cursor:pointer; 
+                font-size: 1rem;
+                box-shadow: 0 0 15px rgba(0,240,255,0.4);">
+                🎮 REINTENTAR
+            </button>
+            
+            <button onclick="location.reload()" style="background:transparent; color:#888; border:none; font-size: 0.8rem; text-decoration:underline; cursor:pointer; margin-top: 15px;">
+                Cambiar Jugador
+            </button>
+        </div>
+    `;
 
-        document.getElementById('btn-restart-clicker').onclick = startGame;
+    document.getElementById('btn-restart-clicker').onclick = startGame;
 
         // 2. CORRECCIÓN: Enviar las variables correctas (user y clicks)
         fetch('/guardar_puntaje', {
