@@ -280,17 +280,15 @@ body {
 .game-main h2 { margin-bottom: 1.5rem; }
 
 .canvas-placeholder {
-    position: relative;
-    width: 400px;
-    height: 400px;
-    background: #0d0221;
-    border: 3px solid var(--neon);
-    border-radius: 15px;
-    overflow: hidden;
+    width: 100%;
+    max-width: 400px; /* Evita que sea gigante en PC */
+    aspect-ratio: 1 / 1; /* Esto es clave: mantiene el contenedor cuadrado */
     margin: 0 auto;
+    position: relative;
+    overflow: hidden; /* Corta cualquier cosa que intente salirse */
     display: flex;
-    justify-content: center;
     align-items: center;
+    justify-content: center;
 }
 
 .overlay {
