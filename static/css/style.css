@@ -270,8 +270,8 @@ body {
   padding: 3rem 2rem;
   max-width: 1200px;
   margin: 0 auto;
-  align-items: center;       /* Centra verticalmente juego y ranking en PC */
-  min-height: calc(100vh - 100px); 
+  align-items: center; /* Centra verticalmente todo en PC */
+  min-height: calc(100vh - 100px);
 }
 
 .game-main { 
@@ -279,7 +279,7 @@ body {
   flex-direction: column; 
   align-items: center; 
   justify-content: center;
-  background: var(--bg-soft); /* Caja contenedora para balancear la UI */
+  background: var(--bg-soft); /* La cajita morada de fondo */
   padding: 3rem 2rem;
   border-radius: 16px;
   border: 1px solid var(--border);
@@ -290,28 +290,39 @@ body {
 .game-main h2 { 
   margin-bottom: 0.5rem; 
   font-size: 2.2rem;
-  text-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+  color: var(--text);
+}
+
+.game-main h3 {
+  font-size: 1.3rem;
+  color: var(--text);
+  margin: 0.5rem 0;
 }
 
 .canvas-placeholder {
-    width: 200px !important;
-    height: 200px !important; 
-    aspect-ratio: 1 / 1; 
+    width: 220px !important;
+    height: 220px !important; 
     margin: 1.5rem auto;
     position: relative;
-    overflow: hidden; 
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 50%; 
+    border-radius: 50%; /* Círculo perfecto */
     background: var(--neon);
     box-shadow: 0 0 30px rgba(0, 240, 255, 0.4);
     cursor: pointer;
     transition: transform 0.1s ease;
 }
 
+.canvas-placeholder span {
+    font-size: 3rem;
+    font-weight: bold;
+    color: var(--bg);
+    user-select: none; /* Evita que se seleccione el texto al dar clicks rápidos */
+}
+
 .canvas-placeholder:active {
-    transform: scale(0.96);
+    transform: scale(0.95); /* Efecto de hundirse al clickear */
 }
 
 .overlay {
