@@ -141,9 +141,7 @@ body {
   border-radius: 16px;
   border: 1px solid var(--border);
   transition: transform 0.3s, box-shadow 0.3s;
-  
-  /* AÑADE ESTO: */
-  min-height: 350px; /* Altura fija para que todas sean iguales */
+  min-height: 350px;
 }
 
 .game-entry:hover {
@@ -152,11 +150,11 @@ body {
 }
 
 .game-entry.reverse {
-  direction: rtl; /* Voltea el orden de las columnas del grid */
+  direction: rtl;
 }
 
 .game-entry.reverse > * {
-  direction: ltr; /* Devuelve el texto a su dirección normal para que no se vea raro */
+  direction: ltr;
 }
 
 .game-info h3 {
@@ -167,21 +165,19 @@ body {
 
 .game-info p { color: var(--muted); margin-bottom: 1.5rem; }
 
-/* Controlar el contenedor de la imagen */
 .game-preview {
   width: 100%;
-  height: 250px; /* Altura fija para el espacio de la imagen */
+  height: 250px;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
 }
 
-/* Controlar la imagen en sí */
 .game-preview img {
   width: 100%;
   height: 100%; 
-  object-fit: cover; /* Esto hace que la imagen llene el espacio sin deformarse */
+  object-fit: cover;
   border-radius: 12px;
   border: 2px solid var(--accent);
   box-shadow: 0 0 25px rgba(255, 71, 87, 0.4);
@@ -270,25 +266,52 @@ body {
 .game-layout {
   display: grid;
   grid-template-columns: 1fr 300px;
-  gap: 2rem;
-  padding: 2rem 3rem;
+  gap: 2.5rem;
+  padding: 3rem 2rem;
   max-width: 1200px;
   margin: 0 auto;
+  align-items: center;       /* Centra verticalmente juego y ranking en PC */
+  min-height: calc(100vh - 100px); 
 }
 
-.game-main { display: flex; flex-direction: column; align-items: center; }
-.game-main h2 { margin-bottom: 1.5rem; }
+.game-main { 
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  justify-content: center;
+  background: var(--bg-soft); /* Caja contenedora para balancear la UI */
+  padding: 3rem 2rem;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  width: 100%;
+  text-align: center;
+}
+
+.game-main h2 { 
+  margin-bottom: 0.5rem; 
+  font-size: 2.2rem;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+}
 
 .canvas-placeholder {
-    width: 100%;
-    max-width: 400px; /* Evita que sea gigante en PC */
-    aspect-ratio: 1 / 1; /* Esto es clave: mantiene el contenedor cuadrado */
-    margin: 0 auto;
+    width: 200px !important;
+    height: 200px !important; 
+    aspect-ratio: 1 / 1; 
+    margin: 1.5rem auto;
     position: relative;
-    overflow: hidden; /* Corta cualquier cosa que intente salirse */
+    overflow: hidden; 
     display: flex;
     align-items: center;
     justify-content: center;
+    border-radius: 50%; 
+    background: var(--neon);
+    box-shadow: 0 0 30px rgba(0, 240, 255, 0.4);
+    cursor: pointer;
+    transition: transform 0.1s ease;
+}
+
+.canvas-placeholder:active {
+    transform: scale(0.96);
 }
 
 .overlay {
@@ -297,11 +320,11 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(13, 2, 33, 0.9); /* Fondo oscuro semi-transparente */
-  display: flex; /* Activa el modo flexible */
+  background: rgba(13, 2, 33, 0.9);
+  display: flex;
   flex-direction: column;
-  justify-content: center; /* Centra verticalmente */
-  align-items: center;    /* Centra horizontalmente */
+  justify-content: center;
+  align-items: center;   
   z-index: 100;
   border-radius: 8px;
   text-align: center;
@@ -309,12 +332,14 @@ body {
 
 .overlay h1 { font-size: 3rem; margin-bottom: 1rem; }
 
+/* RECONSTRUIDO: Aquí se recupera el diseño del panel lateral */
 .ranking-side {
   background: var(--bg-soft);
   padding: 1.5rem;
   border-radius: 12px;
   border: 1px solid var(--border);
   height: fit-content;
+  width: 100%;
 }
 
 .ranking-side h3 {
@@ -359,28 +384,31 @@ body {
   .section-title { font-size: 1.8rem; }
   .games-showcase, .hero-section, .global-ranking-section { padding: 2rem 1rem; }
   .game-layout { padding: 1rem; }
+  
   .canvas-placeholder, #game-area {
-    height: 350px !important; /* Más bajito para que quepa en la pantalla del cel */
-    width: 100% !important;
+    height: 250px !important; /* Ajuste elástico proporcional para móviles */
+    width: 250px !important;
+    border-radius: 50%;
   }
 
   #boton-loco {
-    padding: 15px 30px !important; /* Botón un poco más pequeño para dedos */
+    padding: 15px 30px !important;
     font-size: 1.2rem !important;
   }
 
   .ranking-side {
     margin-top: 20px;
-    width: 100%; /* El ranking se va abajo del juego en el móvil */
+    width: 100%;
   }
 }
-/* Overlay de Game Over centrado y con fondo */
+
+/* ---------- COMPONENTES DE JUEGO ---------- */
 .game-over {
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%); /* Esto lo centra perfecto */
-  z-index: 100; /* Para que esté por encima de todo */
+  transform: translate(-50%, -50%);
+  z-index: 100;
   width: 80%;
   max-width: 400px;
 }
@@ -391,20 +419,17 @@ body {
   margin-bottom: 1rem;
 }
 
-/* El contenedor del canvas necesita ser relativo para que el overlay se ancle */
 .game-layout .canvas-wrapper,
 .game-container {
   position: relative;
 }
 
-/* Asegúrate de NO bajar la opacidad del ranking al hacer game over */
 .ranking-card {
   opacity: 1 !important;
 }
 
-/* Pantalla de resultados centrada */
 #game-over-screen {
-    display: none; /* Se activa por JS */
+    display: none;
     position: absolute;
     top: 0;
     left: 0;
@@ -414,7 +439,7 @@ body {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    z-index: 9999; /* Por encima de todo */
+    z-index: 9999;
     text-align: center;
 }
 
@@ -439,47 +464,44 @@ body {
 .section-divider svg {
     display: block;
     width: calc(100% + 1.3px);
-    height: 70px; /* Ajusta la altura de la onda */
+    height: 70px;
 }
 
-/* Color de la onda que coincida con el fondo de la siguiente sección */
 .wave-fill {
     fill: #0d0221; 
 }
 
 .ranking-table-container {
-    max-height: 400px; /* Límite de altura */
-    overflow-y: auto;  /* Activa el scroll */
+    max-height: 400px;
+    overflow-y: auto; 
 }
 
-/* Personalización de la barrita (Scrollbar) */
 .ranking-table-container::-webkit-scrollbar {
     width: 8px;
 }
 .ranking-table-container::-webkit-scrollbar-thumb {
-    background: var(--neon); /* Color cian que ya usas */
+    background: var(--neon);
     border-radius: 10px;
     box-shadow: 0 0 5px var(--neon);
 }
 
 .podium-container {
     display: flex;
-    align-items: flex-end; /* Los bloques se "apoyan" en el suelo */
+    align-items: flex-end;
     justify-content: center;
     gap: 10px;
     height: 300px;
 }
 
-/* Alturas diferentes para el efecto de escalera */
 .first .step { height: 160px; background: #ffd700; box-shadow: 0 0 20px #ffd700; }
 .second .step { height: 120px; background: #c0c0c0; }
 .third .step { height: 80px; background: #cd7f32; }
 
 @media (max-width: 900px) {
     .game-section {
-        grid-template-columns: 1fr; /* Una sola columna en móviles */
+        grid-template-columns: 1fr;
     }
     .podium-container {
-        order: -1; /* El podio sale primero */
+        order: -1;
     }
 }
