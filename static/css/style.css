@@ -561,28 +561,22 @@ body {
 
 
 .canvas-placeholder {
-
     width: 100%;
-
     max-width: 400px; /* Evita que sea gigante en PC */
-
     aspect-ratio: 1 / 1; /* Esto es clave: mantiene el contenedor cuadrado */
-
     margin: 0 auto;
-
     position: relative;
-
     overflow: hidden; /* Corta cualquier cosa que intente salirse */
-
     display: flex;
-
     align-items: center;
-
     justify-content: center;
-
+    
+    /* === AGREGADO PARA RESOLVER EL BORDE EN PC === */
+    border: 4px solid var(--accent); /* Un borde sólido visible en cualquier monitor */
+    border-radius: 12px;             /* Bordes redondeados estéticos */
+    box-shadow: 0 0 25px rgba(255, 71, 87, 0.4); /* Brillo de fondo */
+    background: var(--bg-soft);      /* Asegura fondo oscuro si el juego tarda en cargar */
 }
-
-
 
 .overlay {
 
@@ -683,6 +677,33 @@ body {
 
 
 /* ---------- FOOTER ---------- */
+/* ---------- CLICKER BUTTON BASE ---------- */
+#boton-loco {
+  display: block;
+  width: 160px;
+  height: 160px;
+  margin: 20px auto;
+  border-radius: 50%; /* Botón completamente redondo */
+  background: var(--accent);
+  color: white;
+  font-weight: bold;
+  font-size: 1.4rem;
+  border: 4px solid var(--neon); /* Borde cian para contraste */
+  box-shadow: 0 0 15px var(--neon);
+  cursor: pointer;
+  transition: transform 0.1s ease, background-color 0.3s;
+  touch-action: manipulation; /* Evita el zoom raro en teléfono */
+}
+
+#boton-loco:hover {
+  background: var(--neon);
+  color: var(--bg);
+  box-shadow: 0 0 25px var(--neon);
+}
+
+#boton-loco:active {
+  transform: scale(0.95); /* Efecto de hundido al dar click */
+}
 
 .footer {
 
@@ -721,21 +742,15 @@ body {
   .game-layout { padding: 1rem; }
 
   .canvas-placeholder, #game-area {
-
-    height: 350px !important; /* Más bajito para que quepa en la pantalla del cel */
-
     width: 100% !important;
-
+    height: auto !important; /* Deja que aspect-ratio defina la altura perfecta */
   }
 
-
-
   #boton-loco {
-
-    padding: 15px 30px !important; /* Botón un poco más pequeño para dedos */
-
-    font-size: 1.2rem !important;
-
+    width: 130px !important;  /* Un poco más pequeño para pantallas compactas */
+    height: 130px !important; /* Mantiene la forma redonda perfecta */
+    font-size: 1.1rem !important;
+    padding: 0 !important;    /* Quitamos padding para que no deforme el círculo */
   }
 
 
