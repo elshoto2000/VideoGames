@@ -244,11 +244,11 @@ body {
 
 .canvas-placeholder {
   width: 100%;
-  max-width: 400px;
-  aspect-ratio: 1 / 1;
+  max-width: 520px; /* <--- CÁMBIALO AQUÍ (Antes estaba en 400px) */
+  aspect-ratio: 1 / 1; 
   margin: 0 auto;
   position: relative;
-  overflow: hidden;
+  overflow: hidden; 
   display: flex;
   align-items: center;
   justify-content: center;
@@ -302,8 +302,8 @@ body {
 /* ---------- CLICKER BUTTON BASE ---------- */
 #boton-loco {
   display: block;
-  width: 160px;
-  height: 160px;
+  width: 50%;            /* Toma el 50% del ancho de la pantalla de juego */
+  aspect-ratio: 1 / 1;   /* <--- ESTO EVITA QUE SE APLASTE, siempre será redondo */
   margin: 20px auto;
   border-radius: 50%;
   background: var(--accent);
@@ -347,10 +347,11 @@ body {
   .canvas-placeholder, #game-area {
     width: 100% !important;
     height: auto !important;
+    min-height: 380px !important; /* <--- AGREGA ESTO: Evita que el contenedor se aplaste verticalmente en celulares */
   }
   #boton-loco {
-    width: 130px !important; 
-    height: 130px !important;
+    width: 45% !important;        /* Se adapta perfectamente al tamaño del móvil */
+    height: auto !important;      /* Deja que el aspect-ratio mande */
     font-size: 1.1rem !important;
     padding: 0 !important;   
   }
