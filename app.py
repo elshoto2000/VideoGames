@@ -31,7 +31,8 @@ def cargar_juego(nombre_juego):
                            juego=nombre_juego, 
                            ranking_snake=r_snake,
                            ranking_trivia=r_trivia, 
-                           ranking_clicker=r_clicker)
+                           ranking_clicker=r_clicker,
+                           ranking_simon=r_simon)
 
 @app.route('/guardar_puntaje', methods=['POST'])
 def guardar_puntaje():
