@@ -22,13 +22,14 @@ def home():
 def cargar_juego(nombre_juego):
     nombre_juego_busqueda = nombre_juego.lower() 
     
-    # Obtenemos los rankings directamente de MongoDB para cada juego
+    # Obtenemos los rankings directamente de la colección 'puntajes' filtrando por el campo 'juego'
     r_snake = list(puntajes_col.find({"juego": "snake"}).sort("puntos", -1).limit(5))
     r_trivia = list(puntajes_col.find({"juego": "trivia"}).sort("puntos", -1).limit(5))
     r_clicker = list(puntajes_col.find({"juego": "clicker"}).sort("puntos", -1).limit(5))
+    r_simon = list(puntajes_col.find({"juego": "simon"}).sort("puntos", -1).limit(5)) # <-- Verificar que esté aquí
 
     return render_template('juego.html', 
-                           juego=nombre_juego, 
+                           juego=nombre_juego_busqueda, # Pasarlo en minúsculas ayuda a evitar problemas con las condiciones del HTML
                            ranking_snake=r_snake,
                            ranking_trivia=r_trivia, 
                            ranking_clicker=r_clicker,
