@@ -10,86 +10,95 @@
     const canvas = document.createElement('canvas');
     canvas.id = 'game-canvas';
     canvas.width = 450;
-    canvas.height = 520; // Aumentamos la altura de 450 a 520 para que entren los botones móviles abajo si es necesario
+    canvas.height = 510; 
     contenedor.insertBefore(canvas, contenedor.firstChild);
 
     const ctx = canvas.getContext('2d');
-
-    // DETECTAR SI ES DISPOSITIVO MÓVIL
     const esMovil = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (window.innerWidth <= 768);
 
-    // 2. VARIABLES DEL JUEGO
+    // Contexto de Audio para efectos retro sin archivos externos
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    function reproducirSonido(frecuencia, tipo, duracion) {
+        try {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = tipo;
+            osc.frequency.value = frecuencia;
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duracion);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duracion);
+        } catch(e) { console.log("Audio no iniciado aún"); }
+    }
+
+    // 2. VARIABLES DEL JUEGO y BANCO DE PREGUNTAS (Estilo Dinámico)
     let score = 0;
     let juegoActivo = true;
-    let tiempoRestante = 4.0; 
+    let tiempoRestante = 5.0; 
     let ultimaActualizacion = Date.now();
 
-    // Variables para la animación de caminata
     let contadorPasos = 0;
     let estaMoviendose = false;
-    let direccionMirada = 'ABAJO'; // Para saber hacia dónde apuntan los ojos ('ARRIBA', 'ABAJO', 'IZQUIERDA', 'DERECHA')
+    let direccionMirada = 'ABAJO';
 
-    // Colores del Arcade
     const colores = {
-        bg: '#1a0b3d',
-        rojo: '#ff4757',
-        azul: '#00f0ff',
-        verde: '#2ecc71',
-        amarillo: '#ffd23f',
-        personaje: '#ffffff',
-        pantalon: '#ff6b81'
+        bg: '#1a0b3d', rojo: '#ff4757', azul: '#00f0ff', verde: '#2ecc71', amarillo: '#ffd23f',
+        personaje: '#ffffff', pantalon: '#ff6b81', neonCian: '#00f0ff'
     };
 
-    // Definición de los 4 bloques en las esquinas
     const bloques = {
-        'ROJO':     { x: 20,  y: 80,  w: 140, h: 140, color: colores.rojo },
-        'AZUL':     { x: 290, y: 80,  w: 140, h: 140, color: colores.azul },
-        'VERDE':    { x: 20,  y: 290, w: 140, h: 140, color: colores.verde },
-        'AMARILLO': { x: 290, y: 290, w: 140, h: 140, color: colores.amarillo }
+        'A': { x: 30,  y: 110, w: 130, h: 110, color: colores.rojo },
+        'B': { x: 290, y: 110, w: 130, h: 110, color: colores.azul },
+        'C': { x: 30,  y: 300, w: 130, h: 110, color: colores.verde },
+        'D': { x: 290, y: 300, w: 130, h: 110, color: colores.amarillo }
     };
 
-    // Configuración de los botones móviles (D-Pad en la parte inferior)
     const botonesMovil = {
-        'ARRIBA':    { x: 225 - 25, y: 440, w: 50, h: 35 },
-        'ABAJO':     { x: 225 - 25, y: 480, w: 50, h: 35 },
-        'IZQUIERDA': { x: 165 - 25, y: 460, w: 50, h: 35 },
-        'DERECHA':   { x: 285 - 25, y: 460, w: 50, h: 35 }
+        'ARRIBA':    { x: 225 - 25, y: 435, w: 50, h: 32 },
+        'ABAJO':     { x: 225 - 25, y: 472, w: 50, h: 32 },
+        'IZQUIERDA': { x: 165 - 25, y: 454, w: 50, h: 32 },
+        'DERECHA':   { x: 285 - 25, y: 454, w: 50, h: 32 }
     };
 
-    const nombresBloques = Object.keys(bloques);
-    let bloqueObjetivo = '';
+    // Banco de preguntas adaptado a tu nueva mecánica de respuestas en bloques
+    const preguntasTrivia = [
+        { q: "¿Cuánto es 5 + 5?", a: "10", opciones: { 'A': '12', 'B': '10', 'C': '8', 'D': '15' } },
+        { q: "¿Cuál es el color del cielo?", a: "Azul", opciones: { 'A': 'Rojo', 'B': 'Verde', 'C': 'Azul', 'D': 'Gris' } },
+        { q: "Creador de este juego:", a: "Leandro", opciones: { 'A': 'Juan', 'B': 'Leandro', 'C': 'Pedro', 'D': 'Diego' } },
+        { q: "Mundo de bloques 3D:", a: "Minecraft", opciones: { 'A': 'Terraria', 'B': 'Roblox', 'C': 'Pacman', 'D': 'Minecraft' } }
+    ];
 
-    // Estado del Personaje
-    const personaje = {
-        x: 212,
-        y: 240,
-        size: 26, // Un poquito más grande para notar los detalles
-        speed: 320, 
-        color: colores.personaje
-    };
+    let triviaActual = {};
+    let bloqueCorrecto = '';
 
+    const personaje = { x: 212, y: 240, size: 26, speed: 320, color: colores.personaje };
     const teclas = {};
 
-    // 3. LOGICA ESPECÍFICA DEL JUEGO
     function generarNuevaOrden() {
-        const indiceAleatorio = Math.floor(Math.random() * nombresBloques.length);
-        bloqueObjetivo = nombresBloques[indiceAleatorio];
+        // Elegir pregunta aleatoria
+        triviaActual = preguntasTrivia[Math.floor(Math.random() * preguntasTrivia.length)];
         
-        tiempoRestante = Math.max(1.5, 4.0 - (score * 0.15)); 
-        
+        // Encontrar qué bloque contiene la respuesta correcta
+        for (let letra in triviaActual.opciones) {
+            if (triviaActual.opciones[letra] === triviaActual.a) {
+                bloqueCorrecto = letra;
+                break;
+            }
+        }
+
+        tiempoRestante = Math.max(2.5, 6.0 - (score * 0.2)); 
         personaje.x = 225 - personaje.size / 2;
-        personaje.y = 245 - personaje.size / 2;
+        personaje.y = 255 - personaje.size / 2;
         direccionMirada = 'ABAJO';
     }
 
     function comprobarColision(p, b) {
-        return p.x < b.x + b.w &&
-               p.x + p.size > b.x &&
-               p.y < b.y + b.h && 
-               p.y + p.size > b.y;
+        return p.x < b.x + b.w && p.x + p.size > b.x && p.y < b.y + b.h && p.y + p.size > b.y;
     }
 
-    // 4. BUCLE DE ACTUALIZACIÓN
     function actualizar() {
         if (!juegoActivo) return;
 
@@ -99,256 +108,186 @@
 
         tiempoRestante -= dt;
         if (tiempoRestante <= 0) {
+            reproducirSonido(150, 'sawtooth', 0.6); // Sonido de derrota largo
             finalizarJuego("¡Te quedaste sin tiempo!");
             return;
         }
 
-        let dx = 0;
-        let dy = 0;
+        let dx = 0; let dy = 0;
 
-        // Movimiento por teclado
-        if (teclas['ArrowUp'] || teclas['w'] || teclas['W']) { dy = -1; direccionMirada = 'ARRIBA'; }
-        if (teclas['ArrowDown'] || teclas['s'] || teclas['S']) { dy = 1; direccionMirada = 'ABAJO'; }
-        if (teclas['ArrowLeft'] || teclas['a'] || teclas['A']) { dx = -1; direccionMirada = 'IZQUIERDA'; }
-        if (teclas['ArrowRight'] || teclas['d'] || teclas['D']) { dx = 1; direccionMirada = 'DERECHA'; }
+        if (teclas['ArrowUp'] || teclas['w'] || teclas['W'] || teclas['ARRIBA']) { dy = -1; direccionMirada = 'ARRIBA'; }
+        if (teclas['ArrowDown'] || teclas['s'] || teclas['S'] || teclas['ABAJO']) { dy = 1; direccionMirada = 'ABAJO'; }
+        if (teclas['ArrowLeft'] || teclas['a'] || teclas['A'] || teclas['IZQUIERDA']) { dx = -1; direccionMirada = 'IZQUIERDA'; }
+        if (teclas['ArrowRight'] || teclas['d'] || teclas['D'] || teclas['DERECHA']) { dx = 1; direccionMirada = 'DERECHA'; }
 
-        // Mover personaje
         if (dx !== 0 || dy !== 0) {
             estaMoviendose = true;
-            contadorPasos += dt * 10; // Velocidad del balanceo de piernas
-            
+            contadorPasos += dt * 12;
             personaje.x += dx * personaje.speed * dt;
             personaje.y += dy * personaje.speed * dt;
         } else {
             estaMoviendose = false;
-            contadorPasos = 0; // Se queda firme al detenerse
+            contadorPasos = 0;
         }
 
-        // Límites de la pantalla de juego (área de los bloques)
         if (personaje.x < 0) personaje.x = 0;
         if (personaje.x + personaje.size > canvas.width) personaje.x = canvas.width - personaje.size;
-        if (personaje.y < 70) personaje.y = 70; 
-        if (personaje.y + personaje.size > 440) personaje.y = 440 - personaje.size; // No dejar que baje a la zona de botones
+        if (personaje.y < 95) personaje.y = 95; 
+        if (personaje.y + personaje.size > 430) personaje.y = 430 - personaje.size;
 
-        // Validar si pisa bloques
-        for (const nombre in bloques) {
-            if (comprobarColision(personaje, bloques[nombre])) {
-                if (nombre === bloqueObjetivo) {
+        // VERIFICACIÓN ESTRICTA: El personaje debe entrar al bloque físicamente
+        for (const letra in bloques) {
+            if (comprobarColision(personaje, bloques[letra])) {
+                if (letra === bloqueCorrecto) {
+                    reproducirSonido(600, 'triangle', 0.15); // Sonido retro de acierto (Beep agudo)
                     score++;
                     generarNuevaOrden();
                 } else {
-                    finalizarJuego(`¡Simón dijo ${bloqueObjetivo}, no ${nombre}!`);
+                    reproducirSonido(150, 'sawtooth', 0.5); // Sonido retro de fallo (Bzzz grave)
+                    finalizarJuego(`¡Incorrecto! La respuesta era: ${triviaActual.a}`);
                 }
                 break;
             }
         }
     }
 
-    // 5. DIBUJAR EN EL CANVAS
     function renderizar() {
-        // Fondo principal
         ctx.fillStyle = '#0d0221';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Dibujar barra superior de estado
+        // Barra superior fija para la pregunta
         ctx.fillStyle = colores.bg;
-        ctx.fillRect(0, 0, canvas.width, 70);
+        ctx.fillRect(0, 0, canvas.width, 95);
 
-        ctx.fillStyle = '#00f0ff';
-        ctx.font = 'bold 20px "Trebuchet MS", sans-serif';
+        ctx.fillStyle = colores.neonCian;
+        ctx.font = 'bold 15px "Trebuchet MS", sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(`SIMÓN DICE: ¡VE AL BLOQUE ${bloqueObjetivo}!`, canvas.width / 2, 32);
+        // Mostrar la pregunta dinámica de la Trivia
+        ctx.fillText(triviaActual.q, canvas.width / 2, 32);
 
         ctx.fillStyle = tiempoRestante > 1.5 ? colores.verde : colores.rojo;
-        const anchoBarra = (tiempoRestante / (4.0 - (score * 0.15))) * canvas.width;
-        ctx.fillRect(0, 64, anchoBarra, 6);
+        const anchoBarra = (tiempoRestante / 5.0) * canvas.width;
+        ctx.fillRect(0, 89, anchoBarra, 6);
 
         ctx.fillStyle = '#9a8fb8';
-        ctx.font = '14px "Trebuchet MS", sans-serif';
-        ctx.fillText(`Puntos: ${score}`, canvas.width / 2, 54);
+        ctx.font = '13px "Trebuchet MS", sans-serif';
+        ctx.fillText(`Puntos: ${score}`, canvas.width / 2, 60);
 
-        // Dibujar los 4 bloques
-        for (const nombre in bloques) {
-            const b = bloques[nombre];
+        // Dibujar bloques con sus respuestas dinámicas adentro
+        for (const letra in bloques) {
+            const b = bloques[letra];
             ctx.fillStyle = b.color;
-            ctx.globalAlpha = (nombre === bloqueObjetivo) ? 1.0 : 0.4; 
             ctx.fillRect(b.x, b.y, b.w, b.h);
             
-            ctx.globalAlpha = 1.0;
             ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 16px "Trebuchet MS", sans-serif';
-            ctx.fillText(nombre, b.x + b.w / 2, b.y + b.h / 2 + 5);
+            ctx.font = 'bold 14px "Trebuchet MS", sans-serif';
+            // Dibujar la opción de respuesta que le toca a este bloque
+            ctx.fillText(triviaActual.opciones[letra], b.x + b.w / 2, b.y + b.h / 2 + 5);
         }
 
-        // --- DIBUJAR PERSONITA WALK (Píxel Art procedural) ---
-        const px = personaje.x;
-        const py = personaje.y;
-        const size = personaje.size;
-
+        // Dibujar Personaje con ojos y animación de pies
+        const px = personaje.x; const py = personaje.y; const size = personaje.size;
         ctx.save();
-        // Sombra de los pies
-        ctx.fillStyle = 'rgba(0,0,0,0.4)';
-        ctx.fillRect(px + 2, py + size - 4, size - 4, 4);
-
-        // Cabeza / Cuerpo (Blanco pixel)
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.fillRect(px + 2, py + size - 3, size - 4, 3);
         ctx.fillStyle = personaje.color;
-        ctx.fillRect(px + 4, py, size - 8, size - 6); // Cabeza y torso juntos estilo fantasía/guerrero
-
-        // Pantalón / Base del cuerpo
+        ctx.fillRect(px + 4, py, size - 8, size - 5); 
         ctx.fillStyle = colores.pantalon;
         ctx.fillRect(px + 4, py + size - 10, size - 8, 5);
-
-        // Animación de los Pies (Oscilación izquierda/derecha al caminar)
         ctx.fillStyle = '#ffffff';
         let offsetPies = estaMoviendose ? Math.sin(contadorPasos) * 3 : 0;
-        
-        // Pie Izquierdo
         ctx.fillRect(px + 5, py + size - 5 + (offsetPies > 0 ? -2 : 0), 5, 5);
-        // Pie Derecho
         ctx.fillRect(px + size - 10, py + size - 5 + (offsetPies < 0 ? -2 : 0), 5, 5);
-
-        // --- LOS OJOS DINÁMICOS ---
-        ctx.fillStyle = '#000000'; // Ojos negros pixelados
+        ctx.fillStyle = '#000000';
         let ojoY = py + 6;
-        
         if (direccionMirada === 'ABAJO') {
-            ctx.fillRect(px + 7, ojoY, 3, 4);
-            ctx.fillRect(px + size - 10, ojoY, 3, 4);
+            ctx.fillRect(px + 7, ojoY, 3, 4); ctx.fillRect(px + size - 10, ojoY, 3, 4);
         } else if (direccionMirada === 'IZQUIERDA') {
-            ctx.fillRect(px + 3, ojoY, 3, 4);
-            ctx.fillRect(px + 10, ojoY, 3, 4);
+            ctx.fillRect(px + 4, ojoY, 3, 4); ctx.fillRect(px + 10, ojoY, 3, 4);
         } else if (direccionMirada === 'DERECHA') {
-            ctx.fillRect(px + size - 13, ojoY, 3, 4);
-            ctx.fillRect(px + size - 6, ojoY, 3, 4);
-        } else if (direccionMirada === 'ARRIBA') {
-            // De espaldas no se le ven los ojos, ¡así que no se dibuja nada!
+            ctx.fillRect(px + size - 13, ojoY, 3, 4); ctx.fillRect(px + size - 7, ojoY, 3, 4);
         }
         ctx.restore();
 
-        // --- DIBUJAR BOTONES SOLO SI ES MÓVIL ---
+        // D-PAD Virtual para celulares
         if (esMovil) {
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-            ctx.fillRect(0, 430, canvas.width, 90); // Contenedor del D-PAD
+            ctx.fillStyle = 'rgba(26, 11, 61, 0.6)';
+            ctx.fillRect(0, 430, canvas.width, 80); 
 
             for (const dir in botonesMovil) {
                 const btn = botonesMovil[dir];
-                
-                // Si la tecla virtual está activa, brilla
-                ctx.fillStyle = teclas[dir] ? 'var(--neon-cyan)' : 'rgba(0, 240, 255, 0.2)';
-                ctx.strokeStyle = 'var(--neon-cyan)';
+                ctx.fillStyle = teclas[dir] ? colores.neonCian : 'rgba(0, 240, 255, 0.1)';
+                ctx.strokeStyle = colores.neonCian;
                 ctx.lineWidth = 2;
-                
-                // Dibujar botón redondeado estilizado
-                ctx.beginPath();
-                ctx.roundRect(btn.x, btn.y, btn.w, btn.h, 8);
-                ctx.fill();
-                ctx.stroke();
-
-                // Texto de la flecha
+                ctx.beginPath(); ctx.roundRect(btn.x, btn.y, btn.w, btn.h, 6); ctx.fill(); ctx.stroke();
                 ctx.fillStyle = teclas[dir] ? '#0d0221' : '#ffffff';
                 ctx.font = 'bold 14px sans-serif';
-                ctx.textAlign = 'center';
-                let flecha = '';
-                if (dir === 'ARRIBA') flecha = '▲';
-                if (dir === 'ABAJO') flecha = '▼';
-                if (dir === 'IZQUIERDA') flecha = '◀';
-                if (dir === 'DERECHA') flecha = '▶';
+                let flecha = (dir === 'ARRIBA') ? '▲' : (dir === 'ABAJO') ? '▼' : (dir === 'IZQUIERDA') ? '◀' : '▶';
                 ctx.fillText(flecha, btn.x + btn.w / 2, btn.y + btn.h / 2 + 5);
             }
         }
     }
 
     function buclePrincipal() {
-        actualizar();
-        renderizar();
-        if (juegoActivo) {
-            requestAnimationFrame(buclePrincipal);
-        }
+        actualizar(); renderizar();
+        if (juegoActivo) requestAnimationFrame(buclePrincipal);
     }
 
-    // 6. DETENER JUEGO Y ENVIAR AL BACKEND
     function finalizarJuego(mensaje) {
         juegoActivo = false; 
-        
         const gos = document.getElementById('game-over-screen');
         const msg = document.getElementById('final-score-msg');
         if (gos && msg) {
             msg.innerText = `${mensaje}\nPuntuación final: ${score} aciertos`;
             gos.style.display = 'flex';
         }
-
         fetch('/guardar_puntaje', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ juego: 'simon', puntos: score })
-        })
-        .then(response => response.json())
-        .then(data => console.log("Puntaje guardado:", data))
-        .catch(err => console.error("Error guardando puntaje:", err));
+        }).catch(err => console.error(err));
     }
 
-    // 7. LISTENERS DE CONTROLES (Teclado)
-    window.addEventListener('keydown', e => { teclas[e.key] = true; });
+    window.addEventListener('keydown', e => { teclas[e.key] = true; if(audioCtx.state === 'suspended') audioCtx.resume(); });
     window.addEventListener('keyup', e => { teclas[e.key] = false; });
 
-    // CONTROLES TÁCTILES AUTOMÁTICOS PARA CELULAR (Soporte D-Pad y Clic en bloques)
-    function procesarToque(clientX, clientY, activar) {
+    function manejarEntrada(clientX, clientY, estaPresionando) {
+        if(audioCtx.state === 'suspended') audioCtx.resume();
         if (!juegoActivo) return;
-        const rect = canvas.getBoundingClientRect();
-        const touchX = ((clientX - rect.left) / rect.width) * canvas.width;
-        const touchY = ((clientY - rect.top) / rect.height) * canvas.height;
 
-        // 1. Validar si está presionando las flechas del D-PAD
-        if (esMovil && touchY >= 430) {
+        const rect = canvas.getBoundingClientRect();
+        const tX = ((clientX - rect.left) / rect.width) * canvas.width;
+        const tY = ((clientY - rect.top) / rect.height) * canvas.height;
+
+        // TOCAR EL D-PAD: Solo funciona si estás en la zona baja del control
+        if (esMovil && tY >= 430) {
             for (const dir in botonesMovil) {
                 const btn = botonesMovil[dir];
-                if (touchX >= btn.x && touchX <= btn.x + btn.w && touchY >= btn.y && touchY <= btn.y + btn.h) {
-                    teclas[dir] = activar;
-                    return;
-                }
-            }
-        } 
-        // 2. Si es un toque arriba en los bloques (acción directa al soltar/hacer click)
-        else if (!activar) { 
-            for (const nombre in bloques) {
-                const b = bloques[nombre];
-                if (touchX >= b.x && touchX <= b.x + b.w && touchY >= b.y && touchY <= b.y + b.h) {
-                    if (nombre === bloqueObjetivo) {
-                        score++;
-                        generarNuevaOrden();
-                    } else {
-                        finalizarJuego(`¡Simón dijo ${bloqueObjetivo}, no ${nombre}!`);
-                    }
-                    break;
+                if (tX >= btn.x && tX <= btn.x + btn.w && tY >= btn.y && tY <= btn.y + btn.h) {
+                    teclas[dir] = estaPresionando;
+                } else if (!estaPresionando) {
+                    teclas[dir] = false;
                 }
             }
         }
     }
 
-    // Eventos para Mouse
-    canvas.addEventListener('mousedown', e => procesarToque(e.clientX, e.clientY, true));
+    canvas.addEventListener('mousedown', e => manejarEntrada(e.clientX, e.clientY, true));
     canvas.addEventListener('mouseup', e => {
-        procesarToque(e.clientX, e.clientY, false);
-        // Limpiar todas las direcciones por si acaso se arrastra fuera
+        manejarEntrada(e.clientX, e.clientY, false);
         for(let d in botonesMovil) teclas[d] = false;
     });
 
-    // Eventos para Pantallas Táctiles
     canvas.addEventListener('touchstart', e => {
         e.preventDefault();
-        procesarToque(e.touches[0].clientX, e.touches[0].clientY, true);
+        Array.from(e.touches).forEach(t => manejarEntrada(t.clientX, t.clientY, true));
     }, {passive: false});
 
     canvas.addEventListener('touchend', e => {
         e.preventDefault();
-        // Al levantar el dedo limpiamos los estados de movimiento
         for(let d in botonesMovil) teclas[d] = false;
-        if(e.changedTouches.length > 0) {
-            procesarToque(e.changedTouches[0].clientX, e.changedTouches[0].clientY, false);
-        }
     }, {passive: false});
 
-    // Iniciar
     generarNuevaOrden();
     ultimaActualizacion = Date.now();
     buclePrincipal();
