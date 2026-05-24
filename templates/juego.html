@@ -72,6 +72,12 @@
                         {% else %}
                             <li>Nadie ha jugado aún...</li>
                         {% endfor %}
+                    {% elif j == 'simon' %}
+                        {% for fila in ranking_simon %}
+                            <li><span>{{ loop.index }}. {{ fila.nombre }}</span> <b>{{ fila.puntos }}</b></li>
+                        {% else %}
+                            <li>Nadie ha jugado aún...</li>
+                        {% endfor %}
                     {% endif %}
                 </ul>
             </div>
