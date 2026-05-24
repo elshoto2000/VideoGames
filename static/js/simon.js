@@ -1,8 +1,8 @@
+// js/simon.js
 (function () {
     const contenedor = document.querySelector('.canvas-placeholder');
     if (!contenedor) return;
 
-    // 1. LIMPIEZA Y CONFIGURACIÓN DEL CANVAS
     Array.from(contenedor.children).forEach(child => {
         if (child.id !== 'game-over-screen') child.remove();
     });
@@ -16,28 +16,30 @@
     const ctx = canvas.getContext('2d');
     const esMovil = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (window.innerWidth <= 768);
 
-    // Contexto de Audio para efectos retro sin archivos externos
+    // Sistema de Audio integrado para pitidos retro
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    let ultimoSonidoPaso = 0;
 
-    function reproducirSonido(frecuencia, tipo, duracion) {
+    function reproducirSonido(frecuencia, tipo, duracion, volumen = 0.1) {
         try {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.type = tipo;
             osc.frequency.value = frecuencia;
-            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.setValueAtTime(volumen, audioCtx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duracion);
             osc.connect(gain);
             gain.connect(audioCtx.destination);
             osc.start();
             osc.stop(audioCtx.currentTime + duracion);
-        } catch(e) { console.log("Audio no iniciado aún"); }
+        } catch(e) { console.log("Audio en espera"); }
     }
 
-    // 2. VARIABLES DEL JUEGO y BANCO DE PREGUNTAS (Estilo Dinámico)
+    // VARIABLES PRINCIPALES
     let score = 0;
     let juegoActivo = true;
-    let tiempoRestante = 5.0; 
+    let tiempoRestante = 7.0; 
     let ultimaActualizacion = Date.now();
 
     let contadorPasos = 0;
@@ -63,25 +65,35 @@
         'DERECHA':   { x: 285 - 25, y: 454, w: 50, h: 32 }
     };
 
-    // Banco de preguntas adaptado a tu nueva mecánica de respuestas en bloques
-    const preguntasTrivia = [
-        { q: "¿Cuánto es 5 + 5?", a: "10", opciones: { 'A': '12', 'B': '10', 'C': '8', 'D': '15' } },
-        { q: "¿Cuál es el color del cielo?", a: "Azul", opciones: { 'A': 'Rojo', 'B': 'Verde', 'C': 'Azul', 'D': 'Gris' } },
-        { q: "Creador de este juego:", a: "Leandro", opciones: { 'A': 'Juan', 'B': 'Leandro', 'C': 'Pedro', 'D': 'Diego' } },
-        { q: "Mundo de bloques 3D:", a: "Minecraft", opciones: { 'A': 'Terraria', 'B': 'Roblox', 'C': 'Pacman', 'D': 'Minecraft' } }
-    ];
+    const btnFullscreen = { x: 380, y: 15, w: 55, h: 25 };
 
+    // CARGA DE PREGUNTAS DESDE EL ARCHIVO EXTERNO
+    let listaActual = [];
+    let preguntaIndex = 0;
     let triviaActual = {};
     let bloqueCorrecto = '';
 
-    const personaje = { x: 212, y: 240, size: 26, speed: 320, color: colores.personaje };
-    const teclas = {};
+    function inicializarCategoriaAleatoria() {
+        // Trae las listas del archivo preguntas.js externo
+        const categorias = window.BancoPreguntasArcade || [[]];
+        
+        // 1. Escoge una de las listas disponibles al azar
+        const indiceLista = Math.floor(Math.random() * categorias.length);
+        listaActual = [...categorias[indiceLista]];
+        
+        // 2. Desordena (baraja por completo) el orden de las preguntas de esa lista
+        listaActual.sort(() => Math.random() - 0.5);
+        preguntaIndex = 0;
+    }
 
     function generarNuevaOrden() {
-        // Elegir pregunta aleatoria
-        triviaActual = preguntasTrivia[Math.floor(Math.random() * preguntasTrivia.length)];
+        if (!listaActual || listaActual.length === 0 || preguntaIndex >= listaActual.length) {
+            inicializarCategoriaAleatoria();
+        }
+
+        triviaActual = listaActual[preguntaIndex];
+        preguntaIndex++;
         
-        // Encontrar qué bloque contiene la respuesta correcta
         for (let letra in triviaActual.opciones) {
             if (triviaActual.opciones[letra] === triviaActual.a) {
                 bloqueCorrecto = letra;
@@ -89,7 +101,7 @@
             }
         }
 
-        tiempoRestante = Math.max(2.5, 6.0 - (score * 0.2)); 
+        tiempoRestante = Math.max(3.0, 7.0 - (score * 0.25)); 
         personaje.x = 225 - personaje.size / 2;
         personaje.y = 255 - personaje.size / 2;
         direccionMirada = 'ABAJO';
@@ -108,7 +120,7 @@
 
         tiempoRestante -= dt;
         if (tiempoRestante <= 0) {
-            reproducirSonido(150, 'sawtooth', 0.6); // Sonido de derrota largo
+            reproducirSonido(120, 'sawtooth', 0.6); 
             finalizarJuego("¡Te quedaste sin tiempo!");
             return;
         }
@@ -125,6 +137,12 @@
             contadorPasos += dt * 12;
             personaje.x += dx * personaje.speed * dt;
             personaje.y += dy * personaje.speed * dt;
+
+            // Sonido sutil de pasos al caminar
+            if (ahora - ultimoSonidoPaso > 280) { 
+                reproducirSonido(180, 'triangle', 0.04, 0.03); 
+                ultimoSonidoPaso = ahora;
+            }
         } else {
             estaMoviendose = false;
             contadorPasos = 0;
@@ -135,16 +153,15 @@
         if (personaje.y < 95) personaje.y = 95; 
         if (personaje.y + personaje.size > 430) personaje.y = 430 - personaje.size;
 
-        // VERIFICACIÓN ESTRICTA: El personaje debe entrar al bloque físicamente
         for (const letra in bloques) {
             if (comprobarColision(personaje, bloques[letra])) {
                 if (letra === bloqueCorrecto) {
-                    reproducirSonido(600, 'triangle', 0.15); // Sonido retro de acierto (Beep agudo)
+                    reproducirSonido(587.33, 'triangle', 0.15); 
                     score++;
                     generarNuevaOrden();
                 } else {
-                    reproducirSonido(150, 'sawtooth', 0.5); // Sonido retro de fallo (Bzzz grave)
-                    finalizarJuego(`¡Incorrecto! La respuesta era: ${triviaActual.a}`);
+                    reproducirSonido(147.14, 'sawtooth', 0.5); 
+                    finalizarJuego(`¡Incorrecto! Era: ${triviaActual.a}`);
                 }
                 break;
             }
@@ -155,51 +172,53 @@
         ctx.fillStyle = '#0d0221';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Barra superior fija para la pregunta
         ctx.fillStyle = colores.bg;
         ctx.fillRect(0, 0, canvas.width, 95);
 
         ctx.fillStyle = colores.neonCian;
-        ctx.font = 'bold 15px "Trebuchet MS", sans-serif';
+        ctx.font = 'bold 14px "Trebuchet MS", sans-serif';
         ctx.textAlign = 'center';
-        // Mostrar la pregunta dinámica de la Trivia
-        ctx.fillText(triviaActual.q, canvas.width / 2, 32);
+        ctx.fillText(triviaActual.q || "Cargando...", 190, 35);
 
-        ctx.fillStyle = tiempoRestante > 1.5 ? colores.verde : colores.rojo;
-        const anchoBarra = (tiempoRestante / 5.0) * canvas.width;
+        ctx.fillStyle = tiempoRestante > 2.0 ? colores.verde : colores.rojo;
+        const anchoBarra = (tiempoRestante / 7.0) * canvas.width;
         ctx.fillRect(0, 89, anchoBarra, 6);
 
         ctx.fillStyle = '#9a8fb8';
         ctx.font = '13px "Trebuchet MS", sans-serif';
-        ctx.fillText(`Puntos: ${score}`, canvas.width / 2, 60);
+        ctx.fillText(`Puntos: ${score}`, 190, 62);
 
-        // Dibujar bloques con sus respuestas dinámicas adentro
+        // BOTÓN FULLSCREEN
+        ctx.strokeStyle = colores.neonCian; ctx.lineWidth = 1;
+        ctx.fillStyle = 'rgba(0, 240, 255, 0.15)';
+        ctx.beginPath(); ctx.roundRect(btnFullscreen.x, btnFullscreen.y, btnFullscreen.w, btnFullscreen.h, 4); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#ffffff'; ctx.font = 'bold 9px sans-serif';
+        ctx.fillText("FULL ⛶", btnFullscreen.x + btnFullscreen.w / 2, btnFullscreen.y + 16);
+
+        // Dibujar bloques con sus respuestas
         for (const letra in bloques) {
             const b = bloques[letra];
             ctx.fillStyle = b.color;
             ctx.fillRect(b.x, b.y, b.w, b.h);
             
             ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 14px "Trebuchet MS", sans-serif';
-            // Dibujar la opción de respuesta que le toca a este bloque
-            ctx.fillText(triviaActual.opciones[letra], b.x + b.w / 2, b.y + b.h / 2 + 5);
+            ctx.font = 'bold 13px "Trebuchet MS", sans-serif';
+            if (triviaActual.opciones) {
+                ctx.fillText(triviaActual.opciones[letra], b.x + b.w / 2, b.y + b.h / 2 + 5);
+            }
         }
 
-        // Dibujar Personaje con ojos y animación de pies
+        // Dibujar Personaje
         const px = personaje.x; const py = personaje.y; const size = personaje.size;
         ctx.save();
-        ctx.fillStyle = 'rgba(0,0,0,0.3)';
-        ctx.fillRect(px + 2, py + size - 3, size - 4, 3);
-        ctx.fillStyle = personaje.color;
-        ctx.fillRect(px + 4, py, size - 8, size - 5); 
-        ctx.fillStyle = colores.pantalon;
-        ctx.fillRect(px + 4, py + size - 10, size - 8, 5);
+        ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(px + 2, py + size - 3, size - 4, 3);
+        ctx.fillStyle = personaje.color; ctx.fillRect(px + 4, py, size - 8, size - 5); 
+        ctx.fillStyle = colores.pantalon; ctx.fillRect(px + 4, py + size - 10, size - 8, 5);
         ctx.fillStyle = '#ffffff';
         let offsetPies = estaMoviendose ? Math.sin(contadorPasos) * 3 : 0;
         ctx.fillRect(px + 5, py + size - 5 + (offsetPies > 0 ? -2 : 0), 5, 5);
         ctx.fillRect(px + size - 10, py + size - 5 + (offsetPies < 0 ? -2 : 0), 5, 5);
-        ctx.fillStyle = '#000000';
-        let ojoY = py + 6;
+        ctx.fillStyle = '#000000'; let ojoY = py + 6;
         if (direccionMirada === 'ABAJO') {
             ctx.fillRect(px + 7, ojoY, 3, 4); ctx.fillRect(px + size - 10, ojoY, 3, 4);
         } else if (direccionMirada === 'IZQUIERDA') {
@@ -209,7 +228,7 @@
         }
         ctx.restore();
 
-        // D-PAD Virtual para celulares
+        // Mandos móviles virtuales
         if (esMovil) {
             ctx.fillStyle = 'rgba(26, 11, 61, 0.6)';
             ctx.fillRect(0, 430, canvas.width, 80); 
@@ -217,11 +236,9 @@
             for (const dir in botonesMovil) {
                 const btn = botonesMovil[dir];
                 ctx.fillStyle = teclas[dir] ? colores.neonCian : 'rgba(0, 240, 255, 0.1)';
-                ctx.strokeStyle = colores.neonCian;
-                ctx.lineWidth = 2;
+                ctx.strokeStyle = colores.neonCian; ctx.lineWidth = 2;
                 ctx.beginPath(); ctx.roundRect(btn.x, btn.y, btn.w, btn.h, 6); ctx.fill(); ctx.stroke();
-                ctx.fillStyle = teclas[dir] ? '#0d0221' : '#ffffff';
-                ctx.font = 'bold 14px sans-serif';
+                ctx.fillStyle = teclas[dir] ? '#0d0221' : '#ffffff'; ctx.font = 'bold 14px sans-serif';
                 let flecha = (dir === 'ARRIBA') ? '▲' : (dir === 'ABAJO') ? '▼' : (dir === 'IZQUIERDA') ? '◀' : '▶';
                 ctx.fillText(flecha, btn.x + btn.w / 2, btn.y + btn.h / 2 + 5);
             }
@@ -231,6 +248,14 @@
     function buclePrincipal() {
         actualizar(); renderizar();
         if (juegoActivo) requestAnimationFrame(buclePrincipal);
+    }
+
+    function activarFullscreen() {
+        if (canvas.requestFullscreen) { canvas.requestFullscreen(); }
+        else if (canvas.webkitRequestFullscreen) { canvas.webkitRequestFullscreen(); }
+        if (screen.orientation && screen.orientation.lock) {
+            screen.orientation.lock('landscape').catch(e => console.log(e));
+        }
     }
 
     function finalizarJuego(mensaje) {
@@ -248,18 +273,22 @@
         }).catch(err => console.error(err));
     }
 
-    window.addEventListener('keydown', e => { teclas[e.key] = true; if(audioCtx.state === 'suspended') audioCtx.resume(); });
+    const teclas = {};
+    window.addEventListener('keydown', e => { teclas[e.key] = true; });
     window.addEventListener('keyup', e => { teclas[e.key] = false; });
 
     function manejarEntrada(clientX, clientY, estaPresionando) {
-        if(audioCtx.state === 'suspended') audioCtx.resume();
-        if (!juegoActivo) return;
-
         const rect = canvas.getBoundingClientRect();
         const tX = ((clientX - rect.left) / rect.width) * canvas.width;
         const tY = ((clientY - rect.top) / rect.height) * canvas.height;
 
-        // TOCAR EL D-PAD: Solo funciona si estás en la zona baja del control
+        if (estaPresionando && tX >= btnFullscreen.x && tX <= btnFullscreen.x + btnFullscreen.w && tY >= btnFullscreen.y && tY <= btnFullscreen.y + btnFullscreen.h) {
+            activarFullscreen();
+            return;
+        }
+
+        if (!juegoActivo) return;
+
         if (esMovil && tY >= 430) {
             for (const dir in botonesMovil) {
                 const btn = botonesMovil[dir];
@@ -288,6 +317,7 @@
         for(let d in botonesMovil) teclas[d] = false;
     }, {passive: false});
 
+    inicializarCategoriaAleatoria();
     generarNuevaOrden();
     ultimaActualizacion = Date.now();
     buclePrincipal();
