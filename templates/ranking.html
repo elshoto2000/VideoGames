@@ -221,12 +221,14 @@
     </div>
 
     <script>
+        // AQUÍ ES DONDE VA TU CAMBIO CON 'simon'
         async function cargarRankings() {
             try {
                 const response = await fetch('/obtener_ranking');
                 const data = await response.json();
                 
-                const juegos = ['snake', 'clicker', 'trivia'];
+                // Añadido 'simon' a la lista para que se renderice en su respectiva tabla
+                const juegos = ['snake', 'clicker', 'trivia', 'simon'];
                 
                 juegos.forEach(juego => {
                     const filtrados = data.ranking
