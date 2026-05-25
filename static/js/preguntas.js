@@ -1,8 +1,7 @@
-// js/preguntas.js
+// static/js/preguntas.js
 
-// Banco de preguntas global - 150 preguntas divididas en 3 listas de 50
 window.BancoPreguntasArcade = [
-   
+    // [0] LISTA 1: DESARROLLO WEB (50 preguntas)
     [
         { q: "¿Qué significa HTML?", opciones: { A: "HyperText Markup Language", B: "HighText Machine Language", C: "HyperText Main Language", D: "Hyper Links Text Mode" }, a: "HyperText Markup Language" },
         { q: "¿Qué propiedad de CSS cambia el color de fondo?", opciones: { A: "color", B: "background-color", C: "bg-color", D: "fill-color" }, a: "background-color" },
@@ -55,7 +54,7 @@ window.BancoPreguntasArcade = [
         { q: "¿Qué etiqueta HTML5 se usa para audio integrado?", opciones: { A: "<sound>", B: "<audio>", C: "<music>", D: "<media>" }, a: "<audio>" },
         { q: "En la web, ¿qué formato es ideal para iconos transparentes?", opciones: { A: "JPG", B: "GIF", C: "PNG", D: "BMP" }, a: "PNG" }
     ],
-
+    // [1] LISTA 2: PYTHON Y SQL (50 preguntas)
     [
         { q: "En Python, ¿con qué palabra clave se define una función?", opciones: { A: "func", B: "function", C: "def", D: "define" }, a: "def" },
         { q: "¿Qué comando de SQL extrae datos de una base de datos?", opciones: { A: "OPEN", B: "GET", C: "SELECT", D: "EXTRACT" }, a: "SELECT" },
@@ -109,7 +108,7 @@ window.BancoPreguntasArcade = [
         { q: "En Python, ¿qué bloque captura errores imprevistos en ejecución?", opciones: { A: "if/else", B: "try/except", C: "catch/error", D: "try/catch" }, a: "try/except" }
     ],
 
-   
+    // [2] LISTA 3: FÍSICA (50 preguntas)
     [
         { q: "En física, ¿qué ley dice que la fuerza es igual a masa por aceleración?", opciones: { A: "1ra Ley de Newton", B: "2da Ley de Newton", C: "3ra Ley de Newton", D: "Ley de la Inercia" }, a: "2da Ley de Newton" },
         { q: "¿Cuál es el valor aproximado de la gravedad terrestre standard?", opciones: { A: "9.8 m/s²", B: "10.5 m/s²", C: "8.9 m/s²", D: "9.8 cm/s²" }, a: "9.8 m/s²" },
@@ -163,3 +162,24 @@ window.BancoPreguntasArcade = [
         { q: "¿Qué ley física establece que la energía no se crea ni se destruye, solo se transforma?", opciones: { A: "1ra Ley de la Termodinámica", B: "2da Ley de la Termodinámica", C: "Ley de Joule", D: "Ley de Newton" }, a: "1ra Ley de la Termodinámica" }
     ]
 ];
+
+// FUNCIÓN DE CONEXIÓN GLOBAL: El Simón Dice llamará a esto para obtener su ronda
+window.obtenerPreguntaArcadeSimon = function() {
+    // 1. Elegimos una de las 3 listas al azar (0, 1 o 2)
+    const listaElegida = window.BancoPreguntasArcade[Math.floor(Math.random() * window.BancoPreguntasArcade.length)];
+    
+    // 2. Seleccionamos una pregunta aleatoria de esa lista entera
+    const dataPregunta = listaElegida[Math.floor(Math.random() * listaElegida.length)];
+    
+    // 3. Extraemos los textos puros de las opciones (A, B, C, D)
+    const opcionesTexto = Object.values(dataPregunta.opciones);
+    
+    // 4. Mezclamos las opciones para que el cuadrante correcto cambie de posición en cada ronda
+    const opcionesMezcladas = [...opcionesTexto].sort(() => Math.random() - 0.5);
+    
+    return {
+        pregunta: dataPregunta.q,
+        correcta: dataPregunta.a,
+        opciones: opcionesMezcladas
+    };
+};
