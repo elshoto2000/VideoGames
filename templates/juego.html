@@ -106,39 +106,46 @@
         }
     }
 
-    function ejecutarEntradaAlJuego(nombre) {
-        // 1. Ocultamos el cartel de Game Over al reiniciar
-        document.getElementById('game-over-screen').style.display = 'none';
-        
-        // 2. Nos aseguramos de volver a mostrar los botones del Simón
-        const contenedorSimon = document.getElementById('simon-game-container');
-        if (contenedorSimon) {
-            contenedorSimon.style.display = 'block';
-        }
-        
-        document.getElementById('display-user').innerText = nombre;
-        document.getElementById('auth-screen').style.display = 'none';
-        document.getElementById('game-screen').style.display = 'block';
-
-        const scriptAnteriorJuego = document.getElementById('script-del-juego');
-        if (scriptAnteriorJuego) scriptAnteriorJuego.remove();
-        
-        const scriptAnteriorPreguntas = document.getElementById('script-de-preguntas');
-        if (scriptAnteriorPreguntas) scriptAnteriorPreguntas.remove();
-
-        // Carga asíncrona preventiva de preguntas usando la ruta estática de Flask
-        const scriptPreguntas = document.createElement('script');
-        scriptPreguntas.id = 'script-de-preguntas';
-        scriptPreguntas.src = `/static/js/preguntas.js?v=${new Date().getTime()}`;
-        document.body.appendChild(scriptPreguntas);
-
-        scriptPreguntas.onload = function() {
-            const scriptJuego = document.createElement('script');
-            scriptJuego.id = 'script-del-juego'; 
-            scriptJuego.src = `/static/js/${window.JUEGO_ACTUAL}.js?v=${new Date().getTime()}`; 
-            document.body.appendChild(scriptJuego);
-        };
+   function ejecutarEntradaAlJuego(nombre) {
+    // 1. Ocultamos el cartel de Game Over al reiniciar
+    document.getElementById('game-over-screen').style.display = 'none';
+    
+    // 2. Nos aseguramos de volver a mostrar los botones del Simón
+    const contenedorSimon = document.getElementById('simon-game-container');
+    if (contenedorSimon) {
+        contenedorSimon.style.display = 'block';
     }
+    
+    document.getElementById('display-user').innerText = nombre;
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('game-screen').style.display = 'block';
+
+    // Eliminamos scripts residuales viejos para que no se dupliquen en el DOM
+    const scriptAnteriorJuego = document.getElementById('script-del-juego');
+    if (scriptAnteriorJuego) scriptAnteriorJuego.remove();
+    
+    const scriptAnteriorPreguntas = document.getElementById('script-de-preguntas');
+    if (scriptAnteriorPreguntas) scriptAnteriorPreguntas.remove();
+
+    // Generamos un "timestamp" único para romper la caché de Render por completo
+    const versionUnica = new Date().getTime();
+
+    // Primero cargamos las preguntas de forma obligatoria
+    const scriptPreguntas = document.createElement('script');
+    scriptPreguntas.id = 'script-de-preguntas';
+    scriptPreguntas.src = `/static/js/preguntas.js?v=${versionUnica}`;
+    document.body.appendChild(scriptPreguntas);
+
+    // CRÍTICO: Esperamos a que preguntas.js esté cargado e inyectado al 100% antes de llamar al script del juego
+    scriptPreguntas.onload = function() {
+        console.log("Preguntas cargadas con éxito. Iniciando lógica del juego...");
+        
+        const scriptJuego = document.createElement('script');
+        scriptJuego.id = 'script-del-juego'; 
+        scriptJuego.src = `/static/js/${window.JUEGO_ACTUAL}.js?v=${versionUnica}`; 
+        document.body.appendChild(scriptJuego);
+    };
+}
     // FUNCIÓN CRÍTICA: Actualiza la tabla del Top 5 al instante sin recargar la página entera
     window.cargarRanking = function() {
         fetch(`/obtener_ranking/${window.JUEGO_ACTUAL}`)
