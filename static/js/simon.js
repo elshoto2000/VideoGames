@@ -1,19 +1,25 @@
 // js/simon.js
 (function () {
-    // CORRECCIÓN: Buscamos directamente por el ID único para no romper el ciclo de juego
-    const contenedor = document.getElementById('simon-game-container');
-    if (!contenedor) return;
+    // 1. Apuntamos al contenedor específico de Simón para no alterar la estructura global
+    const contenedorSimon = document.getElementById('simon-game-container');
+    const canvasPlaceholder = document.querySelector('.canvas-placeholder');
+    
+    if (!contenedorSimon || !canvasPlaceholder) return;
 
-    // Limpia elementos antiguos inyectados conservando la pantalla de Game Over
-    Array.from(contenedor.children).forEach(child => {
-        if (child.id !== 'game-over-screen') child.remove();
-    });
+    // 2. CORRECCIÓN CRÍTICA: En lugar de borrar el contenedor HTML, limpiamos los canvas viejos residuales
+    const canvasViejo = document.getElementById('game-canvas');
+    if (canvasViejo) {
+        canvasViejo.remove();
+    }
 
+    // 3. Creamos el canvas e insertamos de forma ordenada en la jerarquía del placeholder
     const canvas = document.createElement('canvas');
     canvas.id = 'game-canvas';
     canvas.width = 480; 
     canvas.height = 510; 
-    contenedor.insertBefore(canvas, contenedor.firstChild);
+    
+    // Lo colocamos al principio del marcador para que la pantalla de Game Over mantenga su orden absoluto
+    canvasPlaceholder.insertBefore(canvas, canvasPlaceholder.firstChild);
 
     const ctx = canvas.getContext('2d');
     const esMovil = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (window.innerWidth <= 768);
@@ -28,7 +34,7 @@
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.type = tipo;
-            osc.frequency.value = frecuencia;
+            osc.frequency.value = frequency;
             gain.gain.setValueAtTime(volumen, audioCtx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duracion);
             osc.connect(gain);
@@ -62,7 +68,7 @@
         personaje: '#ffffff', pantalon: '#ff6b81', neonCian: '#00f0ff'
     };
 
-    // Bloques de colores
+    // Bloques reubicados proporcionalmente al ancho de 480
     const bloques = {
         'A': { x: 35,  y: 110, w: 140, h: 110, color: colores.rojo },
         'B': { x: 305, y: 110, w: 140, h: 110, color: colores.azul },
@@ -70,7 +76,7 @@
         'D': { x: 305, y: 300, w: 140, h: 110, color: colores.amarillo }
     };
 
-    // Controles táctiles móviles optimizados
+    // Flechas distribuidas para entorno táctil
     const botonesMovil = {
         'ARRIBA':    { x: 240 - 35, y: 432, w: 70, h: 34 },
         'ABAJO':     { x: 240 - 35, y: 470, w: 70, h: 34 },
@@ -80,7 +86,7 @@
 
     const btnFullscreen = { x: 410, y: 15, w: 55, h: 25 };
 
-    // CARGA DE PREGUNTAS DESDE EL ARCHIVO EXTERNO
+    // CARGA DE PREGUNTAS
     let listaActual = [];
     let preguntaIndex = 0;
     let triviaActual = {};
@@ -300,7 +306,6 @@
 
         const usuarioActual = localStorage.getItem('arcade_user') || 'Anónimo';
 
-        // ENLACE CRÍTICO CON EL RANKING: Guarda la puntuación y refresca el Top 5 inmediatamente
         fetch('/guardar_puntaje', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -310,13 +315,12 @@
                 nombre: usuarioActual
             })
         })
-        .then(res => {
-            // Cuando la petición termina exitosamente, forzamos la actualización del HTML lateral
+        .then(() => {
             if (typeof window.cargarRanking === 'function') {
                 window.cargarRanking();
             }
         })
-        .catch(err => console.error("Error al procesar el puntaje final:", err));
+        .catch(err => console.error(err));
     }
 
     const teclas = {};
@@ -351,10 +355,9 @@
         for(let d in botonesMovil) teclas[d] = false;
     });
 
-    // Soporte multi-touch refinado para controles móviles sin cruce de estados
     canvas.addEventListener('touchstart', e => {
         e.preventDefault();
-        for (let d in botonesMovil) teclas[d] = false; // Reset preventivo
+        for (let d in botonesMovil) teclas[d] = false;
         Array.from(e.touches).forEach(t => manejarEntrada(t.clientX, t.clientY, true));
     }, {passive: false});
 
