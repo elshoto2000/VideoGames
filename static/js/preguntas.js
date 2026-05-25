@@ -2,9 +2,7 @@
 
 // Banco de preguntas global - 150 preguntas divididas en 3 listas de 50
 window.BancoPreguntasArcade = [
-    // ==========================================
-    // --- LISTA 1: Desarrollo Web y Fundamentos (50 Preguntas) ---
-    // ==========================================
+   
     [
         { q: "¿Qué significa HTML?", opciones: { A: "HyperText Markup Language", B: "HighText Machine Language", C: "HyperText Main Language", D: "Hyper Links Text Mode" }, a: "HyperText Markup Language" },
         { q: "¿Qué propiedad de CSS cambia el color de fondo?", opciones: { A: "color", B: "background-color", C: "bg-color", D: "fill-color" }, a: "background-color" },
@@ -58,9 +56,6 @@ window.BancoPreguntasArcade = [
         { q: "En la web, ¿qué formato es ideal para iconos transparentes?", opciones: { A: "JPG", B: "GIF", C: "PNG", D: "BMP" }, a: "PNG" }
     ],
 
-    // ==========================================
-    // --- LISTA 2: Python, SQL y Programación (50 Preguntas) ---
-    // ==========================================
     [
         { q: "En Python, ¿con qué palabra clave se define una función?", opciones: { A: "func", B: "function", C: "def", D: "define" }, a: "def" },
         { q: "¿Qué comando de SQL extrae datos de una base de datos?", opciones: { A: "OPEN", B: "GET", C: "SELECT", D: "EXTRACT" }, a: "SELECT" },
@@ -114,9 +109,7 @@ window.BancoPreguntasArcade = [
         { q: "En Python, ¿qué bloque captura errores imprevistos en ejecución?", opciones: { A: "if/else", B: "try/except", C: "catch/error", D: "try/catch" }, a: "try/except" }
     ],
 
-    // ==========================================
-    // --- LISTA 3: Física Clásica y Cinemática (50 Preguntas) ---
-    // ==========================================
+   
     [
         { q: "En física, ¿qué ley dice que la fuerza es igual a masa por aceleración?", opciones: { A: "1ra Ley de Newton", B: "2da Ley de Newton", C: "3ra Ley de Newton", D: "Ley de la Inercia" }, a: "2da Ley de Newton" },
         { q: "¿Cuál es el valor aproximado de la gravedad terrestre standard?", opciones: { A: "9.8 m/s²", B: "10.5 m/s²", C: "8.9 m/s²", D: "9.8 cm/s²" }, a: "9.8 m/s²" },
