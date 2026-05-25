@@ -81,6 +81,9 @@
     </div>
 
     <script>
+    // Guardamos la variable del juego desde Flask para usarla en los scripts de JS
+    const JUEGO_ACTUAL = "{{ juego.lower() }}";
+
     window.onload = function() {
         document.getElementById('auth-screen').style.display = 'flex';
         document.getElementById('game-screen').style.display = 'none';
@@ -100,9 +103,7 @@
     }
 
     function ejecutarEntradaAlJuego(nombre) {
-        // Asegura que limpie la pantalla de Game Over si se viene de un reintento
         document.getElementById('game-over-screen').style.display = 'none';
-
         document.getElementById('display-user').innerText = nombre;
         document.getElementById('auth-screen').style.display = 'none';
         document.getElementById('game-screen').style.display = 'block';
@@ -113,6 +114,7 @@
         const scriptAnteriorPreguntas = document.getElementById('script-de-preguntas');
         if (scriptAnteriorPreguntas) scriptAnteriorPreguntas.remove();
 
+        // Carga asíncrona preventiva de preguntas usando la ruta estática de Flask
         const scriptPreguntas = document.createElement('script');
         scriptPreguntas.id = 'script-de-preguntas';
         scriptPreguntas.src = `/static/js/preguntas.js?v=${new Date().getTime()}`;
@@ -121,10 +123,32 @@
         scriptPreguntas.onload = function() {
             const scriptJuego = document.createElement('script');
             scriptJuego.id = 'script-del-juego'; 
-            scriptJuego.src = `/static/js/{{ juego }}.js?v=${new Date().getTime()}`; 
+            scriptJuego.src = `/static/js/${window.JUEGO_ACTUAL}.js?v=${new Date().getTime()}`; 
             document.body.appendChild(scriptJuego);
         };
     }
+
+    // FUNCIÓN CRÍTICA: Actualiza la tabla del Top 5 al instante sin recargar la página entera
+    window.cargarRanking = function() {
+        fetch(`/obtener_ranking/${window.JUEGO_ACTUAL}`)
+            .then(res => res.json())
+            .then(datos => {
+                const listaHTML = document.getElementById('ranking-list');
+                listaHTML.innerHTML = ''; // Limpiamos la tabla vieja
+                
+                if (datos.length === 0) {
+                    listaHTML.innerHTML = '<li>Nadie ha jugado aún...</li>';
+                    return;
+                }
+                
+                datos.forEach((fila, indice) => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<span>${indice + 1}. ${fila.nombre}</span> <b>${fila.puntos}</b>`;
+                    listaHTML.appendChild(li);
+                });
+            })
+            .catch(err => console.error("Error al actualizar tabla:", err));
+    };
 
     function borrarYSalir() {
         localStorage.removeItem('arcade_user'); 
