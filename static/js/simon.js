@@ -46,6 +46,15 @@
     let estaMoviendose = false;
     let direccionMirada = 'ABAJO';
 
+    // ¡AQUÍ ESTÁ EL PERSONAJE QUE FALTABA DECLARAR!
+    const personaje = {
+        x: 225,
+        y: 255,
+        size: 20,
+        speed: 150,
+        color: '#ffffff'
+    };
+
     const colores = {
         bg: '#1a0b3d', rojo: '#ff4757', azul: '#00f0ff', verde: '#2ecc71', amarillo: '#ffd23f',
         personaje: '#ffffff', pantalon: '#ff6b81', neonCian: '#00f0ff'
@@ -74,14 +83,9 @@
     let bloqueCorrecto = '';
 
     function inicializarCategoriaAleatoria() {
-        // Trae las listas del archivo preguntas.js externo
         const categorias = window.BancoPreguntasArcade || [[]];
-        
-        // 1. Escoge una de las listas disponibles al azar
         const indiceLista = Math.floor(Math.random() * categorias.length);
         listaActual = [...categorias[indiceLista]];
-        
-        // 2. Desordena (baraja por completo) el orden de las preguntas de esa lista
         listaActual.sort(() => Math.random() - 0.5);
         preguntaIndex = 0;
     }
@@ -138,7 +142,6 @@
             personaje.x += dx * personaje.speed * dt;
             personaje.y += dy * personaje.speed * dt;
 
-            // Sonido sutil de pasos al caminar
             if (ahora - ultimoSonidoPaso > 280) { 
                 reproducirSonido(180, 'triangle', 0.04, 0.03); 
                 ultimoSonidoPaso = ahora;
@@ -266,10 +269,17 @@
             msg.innerText = `${mensaje}\nPuntuación final: ${score} aciertos`;
             gos.style.display = 'flex';
         }
+
+        const usuarioActual = localStorage.getItem('arcade_user') || 'Anónimo';
+
         fetch('/guardar_puntaje', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ juego: 'simon', puntos: score })
+            body: JSON.stringify({ 
+                juego: 'simon', 
+                puntos: score,
+                nombre: usuarioActual
+            })
         }).catch(err => console.error(err));
     }
 
