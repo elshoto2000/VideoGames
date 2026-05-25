@@ -1,27 +1,30 @@
-// js/simon.js
 (function () {
-    // 1. Apuntamos al contenedor específico de Simón para no alterar la estructura global
-    const contenedorSimon = document.getElementById('simon-game-container');
-    const canvasPlaceholder = document.querySelector('.canvas-placeholder');
+    let canvasPlaceholder = document.querySelector('.canvas-placeholder');
     
-    if (!contenedorSimon || !canvasPlaceholder) return;
+    // Si por alguna razón la limpieza borró el contenedor, lo buscamos o usamos el placeholder general
+    if (!canvasPlaceholder) {
+        console.error("No se encontró el contenedor .canvas-placeholder");
+        return;
+    }
 
-    // 2. CORRECCIÓN CRÍTICA: En lugar de borrar el contenedor HTML, limpiamos los canvas viejos residuales
+    // Buscamos si ya existe un canvas viejo y lo destruimos para limpiar la pantalla negra
     const canvasViejo = document.getElementById('game-canvas');
     if (canvasViejo) {
         canvasViejo.remove();
     }
 
-    // 3. Creamos el canvas e insertamos de forma ordenada en la jerarquía del placeholder
+    // Creamos el nuevo lienzo de juego limpio
     const canvas = document.createElement('canvas');
     canvas.id = 'game-canvas';
     canvas.width = 480; 
     canvas.height = 510; 
     
-    // Lo colocamos al principio del marcador para que la pantalla de Game Over mantenga su orden absoluto
+    // Lo insertamos al inicio del contenedor principal
     canvasPlaceholder.insertBefore(canvas, canvasPlaceholder.firstChild);
 
     const ctx = canvas.getContext('2d');
+    
+    // ... (El resto de tu código de simon.js se mantiene exactamente igual abajo)
     const esMovil = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (window.innerWidth <= 768);
 
     // Sistema de Audio integrado para pitidos retro
