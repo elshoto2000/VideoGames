@@ -260,34 +260,41 @@ body {
 }
 
 /* El cuadro gris del juego: Cuadrado perfecto garantizado */
+/* El cuadro gris del juego: Ajustado al tamaño nativo del juego */
 .canvas-placeholder {
-  width: 100%;
-  height: 450px !important; /* Misma medida de alto para evitar rectángulos */
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 1.5rem;
-  border: 4px solid var(--accent);
-  border-radius: 12px;   
-  box-shadow: 0 0 25px rgba(255, 71, 87, 0.4);
-  background: var(--bg-soft); 
+    width: 100%;
+    max-width: 480px;  /* Coincide con el canvas.width del script */
+    min-height: 510px; /* Coincide con el canvas.height del script */
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    background-color: #0d0221; /* Color oscuro de fondo para que no desentone */
+    border-radius: 12px;
+    box-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
+    overflow: hidden;
 }
 
-/* Forzar que lo que inyecte Javascript (Canvas, Divs, Tablas) mantenga la proporción */
-.canvas-placeholder canvas, 
+/* Forzar que lo que inyecte Javascript mantenga la proporción sin romperse */
+.canvas-placeholder canvas {
+    display: block;
+    width: 100% !important;
+    height: auto !important; /* Deja que el alto se calcule solo para no aplastar los píxeles */
+    max-width: 480px;
+}
+
 #game-area,
-.canvas-placeholder > div:not(#game-over-screen) {
-  width: 100% !important;
-  height: 100% !important;
-  max-height: 100%;
-  object-fit: contain;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+.canvas-placeholder > div:not(#game-over-screen):not(#simon-game-container) {
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 100%;
+    object-fit: contain;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
 
 /* Evitar deformaciones en el botón azul del Clicker en PC */
@@ -402,9 +409,10 @@ body {
   }
   
   .canvas-placeholder {
-    height: 360px !important; /* Cuadrado responsivo en el teléfono */
-    padding: 1rem;
-  }
+    height: auto !important; /* Deja que el Canvas defina el alto en celulares */
+    min-height: 400px !important;
+    padding: 0.5rem;
+}
   
   #boton-loco {
     width: 120px !important; 
