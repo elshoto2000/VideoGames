@@ -1,7 +1,7 @@
 // static/js/simon.js
 
 (function() {
-    console.log("¡Cargando el motor del minijuego de caminata por esquinas conectado al banco de preguntas!");
+    console.log("¡Cargando el motor definitivo del minijuego de caminata por esquinas!");
 
     const contenedor = document.getElementById('simon-game-container');
     if (!contenedor) {
@@ -9,7 +9,7 @@
         return;
     }
 
-    contenedor.innerHTML = ''; // Limpieza total
+    contenedor.innerHTML = ''; // Limpieza total de seguridad
 
     // --- ESTADOS Y VARIABLES DEL JUEGO ---
     let puntuacion = 0;
@@ -25,7 +25,7 @@
     // Propiedades del Personaje
     const jugador = {
         x: ANCHO / 2,
-        y: ALTO / 2 + 30, // Un poco más abajo del centro para no pisar el texto inicial
+        y: ALTO / 2 + 40, 
         radio: 12,
         velocidad: 4,
         color: '#00ffff'
@@ -42,12 +42,13 @@
     // Control de Teclado Activo
     const teclas = {
         w: false, a: false, s: false, d: false,
+        KeyW: false, KeyA: false, KeyS: false, KeyD: false,
         ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false
     };
 
     // --- INYECCIÓN DE ESTILOS CSS ---
     const estiloCSS = document.createElement('style');
-    styleCSS.innerHTML = `
+    estiloCSS.innerHTML = `
         .arcade-canvas-wrapper { display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; max-width: 500px; margin: 0 auto; box-sizing: border-box; }
         .hud-arcade { display: flex; justify-content: space-between; width: 100%; font-weight: bold; font-size: 1.1rem; color: #fff; padding: 0 5px; }
         .canvas-game-board { background: #1a1a24; border: 3px solid #333; border-radius: 8px; box-shadow: 0 8px 20px rgba(0,0,0,0.7); display: block; max-width: 100%; height: auto; }
@@ -55,7 +56,7 @@
         .btn-arcade-control { background: #222; color: #fff; border: 2px solid #444; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; }
         .btn-arcade-control:hover { background: #00ffff; color: #000; border-color: #00ffff; }
     `;
-    document.head.appendChild(styleCSS);
+    document.head.appendChild(estiloCSS);
 
     // --- MAQUETACIÓN ESTRUCTURAL ---
     const wrapper = document.createElement('div');
@@ -75,6 +76,7 @@
     `;
     contenedor.appendChild(wrapper);
 
+    // --- CAPTURA DE COMPONENTES TRAS LA INYECCIÓN ---
     const canvas = wrapper.querySelector('#arcade-canvas');
     const ctx = canvas.getContext('2d');
     const txtScore = wrapper.querySelector('#arcade-score');
@@ -84,21 +86,18 @@
 
     // --- ESCUCHAS DE TECLADO ---
     window.addEventListener('keydown', (e) => {
-        if (teclas[e.key] !== undefined || teclas[e.code] !== undefined) {
-            // Evitar que la pantalla se mueva hacia abajo o arriba al jugar con flechas
-            if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].indexOf(e.key) > -1) {
-                e.preventDefault();
-            }
-            if(teclas[e.key] !== undefined) teclas[e.key] = true;
-            if(teclas[e.code] !== undefined) teclas[e.code] = true;
+        if (teclas[e.key] !== undefined) teclas[e.key] = true;
+        if (teclas[e.code] !== undefined) teclas[e.code] = true;
+
+        // Previene scroll molesto del navegador al usar flechas
+        if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].indexOf(e.key) > -1) {
+            e.preventDefault();
         }
     });
 
     window.addEventListener('keyup', (e) => {
-        if (teclas[e.key] !== undefined || teclas[e.code] !== undefined) {
-            if(teclas[e.key] !== undefined) teclas[e.key] = false;
-            if(teclas[e.code] !== undefined) teclas[e.code] = false;
-        }
+        if (teclas[e.key] !== undefined) teclas[e.key] = false;
+        if (teclas[e.code] !== undefined) teclas[e.code] = false;
     });
 
     // --- GESTIÓN DE PREGUNTAS ---
@@ -112,18 +111,17 @@
         estadoMensaje = preguntaActual.pregunta;
         mostrarRespuestaCorrecta = "";
 
-        // Reiniciar al personaje en el centro exacto
+        // Reiniciar al personaje en la zona central baja
         jugador.x = ANCHO / 2;
         jugador.y = ALTO / 2 + 40;
         juegoActivo = true;
     }
 
-    // --- DETECCIÓN DE COLISIONES (Caminó a una esquina) ---
+    // --- DETECCIÓN DE COLISIONES ---
     function verificarColisionEsquinas() {
         for (let i = 0; i < esquinas.length; i++) {
             const e = esquinas[i];
             
-            // Verificamos si el círculo del jugador entra en el rectángulo de la esquina
             if (jugador.x + jugador.radio > e.x && 
                 jugador.x - jugador.radio < e.x + e.w &&
                 jugador.y + jugador.radio > e.y && 
@@ -140,7 +138,6 @@
         const respuestaSeleccionada = preguntaActual.opciones[indiceEsquina];
 
         if (respuestaSeleccionada === preguntaActual.correcta) {
-            // Acierto
             puntuacion++;
             txtScore.innerText = puntuacion;
             estadoMensaje = "¡Correcto! Volviendo al centro...";
@@ -149,7 +146,6 @@
                 cargarSiguientePregunta();
             }, 1200);
         } else {
-            // Fallo catastrófico
             estadoMensaje = "Incorrecto.";
             mostrarRespuestaCorrecta = `La respuesta era: ${preguntaActual.correcta}`;
             
@@ -160,7 +156,6 @@
     }
 
     function finalizarPartidaArcade() {
-        // Enviar puntuaciones a la base de datos si la función existe
         if (typeof window.cargarRanking === 'function') {
             const nick = localStorage.getItem('arcade_user') || 'Jugador';
             fetch('/guardar_puntaje', {
@@ -180,11 +175,10 @@
         }
     }
 
-    // --- FUNCIÓN AUXILIAR DE ENVOLTURA DE TEXTO EN CANVAS ---
+    // --- FORMATEADOR DE TEXTO MULTILÍNEA ---
     function dibujarTextoMultilinea(texto, x, y, anchoMax, altoLinea) {
         const palabras = texto.split(' ');
         let linea = '';
-        let numLineas = 0;
 
         for (let n = 0; n < palabras.length; n++) {
             let pruebaLinea = linea + palabras[n] + ' ';
@@ -193,7 +187,6 @@
                 ctx.fillText(linea, x, y);
                 linea = palabras[n] + ' ';
                 y += altoLinea;
-                numLineas++;
             } else {
                 linea = pruebaLinea;
             }
@@ -201,28 +194,28 @@
         ctx.fillText(linea, x, y);
     }
 
-    // --- BUCLE DE RENDERIZADO (60 FPS) ---
+    // --- BUCLE DE RENDERIZADO PRINCIPAL ---
     function actualizarJuego() {
-        // 1. Lógica de movimiento del Personaje
+        // Movimiento físico
         if (juegoActivo) {
             if (teclas.w || teclas.KeyW || teclas.ArrowUp)    jugador.y -= jugador.velocidad;
             if (teclas.s || teclas.KeyS || teclas.ArrowDown)  jugador.y += jugador.velocidad;
             if (teclas.a || teclas.KeyA || teclas.ArrowLeft)  jugador.x -= jugador.velocidad;
             if (teclas.d || teclas.KeyD || teclas.ArrowRight) jugador.x += jugador.velocidad;
 
-            // Límites físicos de la pantalla del canvas
+            // Límites del escenario
             if (jugador.x - jugador.radio < 0) jugador.x = jugador.radio;
             if (jugador.x + jugador.radio > ANCHO) jugador.x = ANCHO - jugador.radio;
-            if (jugador.y - jugador.radio < 70) jugador.y = 70 + jugador.radio; // Límite inferior de la franja superior de texto
+            if (jugador.y - jugador.radio < 70) jugador.y = 70 + jugador.radio; 
             if (jugador.y + jugador.radio > ALTO) jugador.y = ALTO - jugador.radio;
 
             verificarColisionEsquinas();
         }
 
-        // 2. Limpieza del Lienzo
+        // Limpieza de pantalla
         ctx.clearRect(0, 0, ANCHO, ALTO);
 
-        // 3. Renderizar Franja de Preguntas Superior
+        // Cuadro superior de información y preguntas
         ctx.fillStyle = '#111119';
         ctx.fillRect(0, 0, ANCHO, 65);
         ctx.strokeStyle = '#333';
@@ -232,7 +225,7 @@
         ctx.lineTo(ANCHO, 65);
         ctx.stroke();
 
-        // Texto de la Pregunta
+        // Dibujar el texto de la pregunta
         ctx.fillStyle = '#ffffff';
         ctx.font = '13px sans-serif';
         ctx.textAlign = 'center';
@@ -244,36 +237,29 @@
             ctx.fillText(mostrarRespuestaCorrecta, ANCHO / 2, 55);
         }
 
-        // 4. Renderizar las 4 Esquinas / Cajas de Respuestas
+        // Dibujar Bloques en las esquinas
         esquinas.forEach((e, idx) => {
-            // Verificar si el jugador está encima para un efecto hover sutil
             let estaCerca = (jugador.x > e.x && jugador.x < e.x + e.w && jugador.y > e.y && jugador.y < e.y + e.h);
             ctx.fillStyle = estaCerca ? e.colorHover : e.color;
             ctx.fillRect(e.x, e.y, e.w, e.h);
 
-            // Borde estético
             ctx.strokeStyle = 'rgba(0,0,0,0.2)';
             ctx.strokeRect(e.x, e.y, e.w, e.h);
 
-            // Renderizar la opción correspondiente adentro si hay una pregunta activa
             if (preguntaActual && preguntaActual.opciones[idx]) {
                 ctx.fillStyle = '#000000';
                 ctx.font = 'bold 11px sans-serif';
                 ctx.textAlign = 'center';
-                
-                // Centrado dinámico del texto de respuesta dentro del bloque
-                const textoOpcion = preguntaActual.opciones[idx];
-                dibujarTextoMultilinea(textoOpcion, e.x + (e.w / 2), e.y + (e.h / 2) - 5, e.w - 10, 14);
+                dibujarTextoMultilinea(preguntaActual.opciones[idx], e.x + (e.w / 2), e.y + (e.h / 2) - 5, e.w - 10, 14);
             }
         });
 
-        // 5. Renderizar el Personaje (El caminante)
+        // Dibujar el Personaje (Avatar esférico limpio)
         ctx.fillStyle = jugador.color;
         ctx.beginPath();
         ctx.arc(jugador.x, jugador.y, jugador.radio, 0, Math.PI * 2);
         ctx.fill();
         
-        // Núcleo del Personaje
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
         ctx.arc(jugador.x, jugador.y, jugador.radio / 2, 0, Math.PI * 2);
@@ -282,7 +268,7 @@
         requestAnimationFrame(actualizarJuego);
     }
 
-    // --- ACCIONES DE LOS BOTONES DE INTERFAZ ---
+    // --- INTERRUPTORES DE EVENTO ---
     btnStart.addEventListener('click', () => {
         puntuacion = 0;
         txtScore.innerText = "0";
@@ -305,6 +291,10 @@
         }
     });
 
-    // Iniciar el bucle infinito de renderizado
-    requestAnimationFrame(actualizarJuego);
+    // --- ARRANQUE SEGURO ---
+    // Nos aseguramos de que el motor gráfico empiece a ejecutarse solo cuando el canvas ya está estable en el DOM
+    setTimeout(() => {
+        requestAnimationFrame(actualizarJuego);
+    }, 50);
+
 })();
