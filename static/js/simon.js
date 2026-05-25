@@ -1,14 +1,16 @@
 // js/simon.js
 (function () {
-   const contenedor = document.querySelector('.canvas-placeholder');
-if (!contenedor) return;
+    // CORRECCIÓN: Buscamos directamente por el ID único para no romper el ciclo de juego
+    const contenedor = document.getElementById('simon-game-container');
+    if (!contenedor) return;
 
-Array.from(contenedor.children).forEach(child => {
-    if (child.id !== 'game-over-screen') child.remove();
-});
+    // Limpia elementos antiguos inyectados conservando la pantalla de Game Over
+    Array.from(contenedor.children).forEach(child => {
+        if (child.id !== 'game-over-screen') child.remove();
+    });
+
     const canvas = document.createElement('canvas');
     canvas.id = 'game-canvas';
-    // AJUSTE: Pantalla un poco más ancha para mejorar el espacio general
     canvas.width = 480; 
     canvas.height = 510; 
     contenedor.insertBefore(canvas, contenedor.firstChild);
@@ -39,19 +41,19 @@ Array.from(contenedor.children).forEach(child => {
     // VARIABLES PRINCIPALES
     let score = 0;
     let juegoActivo = true;
-    let tiempoRestante = 12.0; // 12 segundos iniciales para dar más margen
+    let tiempoRestante = 12.0; 
     let ultimaActualizacion = Date.now();
 
     let contadorPasos = 0;
     let estaMoviendose = false;
     let direccionMirada = 'ABAJO';
 
-    // Personaje (Centrado dinámicamente según el nuevo ancho)
+    // Personaje
     const personaje = {
         x: 240,
         y: 255,
         size: 20,
-        speed: 160, // Un toque más rápido para compensar el ancho
+        speed: 160, 
         color: '#ffffff'
     };
 
@@ -60,7 +62,7 @@ Array.from(contenedor.children).forEach(child => {
         personaje: '#ffffff', pantalon: '#ff6b81', neonCian: '#00f0ff'
     };
 
-    // AJUSTE: Bloques reubicados proporcionalmente al nuevo ancho de 480
+    // Bloques de colores
     const bloques = {
         'A': { x: 35,  y: 110, w: 140, h: 110, color: colores.rojo },
         'B': { x: 305, y: 110, w: 140, h: 110, color: colores.azul },
@@ -68,7 +70,7 @@ Array.from(contenedor.children).forEach(child => {
         'D': { x: 305, y: 300, w: 140, h: 110, color: colores.amarillo }
     };
 
-    // AJUSTE CRÍTICO: Flechas notablemente más grandes (70x36) y mejor distribuidas para los dedos
+    // Controles táctiles móviles optimizados
     const botonesMovil = {
         'ARRIBA':    { x: 240 - 35, y: 432, w: 70, h: 34 },
         'ABAJO':     { x: 240 - 35, y: 470, w: 70, h: 34 },
@@ -234,7 +236,7 @@ Array.from(contenedor.children).forEach(child => {
         }
         ctx.restore();
 
-        // Mandos móviles virtuales (Flechas dibujadas con vectores del mismo estilo)
+        // Mandos móviles virtuales
         if (esMovil) {
             ctx.fillStyle = 'rgba(26, 11, 61, 0.6)';
             ctx.fillRect(0, 430, canvas.width, 80); 
@@ -245,7 +247,6 @@ Array.from(contenedor.children).forEach(child => {
                 ctx.strokeStyle = colores.neonCian; ctx.lineWidth = 2;
                 ctx.beginPath(); ctx.roundRect(btn.x, btn.y, btn.w, btn.h, 6); ctx.fill(); ctx.stroke();
                 
-                // DIBUJO VECTORIAL DE FLECHAS (Idénticas en cualquier dispositivo)
                 ctx.fillStyle = teclas[dir] ? '#0d0221' : '#ffffff';
                 ctx.beginPath();
                 const cx = btn.x + btn.w / 2;
@@ -282,7 +283,6 @@ Array.from(contenedor.children).forEach(child => {
     function finalizarJuego(mensaje) {
         juegoActivo = false; 
 
-        // Forzar la salida de pantalla completa para que no se oculte el div de HTML
         if (document.fullscreenElement || document.webkitFullscreenElement) {
             if (document.exitFullscreen) {
                 document.exitFullscreen().catch(e => console.log(e));
@@ -300,6 +300,7 @@ Array.from(contenedor.children).forEach(child => {
 
         const usuarioActual = localStorage.getItem('arcade_user') || 'Anónimo';
 
+        // ENLACE CRÍTICO CON EL RANKING: Guarda la puntuación y refresca el Top 5 inmediatamente
         fetch('/guardar_puntaje', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -308,7 +309,14 @@ Array.from(contenedor.children).forEach(child => {
                 puntos: score,
                 nombre: usuarioActual
             })
-        }).catch(err => console.error(err));
+        })
+        .then(res => {
+            // Cuando la petición termina exitosamente, forzamos la actualización del HTML lateral
+            if (typeof window.cargarRanking === 'function') {
+                window.cargarRanking();
+            }
+        })
+        .catch(err => console.error("Error al procesar el puntaje final:", err));
     }
 
     const teclas = {};
@@ -332,8 +340,6 @@ Array.from(contenedor.children).forEach(child => {
                 const btn = botonesMovil[dir];
                 if (tX >= btn.x && tX <= btn.x + btn.w && tY >= btn.y && tY <= btn.y + btn.h) {
                     teclas[dir] = estaPresionando;
-                } else if (!estaPresionando) {
-                    teclas[dir] = false;
                 }
             }
         }
@@ -345,14 +351,17 @@ Array.from(contenedor.children).forEach(child => {
         for(let d in botonesMovil) teclas[d] = false;
     });
 
+    // Soporte multi-touch refinado para controles móviles sin cruce de estados
     canvas.addEventListener('touchstart', e => {
         e.preventDefault();
+        for (let d in botonesMovil) teclas[d] = false; // Reset preventivo
         Array.from(e.touches).forEach(t => manejarEntrada(t.clientX, t.clientY, true));
     }, {passive: false});
 
     canvas.addEventListener('touchend', e => {
         e.preventDefault();
         for(let d in botonesMovil) teclas[d] = false;
+        Array.from(e.touches).forEach(t => manejarEntrada(t.clientX, t.clientY, true));
     }, {passive: false});
 
     inicializarCategoriaAleatoria();
