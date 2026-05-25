@@ -1,7 +1,7 @@
 // static/js/simon.js
 
 (function() {
-    console.log("¡Conectando Simón Dice con BancoPreguntasArcade de 150 preguntas!");
+    console.log("¡Cargando el motor del minijuego de caminata por esquinas conectado al banco de preguntas!");
 
     const contenedor = document.getElementById('simon-game-container');
     if (!contenedor) {
@@ -9,248 +9,287 @@
         return;
     }
 
-    contenedor.innerHTML = ''; // Limpieza de seguridad
+    contenedor.innerHTML = ''; // Limpieza total
 
-    // --- ESTADOS DEL JUEGO ---
+    // --- ESTADOS Y VARIABLES DEL JUEGO ---
     let puntuacion = 0;
     let preguntaActual = null;
-    let bloqueado = false;
-    let audioCtx = null;
+    let juegoActivo = false;
+    let estadoMensaje = "Presiona EMPEZAR JUEGO para iniciar la ronda.";
+    let mostrarRespuestaCorrecta = "";
 
-    // Paletas dinámicas de colores para mutar la interfaz en cada ronda
-    const paletasDeColores = [
-        [ {n: '#ff5555', h: '#ff8888'}, {n: '#55ff55', h: '#88ff88'}, {n: '#5555ff', h: '#8888ff'}, {n: '#ffff55', h: '#ffff88'} ], // Clásica
-        [ {n: '#ff77aa', h: '#ffaacc'}, {n: '#00e5ff', h: '#80f2ff'}, {n: '#b241f3', h: '#d98eff'}, {n: '#ffaa00', h: '#ffd580'} ], // Cyberpunk
-        [ {n: '#4caf50', h: '#81c784'}, {n: '#f44336', h: '#e57373'}, {n: '#ffeb3b', h: '#fff176'}, {n: '#2196f3', h: '#64b5f6'} ], // Pastel Retro
-        [ {n: '#e67e22', h: '#f39c12'}, {n: '#2ecc71', h: '#27ae60'}, {n: '#3498db', h: '#2980b9'}, {n: '#9b59b6', h: '#8e44ad'} ]  // Flat UI
+    // Dimensiones fijas del Canvas
+    const ANCHO = 480;
+    const ALTO = 400;
+
+    // Propiedades del Personaje
+    const jugador = {
+        x: ANCHO / 2,
+        y: ALTO / 2 + 30, // Un poco más abajo del centro para no pisar el texto inicial
+        radio: 12,
+        velocidad: 4,
+        color: '#00ffff'
+    };
+
+    // Definición de las 4 Esquinas (Zonas de Respuesta)
+    const esquinas = [
+        { id: 0, nombre: 'Arriba Izquierda', x: 0, y: 70, w: 130, h: 90, color: '#e74c3c', colorHover: '#ff6b6b' },
+        { id: 1, nombre: 'Arriba Derecha',   x: ANCHO - 130, y: 70, w: 130, h: 90, color: '#3498db', colorHover: '#5dade2' },
+        { id: 2, nombre: 'Abajo Izquierda',  x: 0, y: ALTO - 90, w: 130, h: 90, color: '#2ecc71', colorHover: '#58d68d' },
+        { id: 3, nombre: 'Abajo Derecha',    x: ANCHO - 130, y: ALTO - 90, w: 130, h: 90, color: '#f1c40f', colorHover: '#f5b041' }
     ];
-    let coloresActuales = paletasDeColores[0];
-    const tonosFrecuencia = [329.63, 261.63, 220.00, 164.81]; // Sonidos del Simón Dice original
 
-    // --- INYECCIÓN DE ESTILOS Y ESTRUCTURA ---
+    // Control de Teclado Activo
+    const teclas = {
+        w: false, a: false, s: false, d: false,
+        ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false
+    };
+
+    // --- INYECCIÓN DE ESTILOS CSS ---
     const estiloCSS = document.createElement('style');
-    estiloCSS.innerHTML = `
-        .simon-wrapper { display: flex; flex-direction: column; align-items: center; gap: 15px; width: 100%; max-width: 500px; margin: 0 auto; padding: 10px; box-sizing: border-box; }
-        .hud-simon { display: flex; justify-content: space-between; width: 100%; font-weight: bold; font-size: 1.1rem; color: #fff; }
-        .bocadillo-monito { background: #222; border: 2px solid var(--accent, #00ffff); border-radius: 12px; padding: 15px; width: 100%; box-sizing: border-box; position: relative; text-align: center; font-size: 1.1rem; min-height: 70px; color: #fff; display: flex; align-items: center; justify-content: center; }
-        .bocadillo-monito::after { content: ''; position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%); border-width: 10px 10px 0; border-style: solid; border-color: #222 transparent; display: block; width: 0; }
-        .tablero-simon { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 330px; height: 330px; background: #111; padding: 12px; border-radius: 50%; box-shadow: 0 8px 24px rgba(0,0,0,0.6); position: relative; }
-        .cuadrante { border: none; border-radius: 40px; cursor: pointer; transition: background 0.1s ease, transform 0.1s; display: flex; align-items: center; justify-content: center; padding: 12px; font-weight: bold; color: #000; font-size: 0.9rem; text-shadow: 0 1px 2px rgba(255,255,255,0.5); box-sizing: border-box; text-align: center; overflow: hidden; line-height: 1.2; }
-        .cuadrante:active, .cuadrante.active { transform: scale(0.95); filter: brightness(1.35); box-shadow: 0 0 20px currentColor; }
-        .cuadrante-0 { border-top-left-radius: 100% 100%; }
-        .cuadrante-1 { border-top-right-radius: 100% 100%; }
-        .cuadrante-2 { border-bottom-left-radius: 100% 100%; }
-        .cuadrante-3 { border-bottom-right-radius: 100% 100%; }
-        .controles-extra { display: flex; gap: 15px; width: 100%; justify-content: center; }
-        .btn-simon-action { background: #333; color: #fff; border: 1px solid #555; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; }
-        .btn-simon-action:hover { background: var(--accent, #00ffff); color: #000; }
-        .teclado-virtual { display: grid; grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(2, 50px); gap: 8px; justify-content: center; margin-top: 10px; }
-        .btn-flecha { background: #222; border: 2px solid #555; border-radius: 8px; color: #fff; font-size: 1.2rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.1s; user-select: none; }
-        .btn-flecha:active { background: var(--accent, #00ffff); color: #000; }
-        @media (min-width: 769px) { .teclado-virtual { display: none; } }
+    styleCSS.innerHTML = `
+        .arcade-canvas-wrapper { display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; max-width: 500px; margin: 0 auto; box-sizing: border-box; }
+        .hud-arcade { display: flex; justify-content: space-between; width: 100%; font-weight: bold; font-size: 1.1rem; color: #fff; padding: 0 5px; }
+        .canvas-game-board { background: #1a1a24; border: 3px solid #333; border-radius: 8px; box-shadow: 0 8px 20px rgba(0,0,0,0.7); display: block; max-width: 100%; height: auto; }
+        .area-botones { display: flex; gap: 15px; width: 100%; justify-content: center; margin-top: 5px; }
+        .btn-arcade-control { background: #222; color: #fff; border: 2px solid #444; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn-arcade-control:hover { background: #00ffff; color: #000; border-color: #00ffff; }
     `;
-    document.head.appendChild(estiloCSS);
+    document.head.appendChild(styleCSS);
 
+    // --- MAQUETACIÓN ESTRUCTURAL ---
     const wrapper = document.createElement('div');
-    wrapper.className = 'simon-wrapper';
+    wrapper.className = 'arcade-canvas-wrapper';
     wrapper.innerHTML = `
-        <div class="hud-simon">
-            <span>Puntos: <span id="simon-score" style="color: var(--accent, #00ffff)">0</span></span>
-            <span>Controles: WASD / Flechas</span>
+        <div class="hud-arcade">
+            <span>Puntos: <span id="arcade-score" style="color: #00ffff">0</span></span>
+            <span>Mover: WASD / Flechas</span>
         </div>
         
-        <div id="monito-bocadillo" class="bocadillo-monito">
-            🐵 ¡Listo guerrero! Presiona EMPEZAR JUEGO para escuchar al monito.
-        </div>
+        <canvas id="arcade-canvas" width="${ANCHO}" height="${ALTO}" class="canvas-game-board"></canvas>
 
-        <div class="tablero-simon" id="juego-tablero">
-            <button class="cuadrante cuadrante-0" data-idx="0"></button>
-            <button class="cuadrante cuadrante-1" data-idx="1"></button>
-            <button class="cuadrante cuadrante-2" data-idx="2"></button>
-            <button class="cuadrante cuadrante-3" data-idx="3"></button>
-        </div>
-
-        <div class="controles-extra">
-            <button class="btn-simon-action" id="btn-iniciar-simon">EMPEZAR JUEGO</button>
-            <button class="btn-simon-action" id="btn-fullscreen-simon">PANTALLA COMPLETA</button>
-        </div>
-
-        <div class="teclado-virtual">
-            <div></div>
-            <button class="btn-flecha" data-key="ArrowUp">▲</button>
-            <div></div>
-            <button class="btn-flecha" data-key="ArrowLeft">◀</button>
-            <button class="btn-flecha" data-key="ArrowDown">▼</button>
-            <button class="btn-flecha" data-key="ArrowRight">▶</button>
+        <div class="area-botones">
+            <button class="btn-arcade-control" id="btn-start-arcade">EMPEZAR JUEGO</button>
+            <button class="btn-arcade-control" id="btn-fs-arcade">PANTALLA COMPLETA</button>
         </div>
     `;
     contenedor.appendChild(wrapper);
 
-    // --- ASIGNACIONES DOM ---
-    const botonesCuadrantes = wrapper.querySelectorAll('.cuadrante');
-    const bocadillo = wrapper.querySelector('#monito-bocadillo');
-    const txtScore = wrapper.querySelector('#simon-score');
-    const btnIniciar = wrapper.querySelector('#btn-iniciar-simon');
-    const btnFullscreen = wrapper.querySelector('#btn-fullscreen-simon');
+    const canvas = wrapper.querySelector('#arcade-canvas');
+    const ctx = canvas.getContext('2d');
+    const txtScore = wrapper.querySelector('#arcade-score');
+    const btnStart = wrapper.querySelector('#btn-start-arcade');
+    const btnFS = wrapper.querySelector('#btn-fs-arcade');
     const contenedorPantallaCompleta = document.getElementById('game-screen');
 
-    // --- GENERADOR DE SINTONÍAS DE AUDIO ---
-    function iniciarAudioContext() {
-        if (!audioCtx) {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // --- ESCUCHAS DE TECLADO ---
+    window.addEventListener('keydown', (e) => {
+        if (teclas[e.key] !== undefined || teclas[e.code] !== undefined) {
+            // Evitar que la pantalla se mueva hacia abajo o arriba al jugar con flechas
+            if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].indexOf(e.key) > -1) {
+                e.preventDefault();
+            }
+            if(teclas[e.key] !== undefined) teclas[e.key] = true;
+            if(teclas[e.code] !== undefined) teclas[e.code] = true;
         }
-    }
+    });
 
-    function sonarFrecuencia(frecuencia, tiempo = 0.3) {
-        try {
-            iniciarAudioContext();
-            if (!audioCtx) return;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(frecuencia, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + tiempo);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + tiempo);
-        } catch(e) { console.log("Audio en espera de interacción humana", e); }
-    }
+    window.addEventListener('keyup', (e) => {
+        if (teclas[e.key] !== undefined || teclas[e.code] !== undefined) {
+            if(teclas[e.key] !== undefined) teclas[e.key] = false;
+            if(teclas[e.code] !== undefined) teclas[e.code] = false;
+        }
+    });
 
-    // --- CONTROL DE RONDAS INTEGRADO ---
-    function aplicarCambioColores() {
-        coloresActuales = paletasDeColores[Math.floor(Math.random() * paletasDeColores.length)];
-        botonesCuadrantes.forEach((btn, idx) => {
-            btn.style.backgroundColor = coloresActuales[idx].n;
-        });
-    }
-
-    function montarSiguientePregunta() {
-        bloqueado = true;
-        aplicarCambioColores();
-
-        // INTEGRACIÓN DIRECTA: Usamos el conector global de preguntas.js
+    // --- GESTIÓN DE PREGUNTAS ---
+    function cargarSiguientePregunta() {
         if (typeof window.obtenerPreguntaArcadeSimon !== 'function') {
-            console.error("No se pudo cargar la función integradora en preguntas.js");
+            console.error("No se detectó el conector en preguntas.js");
             return;
         }
 
         preguntaActual = window.obtenerPreguntaArcadeSimon();
-        bocadillo.innerHTML = `🐵 <b>Simón dice:</b> ${preguntaActual.pregunta}`;
+        estadoMensaje = preguntaActual.pregunta;
+        mostrarRespuestaCorrecta = "";
 
-        // Inyectamos las respuestas mezcladas en los casilleros y hacemos el parpadeo inicial
-        botonesCuadrantes.forEach((btn, idx) => {
-            btn.innerText = preguntaActual.opciones[idx] || '';
+        // Reiniciar al personaje en el centro exacto
+        jugador.x = ANCHO / 2;
+        jugador.y = ALTO / 2 + 40;
+        juegoActivo = true;
+    }
+
+    // --- DETECCIÓN DE COLISIONES (Caminó a una esquina) ---
+    function verificarColisionEsquinas() {
+        for (let i = 0; i < esquinas.length; i++) {
+            const e = esquinas[i];
             
-            // Secuencia luminosa tradicional por cuadrante
-            setTimeout(() => {
-                btn.classList.add('active');
-                sonarFrecuencia(tonosFrecuencia[idx], 0.2);
-                setTimeout(() => btn.classList.remove('active'), 200);
-            }, idx * 220);
-        });
-
-        setTimeout(() => { bloqueado = false; }, 1000);
-    }
-
-    function comprobarEleccionUsuario(indice) {
-        if (bloqueado || !preguntaActual) return;
-        bloqueado = true;
-
-        const seleccion = preguntaActual.opciones[indice];
-
-        // Efecto visual al presionar
-        botonesCuadrantes[indice].classList.add('active');
-        sonarFrecuencia(tonosFrecuencia[indice], 0.25);
-
-        setTimeout(() => {
-            botonesCuadrantes[indice].classList.remove('active');
-
-            if (seleccion === preguntaActual.correcta) {
-                // ¡Acierto!
-                puntuacion++;
-                txtScore.innerText = puntuacion;
-                sonarFrecuencia(523.25, 0.15); // Nota Do alta de éxito
-                setTimeout(() => sonarFrecuencia(659.25, 0.2), 100); // Nota Mi
+            // Verificamos si el círculo del jugador entra en el rectángulo de la esquina
+            if (jugador.x + jugador.radio > e.x && 
+                jugador.x - jugador.radio < e.x + e.w &&
+                jugador.y + jugador.radio > e.y && 
+                jugador.y - jugador.radio < e.y + e.h) {
                 
-                bocadillo.innerHTML = `🐵 ¡Eso es! El monito saltó de la emoción. Siguiente pregunta...`;
-                setTimeout(montarSiguientePregunta, 1300);
-            } else {
-                // ¡Fallo!
-                sonarFrecuencia(110, 0.6); // Zumbido de error grave
-                bocadillo.innerHTML = `🐵 ¡Nooo! Te equivocaste. La respuesta real era: <br><b style="color:var(--accent)">${preguntaActual.correcta}</b>`;
-                setTimeout(enviarPuntajeYTerminar, 1800);
+                procesarEleccionRespuesta(i);
+                break;
             }
-        }, 200);
+        }
     }
 
-    function enviarPuntajeYTerminar() {
+    function procesarEleccionRespuesta(indiceEsquina) {
+        juegoActivo = false; 
+        const respuestaSeleccionada = preguntaActual.opciones[indiceEsquina];
+
+        if (respuestaSeleccionada === preguntaActual.correcta) {
+            // Acierto
+            puntuacion++;
+            txtScore.innerText = puntuacion;
+            estadoMensaje = "¡Correcto! Volviendo al centro...";
+            
+            setTimeout(() => {
+                cargarSiguientePregunta();
+            }, 1200);
+        } else {
+            // Fallo catastrófico
+            estadoMensaje = "Incorrecto.";
+            mostrarRespuestaCorrecta = `La respuesta era: ${preguntaActual.correcta}`;
+            
+            setTimeout(() => {
+                finalizarPartidaArcade();
+            }, 2500);
+        }
+    }
+
+    function finalizarPartidaArcade() {
+        // Enviar puntuaciones a la base de datos si la función existe
         if (typeof window.cargarRanking === 'function') {
-            const guerrero = localStorage.getItem('arcade_user') || 'Jugador';
+            const nick = localStorage.getItem('arcade_user') || 'Jugador';
             fetch('/guardar_puntaje', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ juego: 'simon', nombre: guerrero, puntos: puntuacion })
+                body: JSON.stringify({ juego: 'simon', nombre: nick, puntos: puntuacion })
             })
             .then(() => window.cargarRanking())
-            .catch(err => console.error("Error al sincronizar ranking SQL:", err));
+            .catch(err => console.error("Error al guardar puntos:", err));
         }
 
         const gameOverPanel = document.getElementById('game-over-screen');
         if (gameOverPanel) {
-            document.getElementById('final-score-msg').innerText = `Contestaste ${puntuacion} preguntas del banco de forma correcta.`;
+            document.getElementById('final-score-msg').innerText = `Lograste caminar correctamente hacia ${puntuacion} respuestas del banco.`;
             contenedor.style.display = 'none';
             gameOverPanel.style.display = 'block';
         }
     }
 
-    // --- ACCIONES Y ACTIVADORES ---
-    btnIniciar.addEventListener('click', () => {
-        iniciarAudioContext();
+    // --- FUNCIÓN AUXILIAR DE ENVOLTURA DE TEXTO EN CANVAS ---
+    function dibujarTextoMultilinea(texto, x, y, anchoMax, altoLinea) {
+        const palabras = texto.split(' ');
+        let linea = '';
+        let numLineas = 0;
+
+        for (let n = 0; n < palabras.length; n++) {
+            let pruebaLinea = linea + palabras[n] + ' ';
+            let metricas = ctx.measureText(pruebaLinea);
+            if (metricas.width > anchoMax && n > 0) {
+                ctx.fillText(linea, x, y);
+                linea = palabras[n] + ' ';
+                y += altoLinea;
+                numLineas++;
+            } else {
+                linea = pruebaLinea;
+            }
+        }
+        ctx.fillText(linea, x, y);
+    }
+
+    // --- BUCLE DE RENDERIZADO (60 FPS) ---
+    function actualizarJuego() {
+        // 1. Lógica de movimiento del Personaje
+        if (juegoActivo) {
+            if (teclas.w || teclas.KeyW || teclas.ArrowUp)    jugador.y -= jugador.velocidad;
+            if (teclas.s || teclas.KeyS || teclas.ArrowDown)  jugador.y += jugador.velocidad;
+            if (teclas.a || teclas.KeyA || teclas.ArrowLeft)  jugador.x -= jugador.velocidad;
+            if (teclas.d || teclas.KeyD || teclas.ArrowRight) jugador.x += jugador.velocidad;
+
+            // Límites físicos de la pantalla del canvas
+            if (jugador.x - jugador.radio < 0) jugador.x = jugador.radio;
+            if (jugador.x + jugador.radio > ANCHO) jugador.x = ANCHO - jugador.radio;
+            if (jugador.y - jugador.radio < 70) jugador.y = 70 + jugador.radio; // Límite inferior de la franja superior de texto
+            if (jugador.y + jugador.radio > ALTO) jugador.y = ALTO - jugador.radio;
+
+            verificarColisionEsquinas();
+        }
+
+        // 2. Limpieza del Lienzo
+        ctx.clearRect(0, 0, ANCHO, ALTO);
+
+        // 3. Renderizar Franja de Preguntas Superior
+        ctx.fillStyle = '#111119';
+        ctx.fillRect(0, 0, ANCHO, 65);
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, 65);
+        ctx.lineTo(ANCHO, 65);
+        ctx.stroke();
+
+        // Texto de la Pregunta
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '13px sans-serif';
+        ctx.textAlign = 'center';
+        dibujarTextoMultilinea(estadoMensaje, ANCHO / 2, 22, ANCHO - 30, 16);
+
+        if (mostrarRespuestaCorrecta) {
+            ctx.fillStyle = '#ffaa00';
+            ctx.font = 'bold 12px sans-serif';
+            ctx.fillText(mostrarRespuestaCorrecta, ANCHO / 2, 55);
+        }
+
+        // 4. Renderizar las 4 Esquinas / Cajas de Respuestas
+        esquinas.forEach((e, idx) => {
+            // Verificar si el jugador está encima para un efecto hover sutil
+            let estaCerca = (jugador.x > e.x && jugador.x < e.x + e.w && jugador.y > e.y && jugador.y < e.y + e.h);
+            ctx.fillStyle = estaCerca ? e.colorHover : e.color;
+            ctx.fillRect(e.x, e.y, e.w, e.h);
+
+            // Borde estético
+            ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+            ctx.strokeRect(e.x, e.y, e.w, e.h);
+
+            // Renderizar la opción correspondiente adentro si hay una pregunta activa
+            if (preguntaActual && preguntaActual.opciones[idx]) {
+                ctx.fillStyle = '#000000';
+                ctx.font = 'bold 11px sans-serif';
+                ctx.textAlign = 'center';
+                
+                // Centrado dinámico del texto de respuesta dentro del bloque
+                const textoOpcion = preguntaActual.opciones[idx];
+                dibujarTextoMultilinea(textoOpcion, e.x + (e.w / 2), e.y + (e.h / 2) - 5, e.w - 10, 14);
+            }
+        });
+
+        // 5. Renderizar el Personaje (El caminante)
+        ctx.fillStyle = jugador.color;
+        ctx.beginPath();
+        ctx.arc(jugador.x, jugador.y, jugador.radio, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Núcleo del Personaje
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(jugador.x, jugador.y, jugador.radio / 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        requestAnimationFrame(actualizarJuego);
+    }
+
+    // --- ACCIONES DE LOS BOTONES DE INTERFAZ ---
+    btnStart.addEventListener('click', () => {
         puntuacion = 0;
         txtScore.innerText = "0";
-        montarSiguientePregunta();
+        cargarSiguientePregunta();
     });
 
-    botonesCuadrantes.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const idx = parseInt(btn.getAttribute('data-idx'));
-            comprobarEleccionUsuario(idx);
-        });
-    });
-
-    // --- MAPEO DE TECLAS (REDUCE ACCIDENTES AL ESCROLLAR) ---
-    const mapeoFisico = {
-        'KeyW': 0, 'ArrowUp': 0,
-        'KeyA': 2, 'ArrowLeft': 2,
-        'KeyS': 3, 'ArrowDown': 3,
-        'KeyD': 1, 'ArrowRight': 1
-    };
-
-    window.addEventListener('keydown', (e) => {
-        if (mapeoFisico[e.code] !== undefined) {
-            e.preventDefault(); 
-            comprobarEleccionUsuario(mapeoFisico[e.code]);
-        }
-    });
-
-    // --- SOPORTE TÁCTIL MÓVIL (FLECHAS DISPONIBLES EN PANTALLA COMPLETA) ---
-    wrapper.querySelectorAll('.btn-flecha').forEach(btn => {
-        const simularEntrada = (e) => {
-            e.preventDefault();
-            const key = btn.getAttribute('data-key');
-            if (key === 'ArrowUp') comprobarEleccionUsuario(0);
-            if (key === 'ArrowLeft') comprobarEleccionUsuario(2);
-            if (key === 'ArrowDown') comprobarEleccionUsuario(3);
-            if (key === 'ArrowRight') comprobarEleccionUsuario(1);
-        };
-        btn.addEventListener('touchstart', simularEntrada);
-        btn.addEventListener('mousedown', simularEntrada);
-    });
-
-    // --- FULLSCREEN SEGURO PARA EL TELÉFONO ---
-    btnFullscreen.addEventListener('click', () => {
+    btnFS.addEventListener('click', () => {
         if (!document.fullscreenElement && !document.webkitFullscreenElement) {
             if (contenedorPantallaCompleta.requestFullscreen) {
                 contenedorPantallaCompleta.requestFullscreen();
@@ -266,6 +305,6 @@
         }
     });
 
-    // Pintado estático de inicio
-    aplicarCambioColores();
+    // Iniciar el bucle infinito de renderizado
+    requestAnimationFrame(actualizarJuego);
 })();
