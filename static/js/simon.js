@@ -1,328 +1,271 @@
-// js/simon.js
-(function () {
-    console.log("Iniciando Módulo Simón Dice con Soporte de Preguntas...");
+// static/js/simon.js
 
-    // ==========================================
-    // 1. CONFIGURACIÓN DE ELEMENTOS Y CANVAS
-    // ==========================================
-    const canvasPlaceholder = document.querySelector('.canvas-placeholder');
-    if (!canvasPlaceholder) {
-        console.error("No se encontró el contenedor .canvas-placeholder en el HTML.");
+(function() {
+    console.log("¡Conectando Simón Dice con BancoPreguntasArcade de 150 preguntas!");
+
+    const contenedor = document.getElementById('simon-game-container');
+    if (!contenedor) {
+        console.error("No se encontró el contenedor #simon-game-container");
         return;
     }
 
-    // Limpieza de duplicados previos en el DOM
-    const canvasViejo = document.getElementById('game-canvas');
-    if (canvasViejo) canvasViejo.remove();
+    contenedor.innerHTML = ''; // Limpieza de seguridad
 
-    // Creación del Canvas Principal
-    const canvas = document.createElement('canvas');
-    canvas.id = 'game-canvas';
-    canvas.width = 480;
-    canvas.height = 480;
-    canvasPlaceholder.insertBefore(canvas, canvasPlaceholder.firstChild);
+    // --- ESTADOS DEL JUEGO ---
+    let puntuacion = 0;
+    let preguntaActual = null;
+    let bloqueado = false;
+    let audioCtx = null;
 
-    const ctx = canvas.getContext('2d');
+    // Paletas dinámicas de colores para mutar la interfaz en cada ronda
+    const paletasDeColores = [
+        [ {n: '#ff5555', h: '#ff8888'}, {n: '#55ff55', h: '#88ff88'}, {n: '#5555ff', h: '#8888ff'}, {n: '#ffff55', h: '#ffff88'} ], // Clásica
+        [ {n: '#ff77aa', h: '#ffaacc'}, {n: '#00e5ff', h: '#80f2ff'}, {n: '#b241f3', h: '#d98eff'}, {n: '#ffaa00', h: '#ffd580'} ], // Cyberpunk
+        [ {n: '#4caf50', h: '#81c784'}, {n: '#f44336', h: '#e57373'}, {n: '#ffeb3b', h: '#fff176'}, {n: '#2196f3', h: '#64b5f6'} ], // Pastel Retro
+        [ {n: '#e67e22', h: '#f39c12'}, {n: '#2ecc71', h: '#27ae60'}, {n: '#3498db', h: '#2980b9'}, {n: '#9b59b6', h: '#8e44ad'} ]  // Flat UI
+    ];
+    let coloresActuales = paletasDeColores[0];
+    const tonosFrecuencia = [329.63, 261.63, 220.00, 164.81]; // Sonidos del Simón Dice original
 
-    // ==========================================
-    // 2. ESTADO DEL JUEGO Y VARIABLES DE SESIÓN
-    // ==========================================
-    let secuenciaIA = [];
-    let secuenciaJugador = [];
-    let rondaActual = 0;
-    let indiceListaPreguntas = 0; // 0: Web, 1: Python/SQL, 2: Física
-    let juegoBloqueado = true; // Bloquea clics mientras la IA muestra los colores
-    let cuadranteIluminado = null; 
-    let preguntaUsadaEnEstaRonda = false;
+    // --- INYECCIÓN DE ESTILOS Y ESTRUCTURA ---
+    const estiloCSS = document.createElement('style');
+    estiloCSS.innerHTML = `
+        .simon-wrapper { display: flex; flex-direction: column; align-items: center; gap: 15px; width: 100%; max-width: 500px; margin: 0 auto; padding: 10px; box-sizing: border-box; }
+        .hud-simon { display: flex; justify-content: space-between; width: 100%; font-weight: bold; font-size: 1.1rem; color: #fff; }
+        .bocadillo-monito { background: #222; border: 2px solid var(--accent, #00ffff); border-radius: 12px; padding: 15px; width: 100%; box-sizing: border-box; position: relative; text-align: center; font-size: 1.1rem; min-height: 70px; color: #fff; display: flex; align-items: center; justify-content: center; }
+        .bocadillo-monito::after { content: ''; position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%); border-width: 10px 10px 0; border-style: solid; border-color: #222 transparent; display: block; width: 0; }
+        .tablero-simon { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 330px; height: 330px; background: #111; padding: 12px; border-radius: 50%; box-shadow: 0 8px 24px rgba(0,0,0,0.6); position: relative; }
+        .cuadrante { border: none; border-radius: 40px; cursor: pointer; transition: background 0.1s ease, transform 0.1s; display: flex; align-items: center; justify-content: center; padding: 12px; font-weight: bold; color: #000; font-size: 0.9rem; text-shadow: 0 1px 2px rgba(255,255,255,0.5); box-sizing: border-box; text-align: center; overflow: hidden; line-height: 1.2; }
+        .cuadrante:active, .cuadrante.active { transform: scale(0.95); filter: brightness(1.35); box-shadow: 0 0 20px currentColor; }
+        .cuadrante-0 { border-top-left-radius: 100% 100%; }
+        .cuadrante-1 { border-top-right-radius: 100% 100%; }
+        .cuadrante-2 { border-bottom-left-radius: 100% 100%; }
+        .cuadrante-3 { border-bottom-right-radius: 100% 100%; }
+        .controles-extra { display: flex; gap: 15px; width: 100%; justify-content: center; }
+        .btn-simon-action { background: #333; color: #fff; border: 1px solid #555; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn-simon-action:hover { background: var(--accent, #00ffff); color: #000; }
+        .teclado-virtual { display: grid; grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(2, 50px); gap: 8px; justify-content: center; margin-top: 10px; }
+        .btn-flecha { background: #222; border: 2px solid #555; border-radius: 8px; color: #fff; font-size: 1.2rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.1s; user-select: none; }
+        .btn-flecha:active { background: var(--accent, #00ffff); color: #000; }
+        @media (min-width: 769px) { .teclado-virtual { display: none; } }
+    `;
+    document.head.appendChild(estiloCSS);
 
-    // Dimensiones y centro del Simon
-    const centroX = canvas.width / 2;
-    const centroY = canvas.height / 2;
-    const radioExterior = 220;
-    const radioInterior = 70;
-
-    // Colores base y colores brillantes cuando se activan
-    const CONFIG_COLORES = {
-        0: { base: "#006400", brillo: "#00FF00", nombre: "Verde" },   // Arriba-Izquierda
-        1: { base: "#8B0000", brillo: "#FF0000", nombre: "Rojo" },    // Arriba-Derecha
-        2: { base: "#8B8B00", brillo: "#FFFF00", nombre: "Amarillo" },// Abajo-Izquierda
-        3: { base: "#00008B", brillo: "#0000FF", nombre: "Azul" }     // Abajo-Derecha
-    };
-
-    // ==========================================
-    // 3. SELECCIÓN DINÁMICA DE PREGUNTAS
-    // ==========================================
-    function obtenerPreguntaAleatoria() {
-        // Validamos que el banco de preguntas esté inyectado en el entorno global de la ventana
-        if (!window.BancoPreguntasArcade || !window.BancoPreguntasArcade[indiceListaPreguntas]) {
-            console.warn("Banco de preguntas global no disponible. Usando plantilla de respaldo.");
-            return {
-                q: "¿Qué significa JS?",
-                opciones: { A: "JavaScript", B: "JavaSource", C: "JustStyle", D: "JQueryScript" },
-                a: "JavaScript"
-            };
-        }
-        const listaFiltro = window.BancoPreguntasArcade[indiceListaPreguntas];
-        const indiceAleatorio = Math.floor(Math.random() * listaFiltro.length);
-        return listaFiltro[indiceAleatorio];
-    }
-
-    // Determina qué lista de preguntas usar basándose en la ronda del juego
-    function actualizarDificultadPreguntas() {
-        if (rondaActual <= 4) {
-            indiceListaPreguntas = 0; // Rondas 1-4: HTML, CSS, WordPress
-        } else if (rondaActual <= 9) {
-            indiceListaPreguntas = 1; // Rondas 5-9: Python y SQL
-        } else {
-            indiceListaPreguntas = 2; // Rondas 10+: Física
-        }
-    }
-
-    // ==========================================
-    // 4. SISTEMA DE RENDERIZADO (DIBUJO DE CANVAS)
-    // ==========================================
-    function dibujarArcoSegmento(startAngle, endAngle, color, esCentro = false) {
-        ctx.beginPath();
-        ctx.arc(centroX, centroY, radioExterior, startAngle, endAngle);
-        ctx.arc(centroX, centroY, radioInterior, endAngle, startAngle, true);
-        ctx.closePath();
-        ctx.fillStyle = color;
-        ctx.fill();
-        ctx.lineWidth = 5;
-        ctx.strokeStyle = "#111625";
-        ctx.stroke();
-    }
-
-    function renderizarSimonDice() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // Cuadrante 0: Verde (Arriba Izquierda: 180° a 270° -> π a 1.5π)
-        dibujarArcoSegmento(Math.PI, 1.5 * Math.PI, cuadranteIluminado === 0 ? CONFIG_COLORES[0].brillo : CONFIG_COLORES[0].base);
-
-        // Cuadrante 1: Rojo (Arriba Derecha: 270° a 360° -> 1.5π a 2π)
-        dibujarArcoSegmento(1.5 * Math.PI, 2 * Math.PI, cuadranteIluminado === 1 ? CONFIG_COLORES[1].brillo : CONFIG_COLORES[1].base);
-
-        // Cuadrante 2: Amarillo (Abajo Izquierda: 90° a 180° -> 0.5π a π)
-        dibujarArcoSegmento(0.5 * Math.PI, Math.PI, cuadranteIluminado === 2 ? CONFIG_COLORES[2].brillo : CONFIG_COLORES[2].base);
-
-        // Cuadrante 3: Azul (Abajo Derecha: 0° a 90° -> 0 a 0.5π)
-        dibujarArcoSegmento(0, 0.5 * Math.PI, cuadranteIluminado === 3 ? CONFIG_COLORES[3].brillo : CONFIG_COLORES[3].base);
-
-        // Botón o Anillo Central Decorativo
-        ctx.beginPath();
-        ctx.arc(centroX, centroY, radioInterior, 0, 2 * Math.PI);
-        ctx.fillStyle = "#1a1f2c";
-        ctx.fill();
-        ctx.lineWidth = 6;
-        ctx.strokeStyle = "#FFD700"; // Anillo dorado central
-        ctx.stroke();
-
-        // Texto de puntuación en el centro
-        ctx.fillStyle = "#FFFFFF";
-        ctx.font = "bold 22px sans-serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(`R41`, centroX, centroY - 12);
-        ctx.font = "14px sans-serif";
-        ctx.fillStyle = "#00FF00";
-        ctx.fillText(`Pts: ${rondaActual}`, centroX, centroY + 15);
-    }
-
-    // ==========================================
-    // 5. MECÁNICAS DE CONTROL E ILUMINACIÓN
-    // ==========================================
-    function iluminarCuadrante(id, duracion = 400) {
-        cuadranteIluminado = id;
-        renderizarSimonDice();
-        setTimeout(() => {
-            if (cuadranteIluminado === id) {
-                cuadranteIluminado = null;
-                renderizarSimonDice();
-            }
-        }, duracion);
-    }
-
-    function reproducirSecuenciaIA() {
-        juegoBloqueado = true;
-        secuenciaJugador = [];
-        actualizarDificultadPreguntas();
+    const wrapper = document.createElement('div');
+    wrapper.className = 'simon-wrapper';
+    wrapper.innerHTML = `
+        <div class="hud-simon">
+            <span>Puntos: <span id="simon-score" style="color: var(--accent, #00ffff)">0</span></span>
+            <span>Controles: WASD / Flechas</span>
+        </div>
         
-        let i = 0;
-        const intervalo = setInterval(() => {
-            if (i >= secuenciaIA.length) {
-                clearInterval(intervalo);
-                juegoBloqueado = false; // Le cedemos el turno al usuario
-                return;
-            }
-            iluminarCuadrante(secuenciaIA[i]);
-            i++;
-        }, 600);
+        <div id="monito-bocadillo" class="bocadillo-monito">
+            🐵 ¡Listo guerrero! Presiona EMPEZAR JUEGO para escuchar al monito.
+        </div>
+
+        <div class="tablero-simon" id="juego-tablero">
+            <button class="cuadrante cuadrante-0" data-idx="0"></button>
+            <button class="cuadrante cuadrante-1" data-idx="1"></button>
+            <button class="cuadrante cuadrante-2" data-idx="2"></button>
+            <button class="cuadrante cuadrante-3" data-idx="3"></button>
+        </div>
+
+        <div class="controles-extra">
+            <button class="btn-simon-action" id="btn-iniciar-simon">EMPEZAR JUEGO</button>
+            <button class="btn-simon-action" id="btn-fullscreen-simon">PANTALLA COMPLETA</button>
+        </div>
+
+        <div class="teclado-virtual">
+            <div></div>
+            <button class="btn-flecha" data-key="ArrowUp">▲</button>
+            <div></div>
+            <button class="btn-flecha" data-key="ArrowLeft">◀</button>
+            <button class="btn-flecha" data-key="ArrowDown">▼</button>
+            <button class="btn-flecha" data-key="ArrowRight">▶</button>
+        </div>
+    `;
+    contenedor.appendChild(wrapper);
+
+    // --- ASIGNACIONES DOM ---
+    const botonesCuadrantes = wrapper.querySelectorAll('.cuadrante');
+    const bocadillo = wrapper.querySelector('#monito-bocadillo');
+    const txtScore = wrapper.querySelector('#simon-score');
+    const btnIniciar = wrapper.querySelector('#btn-iniciar-simon');
+    const btnFullscreen = wrapper.querySelector('#btn-fullscreen-simon');
+    const contenedorPantallaCompleta = document.getElementById('game-screen');
+
+    // --- GENERADOR DE SINTONÍAS DE AUDIO ---
+    function iniciarAudioContext() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
     }
 
-    function añadirPasoYContinuar() {
-        rondaActual++;
-        preguntaUsadaEnEstaRonda = false;
-        const nuevoColorId = Math.floor(Math.random() * 4);
-        secuenciaIA.push(nuevoColorId);
-        setTimeout(reproducirSecuenciaIA, 800);
+    function sonarFrecuencia(frecuencia, tiempo = 0.3) {
+        try {
+            iniciarAudioContext();
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(frecuencia, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + tiempo);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + tiempo);
+        } catch(e) { console.log("Audio en espera de interacción humana", e); }
     }
 
-    // ==========================================
-    // 6. SISTEMA DE SALVACIÓN POR PREGUNTA (MODAL)
-    // ==========================================
-    function lanzarModalPreguntaSalvacion() {
-        juegoBloqueado = true;
-        preguntaUsadaEnEstaRonda = true;
-
-        const dataPregunta = obtenerPreguntaAleatoria();
-
-        // Creación e inyección del modal en el árbol HTML dinámicamente
-        const contenedorModal = document.createElement('div');
-        contenedorModal.id = 'arcade-quiz-modal';
-        contenedorModal.style = `
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(10, 14, 23, 0.95); display: flex;
-            justify-content: center; align-items: center; z-index: 99999;
-            font-family: sans-serif; color: #fff; padding: 20px;
-        `;
-
-        const tarjetaEstructura = document.createElement('div');
-        tarjetaEstructura.style = `
-            background: #1f2638; padding: 30px; border-radius: 12px;
-            max-width: 500px; width: 100%; box-shadow: 0 8px 32px rgba(0,255,0,0.2);
-            border: 2px solid #00ff00; text-align: center;
-        `;
-
-        const categoriaTexto = indiceListaPreguntas === 0 ? "DESARROLLO WEB" : indiceListaPreguntas === 1 ? "PROGRAMACIÓN (PYTHON / SQL)" : "FÍSICA COMPLETA";
-        
-        tarjetaEstructura.innerHTML = `
-            <h3 style="color: #00ff00; margin-top: 0; letter-spacing: 2px;">SALVACIÓN EXTRA</h3>
-            <p style="font-size: 13px; color: #8a99ad; margin-bottom: 20px;">Categoría: ${categoriaTexto}</p>
-            <h2 style="font-size: 18px; margin-bottom: 25px; line-height: 1.5;">${dataPregunta.q}</h2>
-            <div id="quiz-options-box" style="display: grid; grid-template-columns: 1fr; gap: 12px;"></div>
-        `;
-
-        contenedorModal.appendChild(tarjetaEstructura);
-        document.body.appendChild(contenedorModal);
-
-        const cajaBotones = tarjetaEstructura.querySelector('#quiz-options-box');
-
-        // Renderizado de las claves A, B, C, D
-        Object.keys(dataPregunta.opciones).forEach(clave => {
-            const textoOpcion = dataPregunta.opciones[clave];
-            const botonOp = document.createElement('button');
-            botonOp.style = `
-                background: #29344f; color: #fff; border: 1px solid #41537a;
-                padding: 14px; border-radius: 6px; cursor: pointer; text-align: left;
-                font-size: 15px; transition: all 0.2s ease;
-            `;
-            botonOp.innerText = `${clave}) ${textoOpcion}`;
-
-            botonOp.onmouseover = () => { botonOp.style.background = '#36466b'; };
-            botonOp.onmouseout = () => { botonOp.style.background = '#29344f'; };
-
-            botonOp.onclick = () => {
-                // Desactivamos todos los clics inmediatos en el modal para prevenir doble entrada
-                const todosLosBotones = cajaBotones.querySelectorAll('button');
-                todosLosBotones.forEach(b => b.disabled = true);
-
-                if (textoOpcion === dataPregunta.a) {
-                    // ¡Correcto! Se salva
-                    botonOp.style.background = '#006400';
-                    botonOp.style.borderColor = '#00ff00';
-                    setTimeout(() => {
-                        contenedorModal.remove();
-                        alert("¡Respuesta Correcta! Continúas en la ronda.");
-                        // Reintentar la misma ronda: IA la repite para que recuerdes la secuencia
-                        setTimeout(reproducirSecuenciaIA, 600);
-                    }, 1200);
-                } else {
-                    // Incorrecto: Pierde definitivamente
-                    botonOp.style.background = '#8b0000';
-                    botonOp.style.borderColor = '#ff0000';
-                    setTimeout(() => {
-                        contenedorModal.remove();
-                        terminarPartidaDefinitivamente();
-                    }, 1200);
-                }
-            };
-
-            cajaBotones.appendChild(botonOp);
+    // --- CONTROL DE RONDAS INTEGRADO ---
+    function aplicarCambioColores() {
+        coloresActuales = paletasDeColores[Math.floor(Math.random() * paletasDeColores.length)];
+        botonesCuadrantes.forEach((btn, idx) => {
+            btn.style.backgroundColor = coloresActuales[idx].n;
         });
     }
 
-    function terminarPartidaDefinitivamente() {
-        console.log("Finalizando juego. Puntuación conseguida:", rondaActual);
-        if (typeof window.finalizarJuego === "function") {
-            window.finalizarJuego(rondaActual);
-        } else {
-            alert(`Fin del juego. Conseguiste: ${rondaActual} puntos.`);
-            location.reload();
+    function montarSiguientePregunta() {
+        bloqueado = true;
+        aplicarCambioColores();
+
+        // INTEGRACIÓN DIRECTA: Usamos el conector global de preguntas.js
+        if (typeof window.obtenerPreguntaArcadeSimon !== 'function') {
+            console.error("No se pudo cargar la función integradora en preguntas.js");
+            return;
+        }
+
+        preguntaActual = window.obtenerPreguntaArcadeSimon();
+        bocadillo.innerHTML = `🐵 <b>Simón dice:</b> ${preguntaActual.pregunta}`;
+
+        // Inyectamos las respuestas mezcladas en los casilleros y hacemos el parpadeo inicial
+        botonesCuadrantes.forEach((btn, idx) => {
+            btn.innerText = preguntaActual.opciones[idx] || '';
+            
+            // Secuencia luminosa tradicional por cuadrante
+            setTimeout(() => {
+                btn.classList.add('active');
+                sonarFrecuencia(tonosFrecuencia[idx], 0.2);
+                setTimeout(() => btn.classList.remove('active'), 200);
+            }, idx * 220);
+        });
+
+        setTimeout(() => { bloqueado = false; }, 1000);
+    }
+
+    function comprobarEleccionUsuario(indice) {
+        if (bloqueado || !preguntaActual) return;
+        bloqueado = true;
+
+        const seleccion = preguntaActual.opciones[indice];
+
+        // Efecto visual al presionar
+        botonesCuadrantes[indice].classList.add('active');
+        sonarFrecuencia(tonosFrecuencia[indice], 0.25);
+
+        setTimeout(() => {
+            botonesCuadrantes[indice].classList.remove('active');
+
+            if (seleccion === preguntaActual.correcta) {
+                // ¡Acierto!
+                puntuacion++;
+                txtScore.innerText = puntuacion;
+                sonarFrecuencia(523.25, 0.15); // Nota Do alta de éxito
+                setTimeout(() => sonarFrecuencia(659.25, 0.2), 100); // Nota Mi
+                
+                bocadillo.innerHTML = `🐵 ¡Eso es! El monito saltó de la emoción. Siguiente pregunta...`;
+                setTimeout(montarSiguientePregunta, 1300);
+            } else {
+                // ¡Fallo!
+                sonarFrecuencia(110, 0.6); // Zumbido de error grave
+                bocadillo.innerHTML = `🐵 ¡Nooo! Te equivocaste. La respuesta real era: <br><b style="color:var(--accent)">${preguntaActual.correcta}</b>`;
+                setTimeout(enviarPuntajeYTerminar, 1800);
+            }
+        }, 200);
+    }
+
+    function enviarPuntajeYTerminar() {
+        if (typeof window.cargarRanking === 'function') {
+            const guerrero = localStorage.getItem('arcade_user') || 'Jugador';
+            fetch('/guardar_puntaje', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ juego: 'simon', nombre: guerrero, puntos: puntuacion })
+            })
+            .then(() => window.cargarRanking())
+            .catch(err => console.error("Error al sincronizar ranking SQL:", err));
+        }
+
+        const gameOverPanel = document.getElementById('game-over-screen');
+        if (gameOverPanel) {
+            document.getElementById('final-score-msg').innerText = `Contestaste ${puntuacion} preguntas del banco de forma correcta.`;
+            contenedor.style.display = 'none';
+            gameOverPanel.style.display = 'block';
         }
     }
 
-    // ==========================================
-    // 7. CAPTURA Y EVALUACIÓN DE CLICS DEL MOUSE
-    // ==========================================
-    canvas.onclick = function (evento) {
-        if (juegoBloqueado) return;
+    // --- ACCIONES Y ACTIVADORES ---
+    btnIniciar.addEventListener('click', () => {
+        iniciarAudioContext();
+        puntuacion = 0;
+        txtScore.innerText = "0";
+        montarSiguientePregunta();
+    });
 
-        // Coordenadas locales respecto a las dimensiones de render del lienzo
-        const rect = canvas.getBoundingClientRect();
-        const xClic = evento.clientX - rect.left;
-        const yClic = evento.clientY - rect.top;
+    botonesCuadrantes.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const idx = parseInt(btn.getAttribute('data-idx'));
+            comprobarEleccionUsuario(idx);
+        });
+    });
 
-        // Distancia del centro para validar si el clic ocurrió dentro de la dona
-        const distanciaCentro = Math.sqrt(Math.pow(xClic - centroX, 2) + Math.pow(yClic - centroY, 2));
-
-        if (distanciaCentro < radioInterior || distanciaCentro > radioExterior) {
-            return; // Clic fuera del área de juego
-        }
-
-        let cuadranteSeleccionado = null;
-
-        if (xClic < centroX && yClic < centroY) cuadranteSeleccionado = 0; // Arriba Izq
-        else if (xClic >= centroX && yClic < centroY) cuadranteSeleccionado = 1; // Arriba Der
-        else if (xClic < centroX && yClic >= centroY) cuadranteSeleccionado = 2; // Abajo Izq
-        else if (xClic >= centroX && yClic >= centroY) cuadranteSeleccionado = 3; // Abajo Der
-
-        if (cuadranteSeleccionado !== null) {
-            iluminarCuadrante(cuadranteSeleccionado, 250);
-            secuenciaJugador.push(cuadranteSeleccionado);
-
-            // Validar si el paso actual coincide con la IA
-            const indiceVerificacion = secuenciaJugador.length - 1;
-            if (cuadranteSeleccionado !== secuenciaIA[indiceVerificacion]) {
-                // El jugador cometió un error
-                if (!preguntaUsadaEnEstaRonda) {
-                    lanzarModalPreguntaSalvacion();
-                } else {
-                    terminarPartidaDefinitivamente();
-                }
-                return;
-            }
-
-            // Si completó toda la secuencia actual exitosamente
-            if (secuenciaJugador.length === secuenciaIA.length) {
-                juegoBloqueado = true;
-                añadirPasoYContinuar();
-            }
-        }
+    // --- MAPEO DE TECLAS (REDUCE ACCIDENTES AL ESCROLLAR) ---
+    const mapeoFisico = {
+        'KeyW': 0, 'ArrowUp': 0,
+        'KeyA': 2, 'ArrowLeft': 2,
+        'KeyS': 3, 'ArrowDown': 3,
+        'KeyD': 1, 'ArrowRight': 1
     };
 
-    // ==========================================
-    // 8. INICIALIZACIÓN AUTOMÁTICA DEL MODULO
-    // ==========================================
-    function iniciarEstructuraSimon() {
-        secuenciaIA = [];
-        secuenciaJugador = [];
-        rondaActual = 0;
-        preguntaUsadaEnEstaRonda = false;
-        renderizarSimonDice();
-        añadirPasoYContinuar();
-    }
+    window.addEventListener('keydown', (e) => {
+        if (mapeoFisico[e.code] !== undefined) {
+            e.preventDefault(); 
+            comprobarEleccionUsuario(mapeoFisico[e.code]);
+        }
+    });
 
-    // Ejecución de arranque directo
-    iniciarEstructuraSimon();
+    // --- SOPORTE TÁCTIL MÓVIL (FLECHAS DISPONIBLES EN PANTALLA COMPLETA) ---
+    wrapper.querySelectorAll('.btn-flecha').forEach(btn => {
+        const simularEntrada = (e) => {
+            e.preventDefault();
+            const key = btn.getAttribute('data-key');
+            if (key === 'ArrowUp') comprobarEleccionUsuario(0);
+            if (key === 'ArrowLeft') comprobarEleccionUsuario(2);
+            if (key === 'ArrowDown') comprobarEleccionUsuario(3);
+            if (key === 'ArrowRight') comprobarEleccionUsuario(1);
+        };
+        btn.addEventListener('touchstart', simularEntrada);
+        btn.addEventListener('mousedown', simularEntrada);
+    });
 
+    // --- FULLSCREEN SEGURO PARA EL TELÉFONO ---
+    btnFullscreen.addEventListener('click', () => {
+        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+            if (contenedorPantallaCompleta.requestFullscreen) {
+                contenedorPantallaCompleta.requestFullscreen();
+            } else if (contenedorPantallaCompleta.webkitRequestFullscreen) {
+                contenedorPantallaCompleta.webkitRequestFullscreen();
+            }
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            }
+        }
+    });
+
+    // Pintado estático de inicio
+    aplicarCambioColores();
 })();
