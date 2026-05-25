@@ -1,7 +1,7 @@
 // static/js/simon.js
 
 (function() {
-    console.log("¡Cargando el motor definitivo del minijuego de caminata por esquinas!");
+    console.log("¡Cargando motor Arcade Canvas con soporte móvil táctil y sonido!");
 
     const contenedor = document.getElementById('simon-game-container');
     if (!contenedor) {
@@ -17,6 +17,7 @@
     let juegoActivo = false;
     let estadoMensaje = "Presiona EMPEZAR JUEGO para iniciar la ronda.";
     let mostrarRespuestaCorrecta = "";
+    let audioCtx = null;
 
     // Dimensiones fijas del Canvas
     const ANCHO = 480;
@@ -33,10 +34,10 @@
 
     // Definición de las 4 Esquinas (Zonas de Respuesta)
     const esquinas = [
-        { id: 0, nombre: 'Arriba Izquierda', x: 0, y: 70, w: 130, h: 90, color: '#e74c3c', colorHover: '#ff6b6b' },
-        { id: 1, nombre: 'Arriba Derecha',   x: ANCHO - 130, y: 70, w: 130, h: 90, color: '#3498db', colorHover: '#5dade2' },
-        { id: 2, nombre: 'Abajo Izquierda',  x: 0, y: ALTO - 90, w: 130, h: 90, color: '#2ecc71', colorHover: '#58d68d' },
-        { id: 3, nombre: 'Abajo Derecha',    x: ANCHO - 130, y: ALTO - 90, w: 130, h: 90, color: '#f1c40f', colorHover: '#f5b041' }
+        { id: 0, nombre: 'Arriba Izquierda', x: 0, y: 70, w: 130, h: 90, color: '#e74c3c', colorHover: '#ff6b6b', f: 329.63 },
+        { id: 1, nombre: 'Arriba Derecha',   x: ANCHO - 130, y: 70, w: 130, h: 90, color: '#3498db', colorHover: '#5dade2', f: 261.63 },
+        { id: 2, nombre: 'Abajo Izquierda',  x: 0, y: ALTO - 90, w: 130, h: 90, color: '#2ecc71', colorHover: '#58d68d', f: 220.00 },
+        { id: 3, nombre: 'Abajo Derecha',    x: ANCHO - 130, y: ALTO - 90, w: 130, h: 90, color: '#f1c40f', colorHover: '#f5b041', f: 164.81 }
     ];
 
     // Control de Teclado Activo
@@ -46,7 +47,7 @@
         ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false
     };
 
-    // --- INYECCIÓN DE ESTILOS CSS ---
+    // --- INYECCIÓN DE ESTILOS CSS CON SOPORTE RESPONSIVO ---
     const estiloCSS = document.createElement('style');
     estiloCSS.innerHTML = `
         .arcade-canvas-wrapper { display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; max-width: 500px; margin: 0 auto; box-sizing: border-box; }
@@ -55,6 +56,14 @@
         .area-botones { display: flex; gap: 15px; width: 100%; justify-content: center; margin-top: 5px; }
         .btn-arcade-control { background: #222; color: #fff; border: 2px solid #444; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; }
         .btn-arcade-control:hover { background: #00ffff; color: #000; border-color: #00ffff; }
+        
+        /* Teclado Virtual para Teléfonos */
+        .teclado-virtual-canvas { display: grid; grid-template-columns: repeat(3, 55px); grid-template-rows: repeat(2, 55px); gap: 8px; justify-content: center; margin-top: 5px; width: 100%; }
+        .btn-flecha-canvas { background: #222; border: 2px solid #555; border-radius: 8px; color: #fff; font-size: 1.3rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; user-select: none; -webkit-user-select: none; height: 55px; }
+        .btn-flecha-canvas:active { background: #00ffff; color: #000; border-color: #00ffff; }
+        
+        /* Ocultar flechas en PC, mostrar solo en pantallas móviles */
+        @media (min-width: 769px) { .teclado-virtual-canvas { display: none; } }
     `;
     document.head.appendChild(estiloCSS);
 
@@ -64,7 +73,7 @@
     wrapper.innerHTML = `
         <div class="hud-arcade">
             <span>Puntos: <span id="arcade-score" style="color: #00ffff">0</span></span>
-            <span>Mover: WASD / Flechas</span>
+            <span>Controles: WASD / Flechas</span>
         </div>
         
         <canvas id="arcade-canvas" width="${ANCHO}" height="${ALTO}" class="canvas-game-board"></canvas>
@@ -73,10 +82,19 @@
             <button class="btn-arcade-control" id="btn-start-arcade">EMPEZAR JUEGO</button>
             <button class="btn-arcade-control" id="btn-fs-arcade">PANTALLA COMPLETA</button>
         </div>
+
+        <div class="teclado-virtual-canvas">
+            <div></div>
+            <button class="btn-flecha-canvas" data-dir="up">▲</button>
+            <div></div>
+            <button class="btn-flecha-canvas" data-dir="left">◀</button>
+            <button class="btn-flecha-canvas" data-dir="down">▼</button>
+            <button class="btn-flecha-canvas" data-dir="right">▶</button>
+        </div>
     `;
     contenedor.appendChild(wrapper);
 
-    // --- CAPTURA DE COMPONENTES TRAS LA INYECCIÓN ---
+    // --- CAPTURA DE COMPONENTES ---
     const canvas = wrapper.querySelector('#arcade-canvas');
     const ctx = canvas.getContext('2d');
     const txtScore = wrapper.querySelector('#arcade-score');
@@ -84,12 +102,39 @@
     const btnFS = wrapper.querySelector('#btn-fs-arcade');
     const contenedorPantallaCompleta = document.getElementById('game-screen');
 
+    // --- SINTETIZADOR DE AUDIO ---
+    function iniciarAudio() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+    }
+
+    function emitirSonido(frecuencia, duracion = 0.3, tipo = 'triangle') {
+        try {
+            iniciarAudio();
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            osc.type = tipo;
+            osc.frequency.setValueAtTime(frecuencia, audioCtx.currentTime);
+            
+            gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duracion);
+            
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + duracion);
+        } catch(e) { console.log("Audio bloqueado por el navegador", e); }
+    }
+
     // --- ESCUCHAS DE TECLADO ---
     window.addEventListener('keydown', (e) => {
         if (teclas[e.key] !== undefined) teclas[e.key] = true;
         if (teclas[e.code] !== undefined) teclas[e.code] = true;
 
-        // Previene scroll molesto del navegador al usar flechas
         if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].indexOf(e.key) > -1) {
             e.preventDefault();
         }
@@ -98,6 +143,36 @@
     window.addEventListener('keyup', (e) => {
         if (teclas[e.key] !== undefined) teclas[e.key] = false;
         if (teclas[e.code] !== undefined) teclas[e.code] = false;
+    });
+
+    // --- ESCUCHAS TÁCTILES MÓVILES (BOTONES VIRTUALES) ---
+    wrapper.querySelectorAll('.btn-flecha-canvas').forEach(btn => {
+        const direccion = btn.getAttribute('data-dir');
+        
+        const presionar = (e) => {
+            e.preventDefault();
+            iniciarAudio();
+            if (direccion === 'up') { teclas.w = true; teclas.ArrowUp = true; }
+            if (direccion === 'down') { teclas.s = true; teclas.ArrowDown = true; }
+            if (direccion === 'left') { teclas.a = true; teclas.ArrowLeft = true; }
+            if (direccion === 'right') { teclas.d = true; teclas.ArrowRight = true; }
+        };
+
+        const soltar = (e) => {
+            e.preventDefault();
+            if (direccion === 'up') { teclas.w = false; teclas.ArrowUp = false; }
+            if (direccion === 'down') { teclas.s = false; teclas.ArrowDown = false; }
+            if (direccion === 'left') { teclas.a = false; teclas.ArrowLeft = false; }
+            if (direccion === 'right') { teclas.d = false; teclas.ArrowRight = false; }
+        };
+
+        // Eventos para móvil
+        btn.addEventListener('touchstart', presionar);
+        btn.addEventListener('touchend', soltar);
+        // Eventos para pruebas con mouse
+        btn.addEventListener('mousedown', presionar);
+        btn.addEventListener('mouseup', soltar);
+        btn.addEventListener('mouseleave', soltar);
     });
 
     // --- GESTIÓN DE PREGUNTAS ---
@@ -111,7 +186,7 @@
         estadoMensaje = preguntaActual.pregunta;
         mostrarRespuestaCorrecta = "";
 
-        // Reiniciar al personaje en la zona central baja
+        // Centrar personaje
         jugador.x = ANCHO / 2;
         jugador.y = ALTO / 2 + 40;
         juegoActivo = true;
@@ -136,12 +211,20 @@
     function procesarEleccionRespuesta(indiceEsquina) {
         juegoActivo = false; 
         const respuestaSeleccionada = preguntaActual.opciones[indiceEsquina];
+        const esquinaObjeto = esquinas[indiceEsquina];
+
+        // Detener movimiento limpiando entradas táctiles/físicas al chocar
+        Object.keys(teclas).forEach(k => teclas[k] = false);
 
         if (respuestaSeleccionada === preguntaActual.correcta) {
             puntuacion++;
             txtScore.innerText = puntuacion;
             estadoMensaje = "¡Correcto! Volviendo al centro...";
             
+            // Sonido de éxito armónico
+            emitirSonido(esquinaObjeto.f, 0.2);
+            setTimeout(() => emitirSonido(523.25, 0.25, 'sine'), 100);
+
             setTimeout(() => {
                 cargarSiguientePregunta();
             }, 1200);
@@ -149,6 +232,9 @@
             estadoMensaje = "Incorrecto.";
             mostrarRespuestaCorrecta = `La respuesta era: ${preguntaActual.correcta}`;
             
+            // Sonido grave de error
+            emitirSonido(110, 0.6, 'sawtooth');
+
             setTimeout(() => {
                 finalizarPartidaArcade();
             }, 2500);
@@ -175,7 +261,6 @@
         }
     }
 
-    // --- FORMATEADOR DE TEXTO MULTILÍNEA ---
     function dibujarTextoMultilinea(texto, x, y, anchoMax, altoLinea) {
         const palabras = texto.split(' ');
         let linea = '';
@@ -194,16 +279,14 @@
         ctx.fillText(linea, x, y);
     }
 
-    // --- BUCLE DE RENDERIZADO PRINCIPAL ---
+    // --- BUCLE DE RENDERIZADO PRINCIPAL (60 FPS) ---
     function actualizarJuego() {
-        // Movimiento físico
         if (juegoActivo) {
             if (teclas.w || teclas.KeyW || teclas.ArrowUp)    jugador.y -= jugador.velocidad;
             if (teclas.s || teclas.KeyS || teclas.ArrowDown)  jugador.y += jugador.velocidad;
             if (teclas.a || teclas.KeyA || teclas.ArrowLeft)  jugador.x -= jugador.velocidad;
             if (teclas.d || teclas.KeyD || teclas.ArrowRight) jugador.x += jugador.velocidad;
 
-            // Límites del escenario
             if (jugador.x - jugador.radio < 0) jugador.x = jugador.radio;
             if (jugador.x + jugador.radio > ANCHO) jugador.x = ANCHO - jugador.radio;
             if (jugador.y - jugador.radio < 70) jugador.y = 70 + jugador.radio; 
@@ -212,10 +295,9 @@
             verificarColisionEsquinas();
         }
 
-        // Limpieza de pantalla
         ctx.clearRect(0, 0, ANCHO, ALTO);
 
-        // Cuadro superior de información y preguntas
+        // UI Panel de Pregunta
         ctx.fillStyle = '#111119';
         ctx.fillRect(0, 0, ANCHO, 65);
         ctx.strokeStyle = '#333';
@@ -225,7 +307,6 @@
         ctx.lineTo(ANCHO, 65);
         ctx.stroke();
 
-        // Dibujar el texto de la pregunta
         ctx.fillStyle = '#ffffff';
         ctx.font = '13px sans-serif';
         ctx.textAlign = 'center';
@@ -237,7 +318,7 @@
             ctx.fillText(mostrarRespuestaCorrecta, ANCHO / 2, 55);
         }
 
-        // Dibujar Bloques en las esquinas
+        // Dibujar Esquinas
         esquinas.forEach((e, idx) => {
             let estaCerca = (jugador.x > e.x && jugador.x < e.x + e.w && jugador.y > e.y && jugador.y < e.y + e.h);
             ctx.fillStyle = estaCerca ? e.colorHover : e.color;
@@ -254,7 +335,7 @@
             }
         });
 
-        // Dibujar el Personaje (Avatar esférico limpio)
+        // Dibujar Avatar:D
         ctx.fillStyle = jugador.color;
         ctx.beginPath();
         ctx.arc(jugador.x, jugador.y, jugador.radio, 0, Math.PI * 2);
@@ -268,8 +349,9 @@
         requestAnimationFrame(actualizarJuego);
     }
 
-    // --- INTERRUPTORES DE EVENTO ---
+    //ACCIONES DE INTERFAZ:V
     btnStart.addEventListener('click', () => {
+        iniciarAudio();
         puntuacion = 0;
         txtScore.innerText = "0";
         cargarSiguientePregunta();
@@ -291,8 +373,6 @@
         }
     });
 
-    // --- ARRANQUE SEGURO ---
-    // Nos aseguramos de que el motor gráfico empiece a ejecutarse solo cuando el canvas ya está estable en el DOM
     setTimeout(() => {
         requestAnimationFrame(actualizarJuego);
     }, 50);
