@@ -112,7 +112,15 @@
     }
 
     function ejecutarEntradaAlJuego(nombre) {
+        // 1. Ocultamos el cartel de Game Over al reiniciar
         document.getElementById('game-over-screen').style.display = 'none';
+        
+        // 2. Nos aseguramos de volver a mostrar los botones del Simón
+        const contenedorSimon = document.getElementById('simon-game-container');
+        if (contenedorSimon) {
+            contenedorSimon.style.display = 'block';
+        }
+        
         document.getElementById('display-user').innerText = nombre;
         document.getElementById('auth-screen').style.display = 'none';
         document.getElementById('game-screen').style.display = 'block';
@@ -136,7 +144,6 @@
             document.body.appendChild(scriptJuego);
         };
     }
-
     // FUNCIÓN CRÍTICA: Actualiza la tabla del Top 5 al instante sin recargar la página entera
     window.cargarRanking = function() {
         fetch(`/obtener_ranking/${window.JUEGO_ACTUAL}`)
