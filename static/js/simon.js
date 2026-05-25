@@ -1,12 +1,11 @@
 // js/simon.js
 (function () {
-    const contenedor = document.querySelector('.canvas-placeholder');
-    if (!contenedor) return;
+   const contenedor = document.querySelector('.canvas-placeholder');
+if (!contenedor) return;
 
-    Array.from(contenedor.children).forEach(child => {
-        if (child.id !== 'game-over-screen') child.remove();
-    });
-
+Array.from(contenedor.children).forEach(child => {
+    if (child.id !== 'game-over-screen') child.remove();
+});
     const canvas = document.createElement('canvas');
     canvas.id = 'game-canvas';
     // AJUSTE: Pantalla un poco más ancha para mejorar el espacio general
