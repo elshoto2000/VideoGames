@@ -80,8 +80,6 @@
         </div>
     </div>
 
-    <script src="{{ url_for('static', filename='js/preguntas.js') }}"></script>
-
     <script>
     window.onload = function() {
         document.getElementById('auth-screen').style.display = 'flex';
@@ -107,14 +105,26 @@
         document.getElementById('auth-screen').style.display = 'none';
         document.getElementById('game-screen').style.display = 'block';
 
-        const scriptAnterior = document.getElementById('script-del-juego');
-        if (scriptAnterior) scriptAnterior.remove();
+        // 1. Limpiamos scripts viejos si existen para que no se dupliquen
+        const scriptAnteriorJuego = document.getElementById('script-del-juego');
+        if (scriptAnteriorJuego) scriptAnteriorJuego.remove();
+        
+        const scriptAnteriorPreguntas = document.getElementById('script-de-preguntas');
+        if (scriptAnteriorPreguntas) scriptAnteriorPreguntas.remove();
 
-        // AQUÍ ES DONDE SE INYECTA EL JUEGO QUE TOQUE (simon.js, snake.js, etc.) SOLO CUANDO LE DAS CLICK A ENTRAR
-        const script = document.createElement('script');
-        script.id = 'script-del-juego'; 
-        script.src = `/static/js/{{ juego }}.js?v=${new Date().getTime()}`; 
-        document.body.appendChild(script);
+        // 2. Obligamos a cargar PRIMERO el archivo de preguntas independientes
+        const scriptPreguntas = document.createElement('script');
+        scriptPreguntas.id = 'script-de-preguntas';
+        scriptPreguntas.src = `/static/js/preguntas.js?v=${new Date().getTime()}`;
+        document.body.appendChild(scriptPreguntas);
+
+        // 3. Cuando las preguntas se hayan cargado por completo, recién ahí arranca el juego correspondiente
+        scriptPreguntas.onload = function() {
+            const scriptJuego = document.createElement('script');
+            scriptJuego.id = 'script-del-juego'; 
+            scriptJuego.src = `/static/js/{{ juego }}.js?v=${new Date().getTime()}`; 
+            document.body.appendChild(scriptJuego);
+        };
     }
 
     function borrarYSalir() {
