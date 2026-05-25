@@ -39,7 +39,7 @@
                         <div id="game-over-screen" style="display: none;">
                             <h1>¡FIN DEL JUEGO!</h1>
                             <p id="final-score-msg"></p>
-                            <button class="btn-play" onclick="window.location.reload()">REINTENTAR</button>
+                            <button class="btn-play" onclick="ejecutarEntradaAlJuego(localStorage.getItem('arcade_user'))">REINTENTAR</button>
                             <button class="btn-play" onclick="borrarYSalir()" style="background: var(--muted); margin-top:10px;">CAMBIAR CUENTA</button>
                         </div>
                     </div>
@@ -100,32 +100,31 @@
     }
 
     function ejecutarEntradaAlJuego(nombre) {
-        document.getElementById('display-user').innerText = nombre;
-        
-        document.getElementById('auth-screen').style.display = 'none';
-        document.getElementById('game-screen').style.display = 'block';
+    // Agrega esta línea para que oculte el cartel de Game Over al reintentar:
+    document.getElementById('game-over-screen').style.display = 'none';
 
-        // 1. Limpiamos scripts viejos si existen para que no se dupliquen
-        const scriptAnteriorJuego = document.getElementById('script-del-juego');
-        if (scriptAnteriorJuego) scriptAnteriorJuego.remove();
-        
-        const scriptAnteriorPreguntas = document.getElementById('script-de-preguntas');
-        if (scriptAnteriorPreguntas) scriptAnteriorPreguntas.remove();
+    document.getElementById('display-user').innerText = nombre;
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('game-screen').style.display = 'block';
 
-        // 2. Obligamos a cargar PRIMERO el archivo de preguntas independientes
-        const scriptPreguntas = document.createElement('script');
-        scriptPreguntas.id = 'script-de-preguntas';
-        scriptPreguntas.src = `/static/js/preguntas.js?v=${new Date().getTime()}`;
-        document.body.appendChild(scriptPreguntas);
+    const scriptAnteriorJuego = document.getElementById('script-del-juego');
+    if (scriptAnteriorJuego) scriptAnteriorJuego.remove();
+    
+    const scriptAnteriorPreguntas = document.getElementById('script-de-preguntas');
+    if (scriptAnteriorPreguntas) scriptAnteriorPreguntas.remove();
 
-        // 3. Cuando las preguntas se hayan cargado por completo, recién ahí arranca el juego correspondiente
-        scriptPreguntas.onload = function() {
-            const scriptJuego = document.createElement('script');
-            scriptJuego.id = 'script-del-juego'; 
-            scriptJuego.src = `/static/js/{{ juego }}.js?v=${new Date().getTime()}`; 
-            document.body.appendChild(scriptJuego);
-        };
-    }
+    const scriptPreguntas = document.createElement('script');
+    scriptPreguntas.id = 'script-de-preguntas';
+    scriptPreguntas.src = `/static/js/preguntas.js?v=${new Date().getTime()}`;
+    document.body.appendChild(scriptPreguntas);
+
+    scriptPreguntas.onload = function() {
+        const scriptJuego = document.createElement('script');
+        scriptJuego.id = 'script-del-juego'; 
+        scriptJuego.src = `/static/js/{{ juego }}.js?v=${new Date().getTime()}`; 
+        document.body.appendChild(scriptJuego);
+    };
+}
 
     function borrarYSalir() {
         localStorage.removeItem('arcade_user'); 
