@@ -35,19 +35,19 @@
                 <h2>Jugador: <span id="display-user" style="color: var(--accent);"></span></h2>
                 
                 <div class="game-container">
-    <div class="canvas-placeholder">
-        
-        <div id="simon-game-container" class="simon-container" style="display: block;"></div>
+                    <div class="canvas-placeholder">
+                        
+                        <div id="simon-game-container" class="simon-container" style="display: block;"></div>
 
-        <div id="game-over-screen" style="display: none;">
-            <h1>¡FIN DEL JUEGO!</h1>
-            <p id="final-score-msg"></p>
-            <button class="btn-play" onclick="ejecutarEntradaAlJuego(localStorage.getItem('arcade_user'))">REINTENTAR</button>
-            <button class="btn-play" onclick="borrarYSalir()" style="background: var(--muted); margin-top:10px;">CAMBIAR CUENTA</button>
-        </div>
+                        <div id="game-over-screen" style="display: none;">
+                            <h1>¡FIN DEL JUEGO!</h1>
+                            <p id="final-score-msg"></p>
+                            <button class="btn-play" onclick="ejecutarEntradaAlJuego(localStorage.getItem('arcade_user'))">REINTENTAR</button>
+                            <button class="btn-play" onclick="borrarYSalir()" style="background: var(--muted); margin-top:10px;">CAMBIAR CUENTA</button>
+                        </div>
 
-    </div>
-</div>
+                    </div>
+                </div>
             </div>
 
             <div class="ranking-side">
@@ -85,8 +85,8 @@
     </div>
 
     <script>
-    // Guardamos la variable del juego desde Flask para usarla en los scripts de JS
-    const JUEGO_ACTUAL = "{{ juego.lower() }}";
+    // SOLUCIÓN AL BUG GLOBAL: Asignamos explícitamente al objeto window para acceso global
+    window.JUEGO_ACTUAL = "{{ juego.lower() }}";
 
     window.onload = function() {
         document.getElementById('auth-screen').style.display = 'flex';
@@ -106,53 +106,53 @@
         }
     }
 
-   function ejecutarEntradaAlJuego(nombre) {
-    // 1. Ocultamos el cartel de Game Over al reiniciar
-    document.getElementById('game-over-screen').style.display = 'none';
-    
-    // 2. Nos aseguramos de volver a mostrar los botones del Simón
-    const contenedorSimon = document.getElementById('simon-game-container');
-    if (contenedorSimon) {
-        contenedorSimon.style.display = 'block';
-    }
-    
-    document.getElementById('display-user').innerText = nombre;
-    document.getElementById('auth-screen').style.display = 'none';
-    document.getElementById('game-screen').style.display = 'block';
-
-    // Eliminamos scripts residuales viejos para que no se dupliquen en el DOM
-    const scriptAnteriorJuego = document.getElementById('script-del-juego');
-    if (scriptAnteriorJuego) scriptAnteriorJuego.remove();
-    
-    const scriptAnteriorPreguntas = document.getElementById('script-de-preguntas');
-    if (scriptAnteriorPreguntas) scriptAnteriorPreguntas.remove();
-
-    // Generamos un "timestamp" único para romper la caché de Render por completo
-    const versionUnica = new Date().getTime();
-
-    // Primero cargamos las preguntas de forma obligatoria
-    const scriptPreguntas = document.createElement('script');
-    scriptPreguntas.id = 'script-de-preguntas';
-    scriptPreguntas.src = `/static/js/preguntas.js?v=${versionUnica}`;
-    document.body.appendChild(scriptPreguntas);
-
-    // CRÍTICO: Esperamos a que preguntas.js esté cargado e inyectado al 100% antes de llamar al script del juego
-    scriptPreguntas.onload = function() {
-        console.log("Preguntas cargadas con éxito. Iniciando lógica del juego...");
+    function ejecutarEntradaAlJuego(nombre) {
+        // 1. Resetear estados de pantallas e interfaces
+        document.getElementById('game-over-screen').style.display = 'none';
         
-        const scriptJuego = document.createElement('script');
-        scriptJuego.id = 'script-del-juego'; 
-        scriptJuego.src = `/static/js/${window.JUEGO_ACTUAL}.js?v=${versionUnica}`; 
-        document.body.appendChild(scriptJuego);
-    };
-}
-    // FUNCIÓN CRÍTICA: Actualiza la tabla del Top 5 al instante sin recargar la página entera
+        const contenedorSimon = document.getElementById('simon-game-container');
+        if (contenedorSimon) {
+            contenedorSimon.style.display = 'block';
+        }
+        
+        document.getElementById('display-user').innerText = nombre;
+        document.getElementById('auth-screen').style.display = 'none';
+        document.getElementById('game-screen').style.display = 'block';
+
+        // 2. Limpieza estricta de scripts de sesiones previas para evitar duplicados en el DOM
+        const scriptAnteriorJuego = document.getElementById('script-del-juego');
+        if (scriptAnteriorJuego) scriptAnteriorJuego.remove();
+        
+        const scriptAnteriorPreguntas = document.getElementById('script-de-preguntas');
+        if (scriptAnteriorPreguntas) scriptAnteriorPreguntas.remove();
+
+        // 3. Romper la caché agresiva de Render usando un timestamp único
+        const versionUnica = new Date().getTime();
+
+        // 4. Inyección controlada: Primero cargamos el archivo de preguntas
+        const scriptPreguntas = document.createElement('script');
+        scriptPreguntas.id = 'script-de-preguntas';
+        scriptPreguntas.src = `/static/js/preguntas.js?v=${versionUnica}`;
+        document.body.appendChild(scriptPreguntas);
+
+        // 5. El script del juego arranca ÚNICAMENTE cuando las preguntas están listas en memoria
+        scriptPreguntas.onload = function() {
+            console.log(`Preguntas inyectadas. Cargando juego actual: ${window.JUEGO_ACTUAL}`);
+            
+            const scriptJuego = document.createElement('script');
+            scriptJuego.id = 'script-del-juego'; 
+            scriptJuego.src = `/static/js/${window.JUEGO_ACTUAL}.js?v=${versionUnica}`; 
+            document.body.appendChild(scriptJuego);
+        };
+    }
+
+    // Actualiza la barra lateral del ranking en tiempo real sin recargar la página entera
     window.cargarRanking = function() {
         fetch(`/obtener_ranking/${window.JUEGO_ACTUAL}`)
             .then(res => res.json())
             .then(datos => {
                 const listaHTML = document.getElementById('ranking-list');
-                listaHTML.innerHTML = ''; // Limpiamos la tabla vieja
+                listaHTML.innerHTML = ''; 
                 
                 if (datos.length === 0) {
                     listaHTML.innerHTML = '<li>Nadie ha jugado aún...</li>';
@@ -165,7 +165,7 @@
                     listaHTML.appendChild(li);
                 });
             })
-            .catch(err => console.error("Error al actualizar tabla:", err));
+            .catch(err => console.error("Error al actualizar la tabla de ranking:", err));
     };
 
     function borrarYSalir() {
