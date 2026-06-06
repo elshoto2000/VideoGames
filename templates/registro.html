@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arcade | Registro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        :root {
+            --bg:       #0a0a0f;
+            --surface:  #111118;
+            --surface2: #18181f;
+            --border:   rgba(255,255,255,0.07);
+            --border-h: rgba(255,255,255,0.14);
+            --text:     #e8e8f0;
+            --muted:    #6b6b7a;
+            --accent:   #7c6aff;
+            --accent-s: #5b4de0;
+            --danger:   #ff4f4f;
+            --success:  #3ecf8e;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+        }
+
+        /* Fondo con cuadrícula sutil */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(124,106,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(124,106,255,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+        }
+
+        .logo-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            margin-bottom: 2.5rem;
+            color: var(--muted);
+            font-size: 0.85rem;
+            letter-spacing: 0.08em;
+            font-family: 'DM Mono', monospace;
+            transition: color 0.2s;
+        }
+        .logo-link:hover { color: var(--text); }
+        .logo-link span { color: var(--accent); font-weight: 500; }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 440px;
+            position: relative;
+            overflow: hidden;
+        }
+        .card::before {
+            content: '';
+            position: absolute;
+            top: -80px; right: -80px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(124,106,255,0.12), transparent 70%);
+            pointer-events: none;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+            color: var(--text);
+            margin-bottom: 0.4rem;
+        }
+        .subtitle {
+            font-size: 0.875rem;
+            color: var(--muted);
+            margin-bottom: 2rem;
+        }
+
+        /* ── Avatar picker ── */
+        .avatar-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 1.75rem;
+            gap: 0.75rem;
+        }
+        .avatar-ring {
+            position: relative;
+            width: 90px; height: 90px;
+            cursor: pointer;
+        }
+        #avatar-preview {
+            width: 90px; height: 90px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--border);
+            transition: border-color 0.2s;
+            background: var(--surface2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: 500;
+            color: var(--accent);
+            font-family: 'DM Mono', monospace;
+        }
+        .avatar-ring:hover #avatar-preview { border-color: var(--accent); }
+        .avatar-ring .edit-badge {
+            position: absolute;
+            bottom: 2px; right: 2px;
+            width: 26px; height: 26px;
+            background: var(--accent);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            border: 2px solid var(--surface);
+        }
+        #file-input { display: none; }
+        .avatar-hint {
+            font-size: 0.78rem;
+            color: var(--muted);
+        }
+
+        /* ── Campos ── */
+        .field { margin-bottom: 1.1rem; }
+        label {
+            display: block;
+            font-size: 0.78rem;
+            font-weight: 500;
+            color: var(--muted);
+            letter-spacing: 0.06em;
+            margin-bottom: 0.45rem;
+            text-transform: uppercase;
+        }
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            color: var(--text);
+            font-size: 0.95rem;
+            font-family: 'DM Sans', sans-serif;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            outline: none;
+        }
+        input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(124,106,255,0.12);
+        }
+        input::placeholder { color: var(--muted); }
+
+        /* ── Fuerza de contraseña ── */
+        .strength-bar {
+            height: 3px;
+            border-radius: 2px;
+            background: var(--border);
+            margin-top: 6px;
+            overflow: hidden;
+        }
+        .strength-fill {
+            height: 100%;
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.3s, background 0.3s;
+        }
+
+        /* ── Botón ── */
+        .btn-primary {
+            width: 100%;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 0.85rem;
+            font-size: 0.95rem;
+            font-weight: 500;
+            font-family: 'DM Sans', sans-serif;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            margin-top: 0.5rem;
+            letter-spacing: 0.02em;
+        }
+        .btn-primary:hover { background: var(--accent-s); }
+        .btn-primary:active { transform: scale(0.99); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .msg {
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            text-align: center;
+            min-height: 1.2em;
+            border-radius: 8px;
+            padding: 0.5rem;
+        }
+        .msg.error   { color: var(--danger);  background: rgba(255,79,79,0.08); }
+        .msg.success { color: var(--success); background: rgba(62,207,142,0.08); }
+
+        .footer-link {
+            text-align: center;
+            margin-top: 1.5rem;
+            font-size: 0.85rem;
+            color: var(--muted);
+        }
+        .footer-link a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .footer-link a:hover { text-decoration: underline; }
+
+        /* Spinner */
+        .spinner {
+            display: inline-block;
+            width: 16px; height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <a href="/" class="logo-link">← <span>ARCADE</span></a>
+
+    <div class="card">
+        <h1>Crear cuenta</h1>
+        <p class="subtitle">Únete al arcade y compite por el top</p>
+
+        <!-- Avatar -->
+        <div class="avatar-section">
+            <div class="avatar-ring" onclick="document.getElementById('file-input').click()">
+                <div id="avatar-preview" id="av-div">?</div>
+                <div class="edit-badge">✎</div>
+            </div>
+            <input type="file" id="file-input" accept="image/*">
+            <span class="avatar-hint">Foto de perfil (opcional)</span>
+        </div>
+
+        <!-- Formulario -->
+        <div class="field">
+            <label>Nombre de usuario</label>
+            <input type="text" id="username" placeholder="ej. CosmicPlayer99" maxlength="20" autocomplete="off">
+        </div>
+
+        <div class="field">
+            <label>Contraseña</label>
+            <input type="password" id="password" placeholder="Mínimo 6 caracteres">
+            <div class="strength-bar"><div class="strength-fill" id="strength-fill"></div></div>
+        </div>
+
+        <div class="field">
+            <label>Confirmar contraseña</label>
+            <input type="password" id="password2" placeholder="Repite tu contraseña">
+        </div>
+
+        <button class="btn-primary" id="btn-reg" onclick="registrar()">Crear cuenta</button>
+        <div class="msg" id="msg"></div>
+
+        <div class="footer-link">
+            ¿Ya tienes cuenta? <a href="/login">Inicia sesión</a>
+        </div>
+    </div>
+
+    <script>
+        let avatarBase64 = '';
+
+        // Vista previa del avatar
+        document.getElementById('file-input').addEventListener('change', function() {
+            const file = this.files[0];
+            if (!file) return;
+            if (file.size > 2 * 1024 * 1024) {
+                mostrarMsg('La imagen no debe superar 2 MB', 'error');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = e => {
+                avatarBase64 = e.target.result; // data:image/...;base64,...
+                const prev = document.getElementById('avatar-preview');
+                prev.style.backgroundImage = `url(${avatarBase64})`;
+                prev.style.backgroundSize = 'cover';
+                prev.style.backgroundPosition = 'center';
+                prev.textContent = '';
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // Actualizar inicial cuando escribe el nombre
+        document.getElementById('username').addEventListener('input', function() {
+            const prev = document.getElementById('avatar-preview');
+            if (!avatarBase64) {
+                prev.textContent = this.value.trim().charAt(0).toUpperCase() || '?';
+            }
+        });
+
+        // Barra de fuerza de contraseña
+        document.getElementById('password').addEventListener('input', function() {
+            const v = this.value;
+            const fill = document.getElementById('strength-fill');
+            let score = 0;
+            if (v.length >= 6)  score++;
+            if (v.length >= 10) score++;
+            if (/[A-Z]/.test(v)) score++;
+            if (/[0-9]/.test(v)) score++;
+            if (/[^a-zA-Z0-9]/.test(v)) score++;
+            const pct   = (score / 5) * 100;
+            const color = score <= 1 ? '#ff4f4f' : score <= 3 ? '#f5a623' : '#3ecf8e';
+            fill.style.width  = pct + '%';
+            fill.style.background = color;
+        });
+
+        async function registrar() {
+            const username  = document.getElementById('username').value.trim();
+            const password  = document.getElementById('password').value;
+            const password2 = document.getElementById('password2').value;
+            const btn = document.getElementById('btn-reg');
+
+            if (!username || !password) { mostrarMsg('Completa todos los campos', 'error'); return; }
+            if (password.length < 6)    { mostrarMsg('La contraseña debe tener al menos 6 caracteres', 'error'); return; }
+            if (password !== password2) { mostrarMsg('Las contraseñas no coinciden', 'error'); return; }
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span>Creando cuenta…';
+
+            try {
+                const res = await fetch('/registro', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, avatar: avatarBase64 })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    mostrarMsg('¡Cuenta creada! Redirigiendo…', 'success');
+                    setTimeout(() => window.location.href = '/login', 1200);
+                } else {
+                    mostrarMsg(data.message || 'Error desconocido', 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = 'Crear cuenta';
+                }
+            } catch {
+                mostrarMsg('Error de conexión', 'error');
+                btn.disabled = false;
+                btn.innerHTML = 'Crear cuenta';
+            }
+        }
+
+        function mostrarMsg(texto, tipo) {
+            const el = document.getElementById('msg');
+            el.textContent = texto;
+            el.className = 'msg ' + tipo;
+        }
+    </script>
+</body>
+</html>
