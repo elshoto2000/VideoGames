@@ -215,10 +215,14 @@
                     body: JSON.stringify({ username, password })
                 });
                 const data = await res.json();
-                if (data.status === 'success') {
-                    mostrarMsg('¡Bienvenido!', 'success');
-                    setTimeout(() => window.location.href = '/', 800);
-                } else {
+                // Busca esta parte exacta dentro de la función login() en login.html y cámbiala:
+if (data.status === 'success') {
+    mostrarMsg('¡Bienvenido!', 'success');
+    setTimeout(() => {
+        // Al usar replace aseguramos que el navegador no use el caché viejo del index
+        window.location.replace('/');
+    }, 800);
+} else {
                     mostrarMsg(data.message || 'Error desconocido', 'error');
                     btn.disabled = false;
                     btn.innerHTML = 'Entrar al arcade';
