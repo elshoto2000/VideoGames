@@ -5,102 +5,249 @@
     <meta charset="UTF-8">
     <title>Arcade | {{ juego|capitalize }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <style>
-        /* Avatar pequeño en la cabecera del juego */
-        .game-user-bar {
+        /* ── Dropdown en juego.html ─────────────── */
+        .game-nav-user {
+            position: relative;
+        }
+
+        .game-nav-btn {
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 1.5rem;
+            gap: 8px;
+            padding: 4px 10px 4px 4px;
+            background: var(--bg-raised);
+            border: 1px solid var(--border-md);
+            border-radius: 40px;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
         }
-        .game-avatar {
-            width: 38px; height: 38px;
+
+        .game-nav-btn:hover {
+            border-color: var(--border-hi);
+            background: var(--bg-hover);
+        }
+
+        .game-nav-avatar {
+            width: 28px; height: 28px;
             border-radius: 50%;
-            border: 2px solid rgba(124,106,255,0.35);
-            background: #18181f;
+            background: linear-gradient(135deg, var(--accent), #7c6aff);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.9rem;
-            font-weight: 500;
-            color: #7c6aff;
-            font-family: 'DM Mono', monospace;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: white;
+            font-family: var(--font-mono);
             overflow: hidden;
             flex-shrink: 0;
         }
-        .game-avatar img { width: 100%; height: 100%; object-fit: cover; }
 
-        /* Botón de pantalla completa */
-        .fullscreen-btn {
+        .game-nav-avatar img { width:100%; height:100%; object-fit:cover; }
+
+        .game-nav-name {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text);
+            font-family: var(--font-body);
+            max-width: 80px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .game-nav-chevron {
+            font-size: 0.55rem;
+            color: var(--muted);
+            transition: transform 0.2s;
+        }
+
+        .game-nav-btn.open .game-nav-chevron { transform: rotate(180deg); }
+
+        /* Dropdown idéntico al del index */
+        .game-nav-dropdown {
             position: absolute;
-            top: 8px; right: 8px;
-            width: 32px; height: 32px;
-            background: rgba(255,255,255,0.06);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 7px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.85rem;
-            color: rgba(255,255,255,0.5);
-            transition: all 0.2s;
-            z-index: 10;
+            top: calc(100% + 10px);
+            right: 0;
+            min-width: 190px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-md);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg), 0 0 0 1px rgba(255,255,255,0.03);
+            padding: 6px;
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-6px) scale(0.98);
+            transition: opacity 0.18s, transform 0.18s;
+            z-index: 300;
         }
-        .fullscreen-btn:hover { background: rgba(255,255,255,0.12); color: white; }
 
-        /* Canvas en modo fullscreen */
-        .canvas-placeholder.is-fullscreen {
-            position: fixed !important;
-            top: 0; left: 0;
-            width: 100vw !important;
-            height: 100vh !important;
-            max-width: none !important;
-            min-height: none !important;
-            border-radius: 0 !important;
-            z-index: 9000;
+        .game-nav-dropdown.open {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0) scale(1);
         }
-        .canvas-placeholder.is-fullscreen canvas {
-            width: 100% !important;
-            height: 100% !important;
-            max-width: none !important;
+
+        .game-nav-dropdown .nav-dropdown-header {
+            padding: 9px 11px 7px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 4px;
         }
-        .canvas-placeholder.is-fullscreen .fullscreen-btn {
-            top: 16px; right: 16px;
-            width: 40px; height: 40px;
-            font-size: 1.1rem;
-            background: rgba(0,0,0,0.5);
+
+        .game-nav-dropdown .nav-dropdown-header span {
+            display: block;
+            font-size: 0.72rem;
+            color: var(--muted);
+            font-family: var(--font-mono);
+        }
+
+        .game-nav-dropdown .nav-dropdown-header strong {
+            display: block;
+            font-size: 0.88rem;
+            color: var(--text);
+            font-weight: 600;
+            font-family: var(--font-display);
+            margin-top: 2px;
+        }
+
+        /* ── Canvas responsivo: tamaños por dispositivo ── */
+
+        /* Desktop: cuadrado grande */
+        @media (min-width: 901px) {
+            .canvas-placeholder {
+                width: 100%;
+                aspect-ratio: 1 / 1;
+                max-width: 500px;
+            }
+        }
+
+        /* Tablet */
+        @media (min-width: 601px) and (max-width: 900px) {
+            .game-layout {
+                grid-template-columns: 1fr !important;
+            }
+            .canvas-placeholder {
+                width: 100%;
+                max-width: min(480px, 90vw);
+                aspect-ratio: 1 / 1;
+            }
+        }
+
+        /* Móvil */
+        @media (max-width: 600px) {
+            .game-layout {
+                grid-template-columns: 1fr !important;
+                padding: 0.75rem !important;
+                gap: 1rem !important;
+            }
+
+            .canvas-placeholder {
+                width: 100%;
+                max-width: 100%;
+                /* En móvil no forzamos aspect-ratio para que cada juego se ajuste */
+                aspect-ratio: unset;
+                min-height: min(340px, 85vw);
+            }
+
+            /* Snake canvas cuadrado en móvil */
+            .canvas-placeholder canvas {
+                width: 100% !important;
+                height: auto !important;
+                max-height: 85vw;
+            }
+
+            .game-user-bar h2 {
+                font-size: 0.85rem;
+            }
+
+            .game-main h2 {
+                font-size: 0.9rem;
+            }
+
+            .ranking-side {
+                margin-top: 0;
+            }
+        }
+
+        /* Pantalla muy pequeña (<380px) */
+        @media (max-width: 380px) {
+            .canvas-placeholder {
+                min-height: 280px;
+            }
+
+            #game-over-screen h1 {
+                font-size: 1.3rem !important;
+            }
         }
     </style>
 </head>
 <body>
+
+    <!-- ── Navbar ─────────────────────────── -->
     <nav class="navbar">
-        <div class="logo">
-            <img src="{{ url_for('static', filename='img/favicon.gif') }}" alt="Icono" class="nav-gif">
-            <span>Arcade</span>
-        </div>
+        <a href="/" class="logo">
+            <img src="{{ url_for('static', filename='img/favicon.gif') }}" alt="" class="nav-gif">
+            Arc<span>ade</span>
+        </a>
+
         <ul class="nav-links">
             <li><a href="/">← Menú</a></li>
+            <li><a href="/ranking">Top Global</a></li>
         </ul>
-        <!-- Avatar en navbar -->
-        <div style="display:flex;align-items:center;gap:8px;">
-            <div class="game-avatar" style="width:32px;height:32px;font-size:0.8rem;">
-                {% if avatar %}
-                    <img src="{{ avatar }}" alt="avatar">
-                {% else %}
-                    {{ username[0]|upper }}
-                {% endif %}
+
+        <!-- Avatar + dropdown -->
+        <div class="game-nav-user">
+            <button class="game-nav-btn" id="gnav-btn" aria-expanded="false" aria-haspopup="true">
+                <div class="game-nav-avatar">
+                    {% if avatar %}
+                        <img src="{{ avatar }}" alt="avatar">
+                    {% else %}
+                        {{ username[0]|upper }}
+                    {% endif %}
+                </div>
+                <span class="game-nav-name">{{ username }}</span>
+                <span class="game-nav-chevron">▼</span>
+            </button>
+
+            <div class="game-nav-dropdown" id="gnav-dropdown" role="menu">
+                <div class="nav-dropdown-header">
+                    <span>Jugando como</span>
+                    <strong>{{ username }}</strong>
+                </div>
+
+                <a href="/perfil" class="dropdown-item" role="menuitem">
+                    <span class="dropdown-icon">👤</span>
+                    Mi perfil
+                </a>
+                <a href="/" class="dropdown-item" role="menuitem">
+                    <span class="dropdown-icon">🏠</span>
+                    Menú principal
+                </a>
+                <a href="/ranking" class="dropdown-item" role="menuitem">
+                    <span class="dropdown-icon">🏆</span>
+                    Top Global
+                </a>
+
+                <div class="dropdown-divider"></div>
+
+                <a href="/logout" class="dropdown-item danger" role="menuitem">
+                    <span class="dropdown-icon">→</span>
+                    Cerrar sesión
+                </a>
             </div>
-            <span style="font-size:0.85rem;color:var(--muted);">{{ username }}</span>
         </div>
     </nav>
 
+    <!-- ── Pantalla de juego ───────────────── -->
     <div id="game-screen">
         <div class="game-layout">
+
+            <!-- Área principal -->
             <div class="game-main">
-                <!-- Barra de usuario con avatar grande -->
+
+                <!-- Barra de usuario -->
                 <div class="game-user-bar">
                     <div class="game-avatar">
                         {% if avatar %}
@@ -110,27 +257,33 @@
                         {% endif %}
                     </div>
                     <h2>
-                        Jugando como: <span id="display-user" style="color:var(--accent);">{{ username }}</span>
+                        Jugando como:&nbsp;<span id="display-user" style="color:var(--accent);">{{ username }}</span>
                     </h2>
                 </div>
 
                 <div class="game-container">
                     <div class="canvas-placeholder" id="canvas-wrap">
-                        <!-- Botón pantalla completa -->
+
+                        <!-- Botón fullscreen -->
                         <button class="fullscreen-btn" id="fs-btn" title="Pantalla completa" onclick="toggleFullscreen()">⛶</button>
 
-                        <div id="simon-game-container" class="simon-container" style="display:block;"></div>
+                        <!-- Contenedor Simón -->
+                        <div id="simon-game-container" class="simon-container" style="display:block; width:100%;"></div>
 
+                        <!-- Game Over (compartido por todos los juegos) -->
                         <div id="game-over-screen" style="display:none;">
                             <h1>¡FIN DEL JUEGO!</h1>
                             <p id="final-score-msg"></p>
                             <button class="btn-play" onclick="reiniciarJuego()">REINTENTAR</button>
-                            <button class="btn-play" onclick="window.location.href='/'" style="background:var(--muted);margin-top:10px;">SALIR AL MENÚ</button>
+                            <a href="/" class="btn-play" style="background:var(--bg-raised);border:1px solid var(--border-md);color:var(--text-2);margin-top:8px;">
+                                Salir al menú
+                            </a>
                         </div>
                     </div>
                 </div>
             </div>
 
+            <!-- Ranking lateral -->
             <div class="ranking-side">
                 <h3>🏆 TOP 5 — {{ juego|upper }}</h3>
                 <ul id="ranking-list">
@@ -162,14 +315,16 @@
                     {% endif %}
                 </ul>
             </div>
+
         </div>
     </div>
 
     <script>
+        // ── Variables globales ────────────────────────
         window.JUEGO_ACTUAL = "{{ juego.lower() }}";
-        window.ARCADE_USER  = "{{ username }}";   // viene seguro desde Flask/sesión
+        window.ARCADE_USER  = "{{ username }}";
 
-        // Iniciar el juego directo (sin pantalla de nombre, ya hay sesión)
+        // ── Iniciar ───────────────────────────────────
         window.onload = function() {
             document.getElementById('display-user').innerText = window.ARCADE_USER;
             cargarScriptJuego();
@@ -180,7 +335,6 @@
             const sc = document.getElementById('simon-game-container');
             if (sc) sc.style.display = 'block';
 
-            // Limpiar scripts anteriores
             ['script-del-juego','script-de-preguntas'].forEach(id => {
                 const old = document.getElementById(id);
                 if (old) old.remove();
@@ -204,7 +358,7 @@
             cargarScriptJuego();
         }
 
-        // Actualizar ranking lateral en tiempo real
+        // ── Ranking lateral en tiempo real ────────────
         window.cargarRanking = function() {
             fetch(`/obtener_ranking/${window.JUEGO_ACTUAL}`)
                 .then(r => r.json())
@@ -216,24 +370,50 @@
                 });
         };
 
-        // ── Pantalla completa ────────────────────────────────────
+        // ── Fullscreen ────────────────────────────────
         function toggleFullscreen() {
             const wrap = document.getElementById('canvas-wrap');
             const btn  = document.getElementById('fs-btn');
             const isFs = wrap.classList.toggle('is-fullscreen');
             btn.textContent = isFs ? '✕' : '⛶';
             btn.title = isFs ? 'Salir de pantalla completa' : 'Pantalla completa';
-            // Bloquear scroll del body cuando está en fullscreen
             document.body.style.overflow = isFs ? 'hidden' : '';
         }
 
-        // Salir de fullscreen con Escape
         document.addEventListener('keydown', e => {
             if (e.key === 'Escape') {
                 const wrap = document.getElementById('canvas-wrap');
                 if (wrap.classList.contains('is-fullscreen')) toggleFullscreen();
             }
         });
+
+        // ── Dropdown navbar ───────────────────────────
+        (function() {
+            const btn      = document.getElementById('gnav-btn');
+            const dropdown = document.getElementById('gnav-dropdown');
+
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const open = dropdown.classList.toggle('open');
+                btn.classList.toggle('open', open);
+                btn.setAttribute('aria-expanded', open);
+            });
+
+            document.addEventListener('click', () => {
+                dropdown.classList.remove('open');
+                btn.classList.remove('open');
+                btn.setAttribute('aria-expanded', 'false');
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    dropdown.classList.remove('open');
+                    btn.classList.remove('open');
+                    btn.setAttribute('aria-expanded', 'false');
+                }
+            });
+        })();
     </script>
 </body>
 </html>
+
