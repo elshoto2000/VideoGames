@@ -221,66 +221,67 @@
     </div>
 
     <script>
-        // AQUÍ ES DONDE VA TU CAMBIO CON 'simon'
-        async function cargarRankings() {
-            try {
-                const response = await fetch('/obtener_ranking');
-                const data = await response.json();
-                
-                // Añadido 'simon' a la lista para que se renderice en su respectiva tabla
-                const juegos = ['snake', 'clicker', 'trivia', 'simon'];
-                
-                juegos.forEach(juego => {
-                    const filtrados = data.ranking
-                        .filter(r => r.juego.toLowerCase() === juego)
-                        .sort((a, b) => b.puntos - a.puntos);
-                    
-                    llenarTabla(juego, filtrados);
-                    llenarPodio(juego, filtrados);
-                });
-            } catch (err) {
-                console.error("Error cargando ranking:", err);
-            }
-        }
-
-        function llenarTabla(juego, lista) {
-            const tbody = document.getElementById(`body-${juego}`);
-            if (!tbody) return;
+    async function cargarRankings() {
+        try {
+            const response = await fetch('/obtener_ranking');
+            const data = await response.json();
             
-            tbody.innerHTML = lista.map((r, i) => `
-                <tr>
-                    <td>${i + 1}</td>
-                    <td>${r.nombre}</td>
-                    <td><b style="color: var(--neon-cyan)">${r.puntos}</b></td>
-                </tr>
-            `).join('') || '<tr><td colspan="3" style="text-align:center">Aún no hay récords</td></tr>';
+            const juegos = ['snake', 'clicker', 'trivia', 'simon'];
+            
+            juegos.forEach(juego => {
+                const filtrados = data.ranking
+                    .filter(r => r.juego && r.juego.toLowerCase() === juego)
+                    .sort((a, b) => b.puntos - a.puntos);
+                
+                llenarTabla(juego, filtrados);
+                llenarPodio(juego, filtrados);
+            });
+        } catch (err) {
+            console.error("Error cargando ranking:", err);
         }
+    }
 
-        function llenarPodio(juego, lista) {
-            const container = document.getElementById(`podium-${juego}`);
-            if (!container) return;
+    function llenarTabla(juego, lista) {
+        const tbody = document.getElementById(`body-${juego}`);
+        if (!tbody) return;
+        
+        // Corregido: mapeamos usando exactamente r.nombre que viene de Flask/MongoDB
+        tbody.innerHTML = lista.map((r, i) => `
+            <tr>
+                <td>${i + 1}</td>
+                <td>${r.nombre || 'Anónimo'}</td>
+                <td><b style="color: var(--neon-cyan)">${r.puntos}</b></td>
+            </tr>
+        `).join('') || '<tr><td colspan="3" style="text-align:center; color:var(--neon-cyan);">Aún no hay récords</td></tr>';
+    }
 
-            const p1 = lista[0] || { nombre: "---", puntos: 0 };
-            const p2 = lista[1] || { nombre: "---", puntos: 0 };
-            const p3 = lista[2] || { nombre: "---", puntos: 0 };
+    function llenarPodio(juego, lista) {
+        const container = document.getElementById(`podium-${juego}`);
+        if (!container) return;
 
-            container.innerHTML = `
-                <div class="podium-step second">
-                    <div class="player-name">${p2.nombre}<br>(${p2.puntos})</div>
-                    <div class="step">2°</div>
-                </div>
-                <div class="podium-step first">
-                    <div class="player-name">${p1.nombre}<br>(${p1.puntos})</div>
-                    <div class="step">1°</div>
-                </div>
-                <div class="podium-step third">
-                    <div class="player-name">${p3.nombre}<br>(${p3.puntos})</div>
-                    <div class="step">3°</div>
-                </div>
-            `;
-        }
+        // Si no hay jugadores suficientes, creamos objetos vacíos para que el diseño no se rompa visualmente
+        const p1 = lista[0] || { nombre: "Vacante", puntos: 0 };
+        const p2 = lista[1] || { nombre: "Vacante", puntos: 0 };
+        const p3 = lista[2] || { nombre: "Vacante", puntos: 0 };
 
-        window.onload = cargarRankings;
-    </script>
+        // Mantenemos la estructura exacta de tus bloques para que el CSS de alturas funcione
+        container.innerHTML = `
+            <div class="podium-step second">
+                <div class="player-name">${p2.nombre}<br>(${p2.puntos})</div>
+                <div class="step">2°</div>
+            </div>
+            <div class="podium-step first">
+                <div class="player-name">${p1.nombre}<br>(${p1.puntos})</div>
+                <div class="step">1°</div>
+            </div>
+            <div class="podium-step third">
+                <div class="player-name">${p3.nombre}<br>(${p3.puntos})</div>
+                <div class="step">3°</div>
+            </div>
+        `;
+    }
+
+    window.onload = cargarRankings;
+</script>
 </body>
 </html>
