@@ -4,7 +4,76 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta charset="UTF-8">
     <title>Arcade | {{ juego|capitalize }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        /* Avatar pequeño en la cabecera del juego */
+        .game-user-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 1.5rem;
+        }
+        .game-avatar {
+            width: 38px; height: 38px;
+            border-radius: 50%;
+            border: 2px solid rgba(124,106,255,0.35);
+            background: #18181f;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #7c6aff;
+            font-family: 'DM Mono', monospace;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .game-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+        /* Botón de pantalla completa */
+        .fullscreen-btn {
+            position: absolute;
+            top: 8px; right: 8px;
+            width: 32px; height: 32px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 7px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.5);
+            transition: all 0.2s;
+            z-index: 10;
+        }
+        .fullscreen-btn:hover { background: rgba(255,255,255,0.12); color: white; }
+
+        /* Canvas en modo fullscreen */
+        .canvas-placeholder.is-fullscreen {
+            position: fixed !important;
+            top: 0; left: 0;
+            width: 100vw !important;
+            height: 100vh !important;
+            max-width: none !important;
+            min-height: none !important;
+            border-radius: 0 !important;
+            z-index: 9000;
+        }
+        .canvas-placeholder.is-fullscreen canvas {
+            width: 100% !important;
+            height: 100% !important;
+            max-width: none !important;
+        }
+        .canvas-placeholder.is-fullscreen .fullscreen-btn {
+            top: 16px; right: 16px;
+            width: 40px; height: 40px;
+            font-size: 1.1rem;
+            background: rgba(0,0,0,0.5);
+        }
+    </style>
 </head>
 <body>
     <nav class="navbar">
@@ -13,70 +82,82 @@
             <span>Arcade</span>
         </div>
         <ul class="nav-links">
-            <li><a href="/">Volver al Menú</a></li>
+            <li><a href="/">← Menú</a></li>
         </ul>
+        <!-- Avatar en navbar -->
+        <div style="display:flex;align-items:center;gap:8px;">
+            <div class="game-avatar" style="width:32px;height:32px;font-size:0.8rem;">
+                {% if avatar %}
+                    <img src="{{ avatar }}" alt="avatar">
+                {% else %}
+                    {{ username[0]|upper }}
+                {% endif %}
+            </div>
+            <span style="font-size:0.85rem;color:var(--muted);">{{ username }}</span>
+        </div>
     </nav>
 
-    <div id="auth-screen" class="auth-container" style="display: none;">
-        <div class="auth-card">
-            <h2>Vas a jugar: <span style="text-transform: capitalize; color: var(--accent);">{{ juego }}</span></h2>
-            <p>Ingresa tu nombre para el Ranking</p>
-            
-            <form id="loginForm" onsubmit="event.preventDefault(); guardarYEntrar();">
-                <input type="text" id="username" placeholder="Tu nombre de guerrero..." required maxlength="12">
-                <button type="submit" class="btn-auth">¡ENTRAR A JUGAR!</button>
-            </form>
-        </div>
-    </div>
-
-    <div id="game-screen" style="display: none;">
+    <div id="game-screen">
         <div class="game-layout">
             <div class="game-main">
-                <h2>Jugador: <span id="display-user" style="color: var(--accent);"></span></h2>
-                
-                <div class="game-container">
-                    <div class="canvas-placeholder">
-                        
-                        <div id="simon-game-container" class="simon-container" style="display: block;"></div>
+                <!-- Barra de usuario con avatar grande -->
+                <div class="game-user-bar">
+                    <div class="game-avatar">
+                        {% if avatar %}
+                            <img src="{{ avatar }}" alt="avatar">
+                        {% else %}
+                            {{ username[0]|upper }}
+                        {% endif %}
+                    </div>
+                    <h2>
+                        Jugando como: <span id="display-user" style="color:var(--accent);">{{ username }}</span>
+                    </h2>
+                </div>
 
-                        <div id="game-over-screen" style="display: none;">
+                <div class="game-container">
+                    <div class="canvas-placeholder" id="canvas-wrap">
+                        <!-- Botón pantalla completa -->
+                        <button class="fullscreen-btn" id="fs-btn" title="Pantalla completa" onclick="toggleFullscreen()">⛶</button>
+
+                        <div id="simon-game-container" class="simon-container" style="display:block;"></div>
+
+                        <div id="game-over-screen" style="display:none;">
                             <h1>¡FIN DEL JUEGO!</h1>
                             <p id="final-score-msg"></p>
-                            <button class="btn-play" onclick="ejecutarEntradaAlJuego(localStorage.getItem('arcade_user'))">REINTENTAR</button>
-                            <button class="btn-play" onclick="borrarYSalir()" style="background: var(--muted); margin-top:10px;">CAMBIAR CUENTA</button>
+                            <button class="btn-play" onclick="reiniciarJuego()">REINTENTAR</button>
+                            <button class="btn-play" onclick="window.location.href='/'" style="background:var(--muted);margin-top:10px;">SALIR AL MENÚ</button>
                         </div>
-
                     </div>
                 </div>
             </div>
 
             <div class="ranking-side">
-                <h3>🏆 TOP 5 - {{ juego|upper }}</h3>
+                <h3>🏆 TOP 5 — {{ juego|upper }}</h3>
                 <ul id="ranking-list">
                     {% set j = juego.lower() %}
                     {% if j == 'snake' %}
                         {% for fila in ranking_snake %}
-                            <li><span>{{ loop.index }}. {{ fila.nombre }}</span> <b>{{ fila.puntos }}</b></li>
+                            <li><span>{{ loop.index }}. {{ fila.nombre }}</span><b>{{ fila.puntos }}</b></li>
                         {% else %}
-                            <li>Nadie ha jugado aún...</li>
+                            <li>Nadie ha jugado aún…</li>
                         {% endfor %}
                     {% elif j == 'trivia' %}
                         {% for fila in ranking_trivia %}
-                            <li><span>{{ loop.index }}. {{ fila.nombre }}</span> <b>{{ fila.puntos }}</b></li>
+                            <li><span>{{ loop.index }}. {{ fila.nombre }}</span><b>{{ fila.puntos }}</b></li>
                         {% else %}
-                            <li>Nadie ha jugado aún...</li>
+                            <li>Nadie ha jugado aún…</li>
                         {% endfor %}
                     {% elif j == 'clicker' %}
                         {% for fila in ranking_clicker %}
-                            <li><span>{{ loop.index }}. {{ fila.nombre }}</span> <b>{{ fila.puntos }}</b></li>
+                            <li><span>{{ loop.index }}. {{ fila.nombre }}</span><b>{{ fila.puntos }}</b></li>
                         {% else %}
-                            <li>Nadie ha jugado aún...</li>
+                            <li>Nadie ha jugado aún…</li>
                         {% endfor %}
                     {% elif j == 'simon' %}
                         {% for fila in ranking_simon %}
-                            <li><span>{{ loop.index }}. {{ fila.nombre }}</span> <b>{{ fila.puntos }}</b></li>
+                            <li><span>{{ loop.index }}. {{ fila.nombre }}</span><b>{{ fila.puntos }}</b></li>
                         {% else %}
-                            <li>Nadie ha jugado aún...</li>
+                            <li>Nadie ha jugado aún…</li>
                         {% endfor %}
                     {% endif %}
                 </ul>
@@ -85,93 +166,74 @@
     </div>
 
     <script>
-    // SOLUCIÓN AL BUG GLOBAL: Asignamos explícitamente al objeto window para acceso global
-    window.JUEGO_ACTUAL = "{{ juego.lower() }}";
+        window.JUEGO_ACTUAL = "{{ juego.lower() }}";
+        window.ARCADE_USER  = "{{ username }}";   // viene seguro desde Flask/sesión
 
-    window.onload = function() {
-        document.getElementById('auth-screen').style.display = 'flex';
-        document.getElementById('game-screen').style.display = 'none';
-
-        const nombreGuardado = localStorage.getItem('arcade_user');
-        if (nombreGuardado) {
-            document.getElementById('username').value = nombreGuardado;
-        }
-    };
-
-    function guardarYEntrar() {
-        const nombre = document.getElementById('username').value.trim();
-        if (nombre) {
-            localStorage.setItem('arcade_user', nombre);
-            ejecutarEntradaAlJuego(nombre);
-        }
-    }
-
-    function ejecutarEntradaAlJuego(nombre) {
-        // 1. Resetear estados de pantallas e interfaces
-        document.getElementById('game-over-screen').style.display = 'none';
-        
-        const contenedorSimon = document.getElementById('simon-game-container');
-        if (contenedorSimon) {
-            contenedorSimon.style.display = 'block';
-        }
-        
-        document.getElementById('display-user').innerText = nombre;
-        document.getElementById('auth-screen').style.display = 'none';
-        document.getElementById('game-screen').style.display = 'block';
-
-        // 2. Limpieza estricta de scripts de sesiones previas para evitar duplicados en el DOM
-        const scriptAnteriorJuego = document.getElementById('script-del-juego');
-        if (scriptAnteriorJuego) scriptAnteriorJuego.remove();
-        
-        const scriptAnteriorPreguntas = document.getElementById('script-de-preguntas');
-        if (scriptAnteriorPreguntas) scriptAnteriorPreguntas.remove();
-
-        // 3. Romper la caché agresiva de Render usando un timestamp único
-        const versionUnica = new Date().getTime();
-
-        // 4. Inyección controlada: Primero cargamos el archivo de preguntas
-        const scriptPreguntas = document.createElement('script');
-        scriptPreguntas.id = 'script-de-preguntas';
-        scriptPreguntas.src = `/static/js/preguntas.js?v=${versionUnica}`;
-        document.body.appendChild(scriptPreguntas);
-
-        // 5. El script del juego arranca ÚNICAMENTE cuando las preguntas están listas en memoria
-        scriptPreguntas.onload = function() {
-            console.log(`Preguntas inyectadas. Cargando juego actual: ${window.JUEGO_ACTUAL}`);
-            
-            const scriptJuego = document.createElement('script');
-            scriptJuego.id = 'script-del-juego'; 
-            scriptJuego.src = `/static/js/${window.JUEGO_ACTUAL}.js?v=${versionUnica}`; 
-            document.body.appendChild(scriptJuego);
+        // Iniciar el juego directo (sin pantalla de nombre, ya hay sesión)
+        window.onload = function() {
+            document.getElementById('display-user').innerText = window.ARCADE_USER;
+            cargarScriptJuego();
         };
-    }
 
-    // Actualiza la barra lateral del ranking en tiempo real sin recargar la página entera
-    window.cargarRanking = function() {
-        fetch(`/obtener_ranking/${window.JUEGO_ACTUAL}`)
-            .then(res => res.json())
-            .then(datos => {
-                const listaHTML = document.getElementById('ranking-list');
-                listaHTML.innerHTML = ''; 
-                
-                if (datos.length === 0) {
-                    listaHTML.innerHTML = '<li>Nadie ha jugado aún...</li>';
-                    return;
-                }
-                
-                datos.forEach((fila, indice) => {
-                    const li = document.createElement('li');
-                    li.innerHTML = `<span>${indice + 1}. ${fila.nombre}</span> <b>${fila.puntos}</b>`;
-                    listaHTML.appendChild(li);
+        function cargarScriptJuego() {
+            document.getElementById('game-over-screen').style.display = 'none';
+            const sc = document.getElementById('simon-game-container');
+            if (sc) sc.style.display = 'block';
+
+            // Limpiar scripts anteriores
+            ['script-del-juego','script-de-preguntas'].forEach(id => {
+                const old = document.getElementById(id);
+                if (old) old.remove();
+            });
+
+            const v = Date.now();
+            const sp = document.createElement('script');
+            sp.id  = 'script-de-preguntas';
+            sp.src = `/static/js/preguntas.js?v=${v}`;
+            document.body.appendChild(sp);
+
+            sp.onload = function() {
+                const sj = document.createElement('script');
+                sj.id  = 'script-del-juego';
+                sj.src = `/static/js/${window.JUEGO_ACTUAL}.js?v=${v}`;
+                document.body.appendChild(sj);
+            };
+        }
+
+        function reiniciarJuego() {
+            cargarScriptJuego();
+        }
+
+        // Actualizar ranking lateral en tiempo real
+        window.cargarRanking = function() {
+            fetch(`/obtener_ranking/${window.JUEGO_ACTUAL}`)
+                .then(r => r.json())
+                .then(datos => {
+                    const lista = document.getElementById('ranking-list');
+                    lista.innerHTML = datos.length
+                        ? datos.map((f, i) => `<li><span>${i+1}. ${f.nombre}</span><b>${f.puntos}</b></li>`).join('')
+                        : '<li>Nadie ha jugado aún…</li>';
                 });
-            })
-            .catch(err => console.error("Error al actualizar la tabla de ranking:", err));
-    };
+        };
 
-    function borrarYSalir() {
-        localStorage.removeItem('arcade_user'); 
-        window.location.reload(); 
-    }
+        // ── Pantalla completa ────────────────────────────────────
+        function toggleFullscreen() {
+            const wrap = document.getElementById('canvas-wrap');
+            const btn  = document.getElementById('fs-btn');
+            const isFs = wrap.classList.toggle('is-fullscreen');
+            btn.textContent = isFs ? '✕' : '⛶';
+            btn.title = isFs ? 'Salir de pantalla completa' : 'Pantalla completa';
+            // Bloquear scroll del body cuando está en fullscreen
+            document.body.style.overflow = isFs ? 'hidden' : '';
+        }
+
+        // Salir de fullscreen con Escape
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') {
+                const wrap = document.getElementById('canvas-wrap');
+                if (wrap.classList.contains('is-fullscreen')) toggleFullscreen();
+            }
+        });
     </script>
 </body>
 </html>
