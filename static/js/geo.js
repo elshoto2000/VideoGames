@@ -1,253 +1,391 @@
-// static/js/geo.js
-// Geometry Dash style — runner con salto y obstáculos
-
+// static/js/geo.js  — Geometry Dash mejorado
 (function() {
     const container = document.querySelector('.canvas-placeholder') || document.getElementById('simon-game-container');
     if (!container) return;
-
-    // Ocultar game-over previo
+ 
     const goScreen = document.getElementById('game-over-screen');
     if (goScreen) goScreen.style.display = 'none';
-
+ 
     // ── Canvas ──────────────────────────────────────
     let canvas = container.querySelector('canvas#geo-canvas');
     if (!canvas) {
         canvas = document.createElement('canvas');
         canvas.id = 'geo-canvas';
-        canvas.style.cssText = 'display:block; width:100%; height:auto; border-radius:10px;';
+        canvas.style.cssText = 'display:block;width:100%;height:auto;border-radius:12px;cursor:pointer;';
         container.innerHTML = '';
         container.appendChild(canvas);
     }
-
-    const W = 480, H = 300;
-    canvas.width  = W;
-    canvas.height = H;
+ 
+    const W = 500, H = 320;
+    canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext('2d');
-
-    // ── Estilos inject ───────────────────────────────
+ 
+    // ── Estilos ──────────────────────────────────────
     const st = document.createElement('style');
-    st.innerHTML = `
-        #geo-hud { display:flex; justify-content:space-between; align-items:center; padding:6px 4px; color:#fff; font-family:var(--font-mono,monospace); font-size:0.85rem; }
-        #geo-hud .geo-pts { color:var(--accent,#7c6aff); font-weight:700; font-size:1rem; }
+    st.textContent = `
+        #geo-hud { display:flex; justify-content:space-between; align-items:center; padding:8px 2px 6px; color:#fff; font-family:var(--font-mono,monospace); font-size:0.82rem; gap:8px; flex-wrap:wrap; }
+        #geo-hud .g-pts { color:var(--accent,#7c6aff); font-weight:800; font-size:1rem; }
+        #geo-hud .g-lv  { background:rgba(124,106,255,0.15); border:1px solid rgba(124,106,255,0.3); padding:2px 10px; border-radius:20px; font-size:0.78rem; }
         #geo-controls { display:flex; gap:10px; justify-content:center; margin-top:8px; flex-wrap:wrap; }
-        .geo-btn { background:var(--bg-raised,#222); color:#fff; border:1px solid var(--border-md,#444); padding:8px 22px; border-radius:8px; cursor:pointer; font-family:var(--font-body,sans-serif); font-size:0.85rem; font-weight:600; transition:all 0.15s; }
-        .geo-btn:hover { background:var(--accent,#7c6aff); border-color:var(--accent,#7c6aff); }
-        #geo-jump-btn { background:var(--accent,#7c6aff); border-color:var(--accent,#7c6aff); font-size:1.1rem; padding:10px 28px; }
+        .geo-btn { background:var(--bg-raised,#1e1e2e); color:#fff; border:1px solid var(--border-md,#333); padding:9px 24px; border-radius:8px; cursor:pointer; font-weight:700; font-size:0.85rem; transition:all 0.15s; font-family:var(--font-body,sans-serif); }
+        .geo-btn:hover { background:var(--accent,#7c6aff); border-color:var(--accent,#7c6aff); transform:translateY(-1px); }
+        #geo-jump-btn { background:var(--accent,#7c6aff); border-color:var(--accent,#7c6aff); padding:10px 30px; font-size:0.9rem; }
         #geo-jump-btn:active { transform:scale(0.95); }
         @media(min-width:769px){ #geo-jump-btn{ display:none; } }
     `;
     document.head.appendChild(st);
-
-    // ── HUD + controles ──────────────────────────────
+ 
+    // ── HUD ──────────────────────────────────────────
     const hud = document.createElement('div');
     hud.id = 'geo-hud';
-    hud.innerHTML = `<span>GEO DASH</span><span>Puntos: <span class="geo-pts" id="geo-score">0</span></span><span id="geo-level-label">Nivel 1</span>`;
-
+    hud.innerHTML = `
+        <span>🟦 GEO DASH</span>
+        <span>Puntos: <span class="g-pts" id="geo-score">0</span></span>
+        <span class="g-lv" id="geo-level-label">Nivel 1</span>
+    `;
     const controls = document.createElement('div');
     controls.id = 'geo-controls';
     controls.innerHTML = `
         <button class="geo-btn" id="geo-start-btn">▶ INICIAR</button>
         <button class="geo-btn" id="geo-jump-btn">⬆ SALTAR</button>
     `;
-
     container.insertBefore(hud, canvas);
     container.appendChild(controls);
-
+ 
     const scoreEl    = document.getElementById('geo-score');
     const levelLabel = document.getElementById('geo-level-label');
     const startBtn   = document.getElementById('geo-start-btn');
     const jumpBtn    = document.getElementById('geo-jump-btn');
-
-    // ── Estado del juego ────────────────────────────
-    const GROUND = H - 50;
-    const PLAYER_SIZE = 30;
-    const GRAVITY = 0.55;
-    const JUMP_FORCE = -11;
-
-    let gameRunning = false;
-    let animId = null;
-
-    let player, obstacles, bgStars, score, speed, frameCount, nivel;
-
+ 
+    // ── Constantes ───────────────────────────────────
+    const GROUND      = H - 55;
+    const P_SIZE      = 28;
+    const GRAVITY     = 0.6;
+    const JUMP_FORCE  = -12;
+    const JUMP2_FORCE = -10;  // doble salto
+ 
+    // Paletas de color por nivel
+    const LEVEL_PALETTES = [
+        { sky: '#0d0221', ground: '#1a1230', line: '#7c6aff', player: '#7c6aff', glow: '#7c6affaa' },
+        { sky: '#02100d', ground: '#0f2018', line: '#00ff88', player: '#00ff88', glow: '#00ff88aa' },
+        { sky: '#1a0808', ground: '#2a1010', line: '#ff4466', player: '#ff4466', glow: '#ff4466aa' },
+        { sky: '#08101a', ground: '#101828', line: '#00ccff', player: '#00ccff', glow: '#00ccffaa' },
+    ];
+ 
+    // ── Estado ───────────────────────────────────────
+    let gameRunning = false, animId = null;
+    let player, obstacles, bgStars, bgPlatforms, particles;
+    let score, speed, frameCount, nivel, palette, jumpsLeft;
+ 
     function initState() {
+        palette = LEVEL_PALETTES[0];
         player = {
-            x: 60, y: GROUND - PLAYER_SIZE,
+            x: 70, y: GROUND - P_SIZE,
             vy: 0, onGround: true,
-            angle: 0, color: '#7c6aff'
+            angle: 0
         };
-        obstacles   = [];
-        bgStars     = Array.from({length: 40}, () => ({
+        obstacles    = [];
+        particles    = [];
+        bgStars      = Array.from({length: 50}, () => ({
             x: Math.random() * W,
-            y: Math.random() * (GROUND - 20),
-            r: Math.random() * 1.5 + 0.5,
-            speed: Math.random() * 0.5 + 0.3
+            y: Math.random() * (GROUND - 30),
+            r: Math.random() * 1.8 + 0.3,
+            sp: Math.random() * 0.4 + 0.15,
+            alpha: Math.random() * 0.5 + 0.3
         }));
-        score      = 0;
-        speed      = 4.5;
-        frameCount = 0;
-        nivel      = 1;
+        bgPlatforms  = Array.from({length: 5}, (_, i) => ({
+            x: i * 130 + 80,
+            y: 55 + Math.random() * 60,
+            w: 60 + Math.random() * 40,
+            sp: 0.6 + Math.random() * 0.3,
+            alpha: 0.06 + Math.random() * 0.06
+        }));
+        score = 0; speed = 5; frameCount = 0; nivel = 1; jumpsLeft = 2;
         scoreEl.textContent = '0';
         levelLabel.textContent = 'Nivel 1';
     }
-
-    // ── Spawn obstáculos ─────────────────────────────
-    const OBSTACLE_TYPES = ['spike', 'block', 'double'];
-
-    function spawnObstacle() {
-        const type = OBSTACLE_TYPES[Math.floor(Math.random() * OBSTACLE_TYPES.length)];
-        if (type === 'spike') {
-            obstacles.push({ x: W + 20, y: GROUND - 28, w: 28, h: 28, type: 'spike' });
-        } else if (type === 'block') {
-            const h = 34 + Math.random() * 20;
-            obstacles.push({ x: W + 20, y: GROUND - h, w: 32, h, type: 'block' });
-        } else {
-            // doble spike separado
-            obstacles.push({ x: W + 20,  y: GROUND - 28, w: 28, h: 28, type: 'spike' });
-            obstacles.push({ x: W + 60,  y: GROUND - 28, w: 28, h: 28, type: 'spike' });
+ 
+    // ── Partículas ───────────────────────────────────
+    function spawnParticles(x, y, color, count = 12) {
+        for (let i = 0; i < count; i++) {
+            const angle = (Math.PI * 2 * i) / count + Math.random() * 0.5;
+            particles.push({
+                x, y,
+                vx: Math.cos(angle) * (2 + Math.random() * 3),
+                vy: Math.sin(angle) * (2 + Math.random() * 3) - 1,
+                life: 1, color,
+                r: 3 + Math.random() * 4
+            });
         }
     }
-
+ 
+    // ── Spawn obstáculos ─────────────────────────────
+    function spawnObstacle() {
+        const r = Math.random();
+        if (r < 0.35) {
+            // Spike simple
+            obstacles.push({ x: W + 10, y: GROUND - 30, w: 30, h: 30, type: 'spike' });
+        } else if (r < 0.55) {
+            // Doble spike
+            obstacles.push({ x: W + 10, y: GROUND - 30, w: 30, h: 30, type: 'spike' });
+            obstacles.push({ x: W + 48, y: GROUND - 30, w: 30, h: 30, type: 'spike' });
+        } else if (r < 0.75) {
+            // Bloque alto
+            const h = 36 + Math.random() * 24;
+            obstacles.push({ x: W + 10, y: GROUND - h, w: 34, h, type: 'block' });
+        } else if (r < 0.88) {
+            // Bloque + spike encima
+            const bh = 30;
+            obstacles.push({ x: W + 10, y: GROUND - bh, w: 34, h: bh, type: 'block' });
+            obstacles.push({ x: W + 13, y: GROUND - bh - 28, w: 28, h: 28, type: 'spike' });
+        } else {
+            // Triple spike (solo en nivel 3+)
+            if (nivel >= 3) {
+                obstacles.push({ x: W + 10, y: GROUND - 30, w: 30, h: 30, type: 'spike' });
+                obstacles.push({ x: W + 46, y: GROUND - 30, w: 30, h: 30, type: 'spike' });
+                obstacles.push({ x: W + 82, y: GROUND - 30, w: 30, h: 30, type: 'spike' });
+            } else {
+                obstacles.push({ x: W + 10, y: GROUND - 30, w: 30, h: 30, type: 'spike' });
+            }
+        }
+    }
+ 
     // ── Salto ────────────────────────────────────────
     function jump() {
         if (!gameRunning) return;
-        if (player.onGround) {
-            player.vy = JUMP_FORCE;
+        if (jumpsLeft > 0) {
+            player.vy = jumpsLeft === 2 ? JUMP_FORCE : JUMP2_FORCE;
             player.onGround = false;
+            jumpsLeft--;
+            // Partículas al saltar
+            spawnParticles(player.x + P_SIZE/2, player.y + P_SIZE, palette.player, 6);
         }
     }
-
-    // ── Colisión AABB ────────────────────────────────
+ 
+    // ── Colisión ─────────────────────────────────────
     function collides(p, o) {
-        const margin = 4;
+        const m = 5;
         return (
-            p.x + margin        < o.x + o.w &&
-            p.x + PLAYER_SIZE - margin > o.x &&
-            p.y + margin        < o.y + o.h &&
-            p.y + PLAYER_SIZE - margin > o.y
+            p.x + m           < o.x + o.w &&
+            p.x + P_SIZE - m  > o.x &&
+            p.y + m           < o.y + o.h &&
+            p.y + P_SIZE - m  > o.y
         );
     }
-
+ 
     // ── Dibujo ───────────────────────────────────────
-    const COLORS = { spike: '#e84058', block: '#f5a623', sky: '#0d0221' };
-
     function draw() {
-        // Fondo
-        ctx.fillStyle = COLORS.sky;
+        // Fondo con gradiente
+        const grad = ctx.createLinearGradient(0, 0, 0, H);
+        grad.addColorStop(0, palette.sky);
+        grad.addColorStop(1, palette.ground);
+        ctx.fillStyle = grad;
         ctx.fillRect(0, 0, W, H);
-
+ 
         // Estrellas
-        ctx.fillStyle = 'rgba(255,255,255,0.55)';
         bgStars.forEach(s => {
+            ctx.globalAlpha = s.alpha;
+            ctx.fillStyle = '#fff';
             ctx.beginPath();
             ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
             ctx.fill();
         });
-
+        ctx.globalAlpha = 1;
+ 
+        // Plataformas BG decorativas
+        bgPlatforms.forEach(p => {
+            ctx.globalAlpha = p.alpha;
+            ctx.fillStyle = palette.line;
+            ctx.fillRect(p.x, p.y, p.w, 3);
+        });
+        ctx.globalAlpha = 1;
+ 
+        // Líneas de velocidad (blur de movimiento)
+        if (gameRunning) {
+            ctx.globalAlpha = 0.06;
+            ctx.fillStyle = palette.line;
+            for (let i = 0; i < 5; i++) {
+                const lx = (frameCount * speed * 0.8 + i * 120) % W;
+                ctx.fillRect(lx, GROUND - 10 - i * 8, 60 + i*10, 1.5);
+            }
+            ctx.globalAlpha = 1;
+        }
+ 
         // Suelo
-        ctx.fillStyle = '#1a1230';
+        ctx.fillStyle = palette.ground;
         ctx.fillRect(0, GROUND, W, H - GROUND);
-        ctx.fillStyle = 'rgba(124,106,255,0.4)';
-        ctx.fillRect(0, GROUND, W, 3);
-
-        // Jugador (cubo rotante)
-        ctx.save();
-        ctx.translate(player.x + PLAYER_SIZE / 2, player.y + PLAYER_SIZE / 2);
-        ctx.rotate(player.angle);
-        ctx.fillStyle = player.color;
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = player.color;
-        ctx.fillRect(-PLAYER_SIZE/2, -PLAYER_SIZE/2, PLAYER_SIZE, PLAYER_SIZE);
-        ctx.shadowBlur = 0;
-        // detalle interior
-        ctx.fillStyle = 'rgba(255,255,255,0.25)';
-        ctx.fillRect(-PLAYER_SIZE/2 + 5, -PLAYER_SIZE/2 + 5, PLAYER_SIZE - 10, PLAYER_SIZE - 10);
-        ctx.restore();
-
+        // Línea brillante del suelo
+        const groundGrad = ctx.createLinearGradient(0, GROUND, W, GROUND);
+        groundGrad.addColorStop(0, 'transparent');
+        groundGrad.addColorStop(0.5, palette.line);
+        groundGrad.addColorStop(1, 'transparent');
+        ctx.fillStyle = groundGrad;
+        ctx.fillRect(0, GROUND, W, 2);
+ 
+        // Grid del suelo
+        ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+        ctx.lineWidth = 1;
+        for (let gx = 0; gx < W; gx += 40) {
+            ctx.beginPath();
+            ctx.moveTo((gx - frameCount * speed * 0.5) % W, GROUND);
+            ctx.lineTo((gx - frameCount * speed * 0.5) % W, H);
+            ctx.stroke();
+        }
+ 
         // Obstáculos
         obstacles.forEach(o => {
+            ctx.save();
             if (o.type === 'spike') {
-                ctx.fillStyle = COLORS.spike;
-                ctx.shadowBlur = 6;
-                ctx.shadowColor = COLORS.spike;
+                ctx.shadowBlur = 8; ctx.shadowColor = '#ff4466';
+                ctx.fillStyle = '#ff4466';
                 ctx.beginPath();
                 ctx.moveTo(o.x, o.y + o.h);
                 ctx.lineTo(o.x + o.w / 2, o.y);
                 ctx.lineTo(o.x + o.w, o.y + o.h);
                 ctx.closePath();
                 ctx.fill();
-                ctx.shadowBlur = 0;
+                // brillo interno
+                ctx.fillStyle = 'rgba(255,200,200,0.3)';
+                ctx.beginPath();
+                ctx.moveTo(o.x + 5, o.y + o.h);
+                ctx.lineTo(o.x + o.w / 2, o.y + 6);
+                ctx.lineTo(o.x + o.w - 5, o.y + o.h);
+                ctx.closePath();
+                ctx.fill();
             } else {
-                ctx.fillStyle = COLORS.block;
-                ctx.shadowBlur = 6;
-                ctx.shadowColor = COLORS.block;
+                ctx.shadowBlur = 8; ctx.shadowColor = '#f5a623';
+                ctx.fillStyle = '#f5a623';
                 ctx.fillRect(o.x, o.y, o.w, o.h);
-                ctx.shadowBlur = 0;
-                // grid
-                ctx.strokeStyle = 'rgba(0,0,0,0.2)';
-                ctx.strokeRect(o.x + 2, o.y + 2, o.w - 4, o.h - 4);
+                // detalle bloque
+                ctx.fillStyle = 'rgba(255,255,255,0.1)';
+                ctx.fillRect(o.x, o.y, o.w, 4);
+                ctx.fillRect(o.x, o.y, 4, o.h);
+                ctx.fillStyle = 'rgba(0,0,0,0.15)';
+                ctx.fillRect(o.x + o.w - 4, o.y, 4, o.h);
+                ctx.fillRect(o.x, o.y + o.h - 4, o.w, 4);
             }
+            ctx.restore();
         });
-
-        // HUD canvas: puntos
+ 
+        // Jugador (cubo)
+        ctx.save();
+        ctx.translate(player.x + P_SIZE/2, player.y + P_SIZE/2);
+        ctx.rotate(player.angle);
+        // Sombra glow
+        ctx.shadowBlur = 20; ctx.shadowColor = palette.glow;
+        ctx.fillStyle = palette.player;
+        ctx.fillRect(-P_SIZE/2, -P_SIZE/2, P_SIZE, P_SIZE);
+        ctx.shadowBlur = 0;
+        // detalle: borde interior
+        ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-P_SIZE/2 + 3, -P_SIZE/2 + 3, P_SIZE - 6, P_SIZE - 6);
+        // x en el cubo
+        ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(-P_SIZE/2 + 6, -P_SIZE/2 + 6);
+        ctx.lineTo(P_SIZE/2 - 6, P_SIZE/2 - 6);
+        ctx.moveTo(P_SIZE/2 - 6, -P_SIZE/2 + 6);
+        ctx.lineTo(-P_SIZE/2 + 6, P_SIZE/2 - 6);
+        ctx.stroke();
+        ctx.restore();
+ 
+        // Partículas
+        particles.forEach(p => {
+            ctx.globalAlpha = p.life;
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2);
+            ctx.fill();
+        });
+        ctx.globalAlpha = 1;
+ 
+        // Pantalla de inicio
         if (!gameRunning && score === 0) {
-            ctx.fillStyle = 'rgba(0,0,0,0.6)';
+            ctx.fillStyle = 'rgba(0,0,0,0.65)';
             ctx.fillRect(0, 0, W, H);
-            ctx.fillStyle = '#fff';
-            ctx.font = 'bold 22px sans-serif';
+            ctx.fillStyle = palette.player;
+            ctx.shadowBlur = 20; ctx.shadowColor = palette.glow;
+            ctx.font = 'bold 26px var(--font-display, sans-serif)';
             ctx.textAlign = 'center';
-            ctx.fillText('¡Presiona INICIAR!', W/2, H/2 - 12);
+            ctx.fillText('GEO DASH', W/2, H/2 - 22);
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = 'rgba(255,255,255,0.6)';
             ctx.font = '14px sans-serif';
-            ctx.fillStyle = 'rgba(255,255,255,0.5)';
-            ctx.fillText('Tecla ESPACIO / ↑ / clic para saltar', W/2, H/2 + 18);
+            ctx.fillText('Espacio / ↑ / Clic para saltar', W/2, H/2 + 8);
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.font = '12px sans-serif';
+            ctx.fillText('Doble salto disponible en el aire', W/2, H/2 + 28);
         }
     }
-
-    // ── Loop ─────────────────────────────────────────
+ 
+    // ── Game loop ────────────────────────────────────
     function loop() {
         if (!gameRunning) return;
-
+ 
         frameCount++;
         score++;
         scoreEl.textContent = score;
-
-        // Aumentar velocidad y nivel
-        if (score % 400 === 0) {
-            speed = Math.min(speed + 0.6, 12);
-            nivel = Math.floor(score / 400) + 1;
+ 
+        // Nivel y paleta
+        const newNivel = Math.floor(score / 500) + 1;
+        if (newNivel !== nivel) {
+            nivel = newNivel;
+            speed = Math.min(5 + nivel * 1.2, 14);
+            palette = LEVEL_PALETTES[(nivel - 1) % LEVEL_PALETTES.length];
             levelLabel.textContent = `Nivel ${nivel}`;
         }
-
-        // Mover estrellas
+ 
+        // Fondo BG
         bgStars.forEach(s => {
-            s.x -= s.speed;
-            if (s.x < 0) { s.x = W; s.y = Math.random() * (GROUND - 20); }
+            s.x -= s.sp;
+            if (s.x < 0) { s.x = W; s.y = Math.random() * (GROUND - 30); s.alpha = Math.random()*0.5+0.3; }
         });
-
-        // Física jugador
+        bgPlatforms.forEach(p => {
+            p.x -= p.sp;
+            if (p.x + p.w < 0) { p.x = W + 20; p.y = 40 + Math.random() * 70; }
+        });
+ 
+        // Física
         player.vy += GRAVITY;
         player.y  += player.vy;
-
-        if (player.y >= GROUND - PLAYER_SIZE) {
-            player.y = GROUND - PLAYER_SIZE;
+ 
+        if (player.y >= GROUND - P_SIZE) {
+            player.y = GROUND - P_SIZE;
             player.vy = 0;
             player.onGround = true;
+            jumpsLeft = 2;
         }
-
-        // Rotación cubo en el aire
+ 
+        // Rotación
         if (!player.onGround) {
-            player.angle += 0.1;
+            player.angle += 0.1 + speed * 0.005;
         } else {
             player.angle = Math.round(player.angle / (Math.PI/2)) * (Math.PI/2);
         }
-
-        // Spawn obstáculos
-        const gap = Math.max(55, 90 - nivel * 6);
+ 
+        // Spawn
+        const gap = Math.max(42, 85 - nivel * 7);
         if (frameCount % gap === 0) spawnObstacle();
-
-        // Mover obstáculos
+ 
+        // Mover y limpiar obstáculos
         obstacles.forEach(o => { o.x -= speed; });
         obstacles = obstacles.filter(o => o.x + o.w > -10);
-
+ 
+        // Partículas trail
+        if (frameCount % 3 === 0) {
+            particles.push({
+                x: player.x + 2, y: player.y + P_SIZE/2 + (Math.random()-0.5)*8,
+                vx: -speed * 0.5, vy: (Math.random()-0.5) * 1.5,
+                life: 0.7, color: palette.player, r: 3
+            });
+        }
+ 
+        // Actualizar partículas
+        particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.life -= 0.04; p.r *= 0.96; });
+        particles = particles.filter(p => p.life > 0);
+ 
         // Colisiones
         for (const o of obstacles) {
             if (collides(player, o)) {
@@ -255,50 +393,39 @@
                 return;
             }
         }
-
+ 
         draw();
         animId = requestAnimationFrame(loop);
     }
-
-    // ── Fin de partida ───────────────────────────────
+ 
+    // ── Game over ────────────────────────────────────
     function endGame() {
         gameRunning = false;
         cancelAnimationFrame(animId);
-        startBtn.textContent = '▶ REINTENTAR';
-
-        // Guardar puntaje
-        const user = window.ARCADE_USER || 'Jugador';
+ 
+        // Explosión de partículas
+        spawnParticles(player.x + P_SIZE/2, player.y + P_SIZE/2, palette.player, 20);
+        spawnParticles(player.x + P_SIZE/2, player.y + P_SIZE/2, '#ff4466', 10);
+        draw(); // un último frame con partículas
+ 
+        startBtn.textContent = '↺ REINTENTAR';
+ 
         fetch('/guardar_puntaje', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ juego: 'geo', nombre: user, puntos: score })
+            body: JSON.stringify({ juego: 'geo', nombre: window.ARCADE_USER || 'Jugador', puntos: score })
         })
         .then(() => { if (typeof window.cargarRanking === 'function') window.cargarRanking(); })
-        .catch(err => console.error('Error guardando puntaje geo:', err));
-
-        // Pantalla de game over
+        .catch(e => console.error('Error guardando puntaje geo:', e));
+ 
         const goPanel = document.getElementById('game-over-screen');
         const goMsg   = document.getElementById('final-score-msg');
         if (goPanel) {
-            if (goMsg) goMsg.textContent = `Lograste ${score} puntos en Nivel ${nivel}`;
+            if (goMsg) goMsg.textContent = `Lograste ${score} puntos · Nivel ${nivel}`;
             goPanel.style.display = 'flex';
-        } else {
-            // Fallback en canvas
-            draw();
-            ctx.fillStyle = 'rgba(0,0,0,0.7)';
-            ctx.fillRect(0, 0, W, H);
-            ctx.fillStyle = '#e84058';
-            ctx.font = 'bold 26px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.shadowBlur = 12; ctx.shadowColor = '#e84058';
-            ctx.fillText('¡GAME OVER!', W/2, H/2 - 20);
-            ctx.shadowBlur = 0;
-            ctx.fillStyle = '#fff';
-            ctx.font = '16px sans-serif';
-            ctx.fillText(`Puntos: ${score}`, W/2, H/2 + 14);
         }
     }
-
+ 
     // ── Inicio ───────────────────────────────────────
     function startGame() {
         if (goScreen) goScreen.style.display = 'none';
@@ -308,32 +435,28 @@
         startBtn.textContent = '↺ REINICIAR';
         animId = requestAnimationFrame(loop);
     }
-
+ 
     // ── Controles ────────────────────────────────────
     startBtn.addEventListener('click', startGame);
     jumpBtn.addEventListener('click', jump);
     jumpBtn.addEventListener('touchstart', e => { e.preventDefault(); jump(); }, { passive: false });
-
+ 
     window.addEventListener('keydown', e => {
-        if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
+        if ([' ','ArrowUp','w','W'].includes(e.key)) {
             e.preventDefault();
             if (!gameRunning) startGame();
             else jump();
         }
     });
-
-    canvas.addEventListener('click', () => {
-        if (!gameRunning) startGame();
-        else jump();
-    });
+ 
+    canvas.addEventListener('click', () => { if (!gameRunning) startGame(); else jump(); });
     canvas.addEventListener('touchstart', e => {
         e.preventDefault();
-        if (!gameRunning) startGame();
-        else jump();
+        if (!gameRunning) startGame(); else jump();
     }, { passive: false });
-
+ 
     // Pantalla inicial
     initState();
     draw();
-
 })();
+ 
