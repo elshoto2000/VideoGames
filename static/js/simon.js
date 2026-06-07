@@ -243,7 +243,7 @@
 
     function finalizarPartidaArcade() {
         if (typeof window.cargarRanking === 'function') {
-            const nick = localStorage.getItem('arcade_user') || 'Jugador';
+            const nick = window.ARCADE_USER || 'Jugador';
             fetch('/guardar_puntaje', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
