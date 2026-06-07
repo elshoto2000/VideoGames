@@ -2,44 +2,54 @@ from flask import Flask, render_template, request, jsonify, session, redirect, u
 from pymongo import MongoClient
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
-import base64
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "arcade_secret_2026_cambiar_esto")
+# SECRET_KEY larga y estable — NUNCA guardes datos grandes en la sesión
+app.secret_key = os.environ.get("SECRET_KEY", "arcade_secret_2026_XyZ9qR")
+# Limitar cookie a solo datos pequeños
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_HTTPONLY'] = True
 
 MONGO_URI = "mongodb+srv://herreraleandro628:apu20082009@cluster0.q4tnkcc.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 client = MongoClient(MONGO_URI)
 db = client.arcade_db
 puntajes_col = db.puntajes
-usuarios_col = db.usuarios
+usuarios_col  = db.usuarios
 
 print("✅ Conectado exitosamente a MongoDB Atlas")
 
-# ─── AUTENTICACIÓN ───────────────────────────────────────────────
+# ─── HELPER: obtener usuario actual desde DB ──────────────────────
+def get_usuario():
+    """Devuelve el doc del usuario en sesión, o None."""
+    username = session.get('username')
+    if not username:
+        return None
+    return usuarios_col.find_one({"username": username})
+
+# ─── AUTENTICACIÓN ────────────────────────────────────────────────
 
 @app.route('/registro', methods=['GET', 'POST'])
 def registro():
     if request.method == 'GET':
         return render_template('registro.html')
 
-    datos = request.json
+    datos    = request.json or {}
     username = datos.get('username', '').strip()
     password = datos.get('password', '').strip()
-    avatar    = datos.get('avatar', '')
+    avatar   = datos.get('avatar', '')   # base64 — se guarda en Mongo, NUNCA en sesión
 
     if not username or not password:
         return jsonify({"status": "error", "message": "Usuario y contraseña requeridos"}), 400
-
     if len(username) < 3 or len(username) > 20:
         return jsonify({"status": "error", "message": "El nombre debe tener entre 3 y 20 caracteres"}), 400
-
     if usuarios_col.find_one({"username": username}):
         return jsonify({"status": "error", "message": "Ese nombre de usuario ya existe"}), 409
 
     usuarios_col.insert_one({
         "username": username,
         "password": generate_password_hash(password),
-        "avatar": avatar
+        "avatar":   avatar,
+        "logros":   []          # lista de IDs de logros desbloqueados
     })
     return jsonify({"status": "success"})
 
@@ -49,7 +59,7 @@ def login():
     if request.method == 'GET':
         return render_template('login.html')
 
-    datos = request.json
+    datos    = request.json or {}
     username = datos.get('username', '').strip()
     password = datos.get('password', '').strip()
 
@@ -57,8 +67,9 @@ def login():
     if not usuario or not check_password_hash(usuario['password'], password):
         return jsonify({"status": "error", "message": "Usuario o contraseña incorrectos"}), 401
 
+    # ⚠️  Solo guardamos el username en la sesión — NUNCA el avatar
+    session.clear()
     session['username'] = username
-    session['avatar']   = usuario.get('avatar', '')
     return jsonify({"status": "success"})
 
 
@@ -68,47 +79,63 @@ def logout():
     return redirect(url_for('home'))
 
 
+@app.route('/api/sesion')
+def api_sesion():
+    """Consultado por el JS del frontend para renderizar navbar."""
+    u = get_usuario()
+    if u:
+        return jsonify({
+            "loggedin": True,
+            "username": u['username'],
+            "avatar":   u.get('avatar', '')   # leído en tiempo real desde Mongo
+        })
+    return jsonify({"loggedin": False})
+
+
+# ─── PERFIL Y AVATAR ──────────────────────────────────────────────
+
 @app.route('/perfil')
 def perfil():
     if 'username' not in session:
         return redirect(url_for('login'))
+    u = get_usuario()
+    if not u:
+        session.clear()
+        return redirect(url_for('login'))
     return render_template('perfil.html',
-                           username=session['username'],
-                           avatar=session.get('avatar', ''))
+                           username=u['username'],
+                           avatar=u.get('avatar', ''))
 
 
 @app.route('/actualizar_avatar', methods=['POST'])
 def actualizar_avatar():
     if 'username' not in session:
         return jsonify({"status": "error"}), 401
-    
-    datos = request.json
+    datos  = request.json or {}
     avatar = datos.get('avatar', '')
-    
-    try:
-        # Guardamos la imagen comprimida en la base de datos de MongoDB Atlas
-        usuarios_col.update_one(
-            {"username": session['username']},
-            {"$set": {"avatar": avatar}}
-        )
-        # IMPORTANTE: NO guardes el avatar en session['avatar'] para no romper las cookies de Flask.
-        return jsonify({"status": "success"})
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+    # Guardamos en Mongo — la sesión NO se toca
+    usuarios_col.update_one(
+        {"username": session['username']},
+        {"$set": {"avatar": avatar}}
+    )
+    return jsonify({"status": "success"})
 
 
-@app.route('/api/sesion')
-def api_sesion():
-    if 'username' in session:
-        # Buscamos el avatar en tiempo real en la base de datos
-        usuario_db = usuarios_col.find_one({"username": session['username']})
-        avatar_actual = usuario_db.get('avatar', '') if usuario_db else ''
-        return jsonify({
-            "loggedin": True,
-            "username": session['username'],
-            "avatar": avatar_actual
-        })
-    return jsonify({"loggedin": False})
+# ─── DASHBOARD ────────────────────────────────────────────────────
+
+@app.route('/dashboard')
+def dashboard():
+    if 'username' not in session:
+        return redirect(url_for('home'))
+    u = get_usuario()
+    if not u:
+        session.clear()
+        return redirect(url_for('home'))
+    return render_template('dashboard.html',
+                           username=u['username'],
+                           avatar=u.get('avatar', ''))
+
+
 # ─── PÁGINAS PRINCIPALES ──────────────────────────────────────────
 
 @app.route('/')
@@ -116,41 +143,13 @@ def home():
     return render_template('index.html')
 
 
-# ─── DASHBOARD (panel del usuario) ───────────────────────────────
-
-# ─── DASHBOARD (panel del usuario) ───────────────────────────────
-
-# ─── DASHBOARD (panel del usuario) ───────────────────────────────
-
-@app.route('/dashboard')
-def dashboard():
-    # 1. Si no hay sesión iniciada, mandamos al home
-    if 'username' not in session:
-        return redirect(url_for('home'))
-    
-    try:
-        # 2. Buscamos el usuario en la base de datos
-        usuario_db = usuarios_col.find_one({"username": session['username']})
-        
-        # 3. Si por alguna razón el usuario no existe en la base de datos (pero sí en la sesión)
-        if not usuario_db:
-            session.clear()
-            return redirect(url_for('home'))
-            
-        # 4. Pasamos los datos limpios de texto a la plantilla para que Jinja2 no explote
-        return render_template(
-            'dashboard.html', 
-            username=session['username'], 
-            avatar=session.get('avatar', '')
-        )
-        
-    except Exception as e:
-        # Si algo falla con MongoDB, esto evitará el Error 500 y te mostrará el porqué en texto
-        return f"Error en el servidor al conectar con la base de datos: {str(e)}", 500
-
 @app.route('/juego/<nombre_juego>')
 def cargar_juego(nombre_juego):
     if 'username' not in session:
+        return redirect(url_for('login'))
+    u = get_usuario()
+    if not u:
+        session.clear()
         return redirect(url_for('login'))
 
     nombre_juego = nombre_juego.lower()
@@ -158,15 +157,17 @@ def cargar_juego(nombre_juego):
     r_trivia  = list(puntajes_col.find({"juego": "trivia" }).sort("puntos", -1).limit(5))
     r_clicker = list(puntajes_col.find({"juego": "clicker"}).sort("puntos", -1).limit(5))
     r_simon   = list(puntajes_col.find({"juego": "simon"  }).sort("puntos", -1).limit(5))
+    r_geo     = list(puntajes_col.find({"juego": "geo"    }).sort("puntos", -1).limit(5))
 
     return render_template('juego.html',
                            juego=nombre_juego,
-                           username=session['username'],
-                           avatar=session.get('avatar', ''),
+                           username=u['username'],
+                           avatar=u.get('avatar', ''),
                            ranking_snake=r_snake,
                            ranking_trivia=r_trivia,
                            ranking_clicker=r_clicker,
-                           ranking_simon=r_simon)
+                           ranking_simon=r_simon,
+                           ranking_geo=r_geo)
 
 
 # ─── PUNTAJES Y RANKING ───────────────────────────────────────────
@@ -176,9 +177,9 @@ def guardar_puntaje():
     if 'username' not in session:
         return jsonify({"status": "error", "message": "No autenticado"}), 401
 
-    datos = request.json
+    datos  = request.json or {}
     nombre = session['username']
-    puntos = datos.get('puntos')
+    puntos = datos.get('puntos', 0)
     juego  = datos.get('juego', '').lower()
 
     try:
@@ -187,6 +188,8 @@ def guardar_puntaje():
             {"$max": {"puntos": puntos}},
             upsert=True
         )
+        # Verificar logros después de guardar puntaje
+        _verificar_logros(nombre, juego, puntos)
         return jsonify({"status": "success"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -194,7 +197,7 @@ def guardar_puntaje():
 
 @app.route('/obtener_ranking')
 def obtener_ranking():
-    ranking = list(puntajes_col.find().sort("puntos", -1).limit(50))
+    ranking = list(puntajes_col.find().sort("puntos", -1).limit(100))
     for r in ranking:
         r['_id'] = str(r['_id'])
     return jsonify({"ranking": ranking})
@@ -213,7 +216,86 @@ def ver_ranking():
     return render_template('ranking.html')
 
 
+# ─── LOGROS ───────────────────────────────────────────────────────
+
+LOGROS = [
+    # Snake
+    {"id": "snake_first",   "juego": "snake",   "titulo": "Primera Serpiente",  "desc": "Juega Snake por primera vez",         "icono": "🐍", "umbral": 1},
+    {"id": "snake_100",     "juego": "snake",   "titulo": "Hambrienta",          "desc": "Alcanza 100 puntos en Snake",          "icono": "🍎", "umbral": 100},
+    {"id": "snake_500",     "juego": "snake",   "titulo": "Serpiente Larga",     "desc": "Alcanza 500 puntos en Snake",          "icono": "⚡", "umbral": 500},
+    # Clicker
+    {"id": "clicker_first", "juego": "clicker", "titulo": "Primer Click",        "desc": "Juega Clicker por primera vez",        "icono": "👆", "umbral": 1},
+    {"id": "clicker_50",    "juego": "clicker", "titulo": "Dedos Rápidos",       "desc": "Logra 50 clicks en 10 segundos",       "icono": "💨", "umbral": 50},
+    {"id": "clicker_80",    "juego": "clicker", "titulo": "Máquina",             "desc": "Logra 80 clicks en 10 segundos",       "icono": "🤖", "umbral": 80},
+    # Trivia
+    {"id": "trivia_first",  "juego": "trivia",  "titulo": "Curioso",             "desc": "Juega Trivia por primera vez",         "icono": "🧠", "umbral": 1},
+    {"id": "trivia_300",    "juego": "trivia",  "titulo": "Sabio",               "desc": "Alcanza 300 puntos en Trivia",         "icono": "📚", "umbral": 300},
+    # Simón
+    {"id": "simon_first",   "juego": "simon",   "titulo": "Primer Simón",        "desc": "Juega Simón Dice por primera vez",     "icono": "🎮", "umbral": 1},
+    {"id": "simon_200",     "juego": "simon",   "titulo": "Buen Memoria",        "desc": "Alcanza 200 puntos en Simón",          "icono": "💡", "umbral": 200},
+    # Geo Dash
+    {"id": "geo_first",     "juego": "geo",     "titulo": "Geometría",           "desc": "Completa el Nivel 1 de Geo Dash",      "icono": "🟦", "umbral": 1},
+    {"id": "geo_nivel2",    "juego": "geo",     "titulo": "Desafiante",          "desc": "Completa el Nivel 2 de Geo Dash",      "icono": "🔶", "umbral": 2},
+    {"id": "geo_nivel3",    "juego": "geo",     "titulo": "Maestro del Cubo",    "desc": "Completa el Nivel 3 de Geo Dash",      "icono": "🏆", "umbral": 3},
+    # Global
+    {"id": "all_games",     "juego": None,      "titulo": "Polivalente",         "desc": "Juega todos los juegos al menos una vez", "icono": "🌟", "umbral": None},
+]
+
+def _verificar_logros(nombre, juego, puntos):
+    """Comprueba y desbloquea logros para el jugador."""
+    u = usuarios_col.find_one({"username": nombre})
+    if not u:
+        return
+    desbloqueados = set(u.get('logros', []))
+    nuevos = []
+
+    for logro in LOGROS:
+        if logro['id'] in desbloqueados:
+            continue
+        if logro['juego'] is None:
+            # Logro global: verificar que tenga puntaje en todos los juegos
+            juegos_jugados = set(
+                r['juego'] for r in puntajes_col.find({"nombre": nombre})
+            )
+            if {'snake','clicker','trivia','simon','geo'}.issubset(juegos_jugados):
+                nuevos.append(logro['id'])
+        elif logro['juego'] == juego and puntos >= logro['umbral']:
+            nuevos.append(logro['id'])
+
+    if nuevos:
+        usuarios_col.update_one(
+            {"username": nombre},
+            {"$addToSet": {"logros": {"$each": nuevos}}}
+        )
+
+
+@app.route('/api/logros')
+def api_logros():
+    """Devuelve todos los logros con estado desbloqueado/bloqueado para el usuario actual."""
+    u = get_usuario()
+    desbloqueados = set(u.get('logros', [])) if u else set()
+    resultado = []
+    for l in LOGROS:
+        resultado.append({
+            "id":          l['id'],
+            "titulo":      l['titulo'],
+            "desc":        l['desc'],
+            "icono":       l['icono'],
+            "desbloqueado": l['id'] in desbloqueados
+        })
+    return jsonify(resultado)
+
+
+
+@app.route('/logros')
+def ver_logros():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    return render_template('logros.html')
+
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
 
+
+# Esta línea no va — ya está en el archivo, solo verificamos
