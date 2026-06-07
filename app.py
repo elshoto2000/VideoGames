@@ -272,7 +272,6 @@ def _verificar_logros(nombre, juego, puntos):
         if logro['id'] in desbloqueados:
             continue
         if logro['juego'] is None:
-            # Logro global: verificar que tenga puntaje en todos los juegos
             juegos_jugados = set(
                 r['juego'] for r in puntajes_col.find({"nombre": nombre})
             )
@@ -290,7 +289,6 @@ def _verificar_logros(nombre, juego, puntos):
 
 @app.route('/api/logros')
 def api_logros():
-    """Devuelve todos los logros con estado desbloqueado/bloqueado para el usuario actual."""
     u = get_usuario()
     desbloqueados = set(u.get('logros', [])) if u else set()
     resultado = []
