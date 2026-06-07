@@ -113,17 +113,33 @@ def home():
 
 # ─── DASHBOARD (panel del usuario) ───────────────────────────────
 
+# ─── DASHBOARD (panel del usuario) ───────────────────────────────
+
 @app.route('/dashboard')
 def dashboard():
+    # 1. Si no hay sesión iniciada, mandamos al home
     if 'username' not in session:
-        return redirect(url_for('home')) #  Corregido: cambia 'index' por 'home'
+        return redirect(url_for('home'))
     
-    # Buscamos los datos completos del usuario en MongoDB
-    usuario = usuarios_col.find_one({"username": session['username']})
-    
-    # Le pasamos el objeto 'usuario' a la plantilla dashboard.html
-    return render_template('dashboard.html', usuario=usuario)
-
+    try:
+        # 2. Buscamos el usuario en la base de datos
+        usuario_db = usuarios_col.find_one({"username": session['username']})
+        
+        # 3. Si por alguna razón el usuario no existe en la base de datos (pero sí en la sesión)
+        if not usuario_db:
+            session.clear()
+            return redirect(url_for('home'))
+            
+        # 4. Pasamos los datos limpios de texto a la plantilla para que Jinja2 no explote
+        return render_template(
+            'dashboard.html', 
+            username=session['username'], 
+            avatar=session.get('avatar', '')
+        )
+        
+    except Exception as e:
+        # Si algo falla con MongoDB, esto evitará el Error 500 y te mostrará el porqué en texto
+        return f"Error en el servidor al conectar con la base de datos: {str(e)}", 500
 
 @app.route('/juego/<nombre_juego>')
 def cargar_juego(nombre_juego):
