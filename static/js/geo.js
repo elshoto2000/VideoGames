@@ -399,6 +399,7 @@
     }
  
     // ── Game over ────────────────────────────────────
+    // ── Game over ────────────────────────────────────
     function endGame() {
         gameRunning = false;
         cancelAnimationFrame(animId);
@@ -410,12 +411,23 @@
  
         startBtn.textContent = '↺ REINTENTAR';
  
+        // ENVIAR PUNTAJE ULTRA-SEGURO A FLASK
         fetch('/guardar_puntaje', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ juego: 'geo', nombre: window.ARCADE_USER || 'Jugador', puntos: score })
+            body: JSON.stringify({ 
+                juego: 'geo', 
+                puntos: parseInt(score) 
+            })
         })
-        .then(() => { if (typeof window.cargarRanking === 'function') window.cargarRanking(); })
+        .then(res => res.json())
+        .then(data => {
+            console.log('Puntaje de Geo Dash guardado en el servidor:', data);
+            // Si la función global existe en la página de rankings, la refresca
+            if (typeof window.cargarRankings === 'function') {
+                window.cargarRankings();
+            }
+        })
         .catch(e => console.error('Error guardando puntaje geo:', e));
  
         const goPanel = document.getElementById('game-over-screen');
@@ -425,7 +437,6 @@
             goPanel.style.display = 'flex';
         }
     }
- 
     // ── Inicio ───────────────────────────────────────
     function startGame() {
         if (goScreen) goScreen.style.display = 'none';
