@@ -242,16 +242,27 @@
     }
 
     function finalizarPartidaArcade() {
-        if (typeof window.cargarRanking === 'function') {
-            const nick = window.ARCADE_USER || 'Jugador';
-            fetch('/guardar_puntaje', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ juego: 'simon', nombre: nick, puntos: puntuacion })
+        // ENVIAR PUNTAJE ULTRA-SEGURO A FLASK (Usa la sesión del servidor para el nombre)
+        fetch('/guardar_puntaje', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                juego: 'simon', 
+                puntos: parseInt(puntuacion) 
             })
-            .then(() => window.cargarRanking())
-            .catch(err => console.error("Error al guardar puntos:", err));
-        }
+        })
+        .then(res => res.json())
+        .then(data => {
+            console.log("Puntaje de Simón Dice guardado exitosamente:", data);
+            
+            // INTENTAR REFRESCAR USANDO AMBAS VARIANTES POR SEGURIDAD (Singular y Plural)
+            if (typeof window.cargarRankings === 'function') {
+                window.cargarRankings();
+            } else if (typeof window.cargarRanking === 'function') {
+                window.cargarRanking();
+            }
+        })
+        .catch(err => console.error("Error al guardar puntos en Simón Dice:", err));
 
         const gameOverPanel = document.getElementById('game-over-screen');
         if (gameOverPanel) {
