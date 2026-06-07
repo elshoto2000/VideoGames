@@ -205,7 +205,13 @@
                         <img src="{{ avatar }}" alt="avatar">
                     {% else %}
                         {{ username[0]|upper }}
-                    {% endif %}
+                    {% elif j == 'geo' %}
+        {% for fila in ranking_geo %}
+            <li><span>{{ loop.index }}. {{ fila.nombre }}</span><b>{{ fila.puntos }}</b></li>
+        {% else %}
+            <li>Nadie ha jugado aún…</li>
+        {% endfor %}
+    {% endif %}
                 </div>
                 <span class="game-nav-name">{{ username }}</span>
                 <span class="game-nav-chevron">▼</span>
