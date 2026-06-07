@@ -100,14 +100,15 @@ def actualizar_avatar():
 @app.route('/api/sesion')
 def api_sesion():
     if 'username' in session:
+        # Buscamos el avatar en tiempo real en la base de datos
+        usuario_db = usuarios_col.find_one({"username": session['username']})
+        avatar_actual = usuario_db.get('avatar', '') if usuario_db else ''
         return jsonify({
             "loggedin": True,
             "username": session['username'],
-            "avatar":   session.get('avatar', '')
+            "avatar": avatar_actual
         })
     return jsonify({"loggedin": False})
-
-
 # ─── PÁGINAS PRINCIPALES ──────────────────────────────────────────
 
 @app.route('/')
