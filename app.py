@@ -111,13 +111,18 @@ def home():
 
 # ─── DASHBOARD (panel del usuario) ───────────────────────────────
 
+# ─── DASHBOARD (panel del usuario) ───────────────────────────────
+
 @app.route('/dashboard')
 def dashboard():
     if 'username' not in session:
-        return redirect(url_for('login'))
-    return render_template('dashboard.html',
-                           username=session['username'],
-                           avatar=session.get('avatar', ''))
+        return redirect(url_for('home')) #  Corregido: cambia 'index' por 'home'
+    
+    # Buscamos los datos completos del usuario en MongoDB
+    usuario = usuarios_col.find_one({"username": session['username']})
+    
+    # Le pasamos el objeto 'usuario' a la plantilla dashboard.html
+    return render_template('dashboard.html', usuario=usuario)
 
 
 @app.route('/juego/<nombre_juego>')
