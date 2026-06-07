@@ -57,7 +57,7 @@
                 <span class="game-tag">Clásico · Acción</span>
                 <h3>Snake Clásico</h3>
                 <p>Controla tu apetito, crece sin límites y ¡no choques! El clásico que nunca pasa de moda.</p>
-                <a href="/juego/snake" class="btn-play">Jugar ahora</a>
+                <!-- Sin botón "Jugar ahora" — hay que iniciar sesión -->
             </div>
             <div class="game-preview">
                 <img src="{{ url_for('static', filename='img/snake-preview.gif') }}" alt="Snake Preview">
@@ -70,7 +70,6 @@
                 <span class="game-tag">Trivia · Cultura</span>
                 <h3>Trivia Master</h3>
                 <p>Pon a prueba tu cerebro con cultura general, ciencia, tecnología, anime y más.</p>
-                <a href="/juego/trivia" class="btn-play">Jugar ahora</a>
             </div>
             <div class="game-preview">
                 <img src="{{ url_for('static', filename='img/trivia-preview.gif') }}" alt="Trivia Preview">
@@ -83,7 +82,6 @@
                 <span class="game-tag">Reflejos · Velocidad</span>
                 <h3>Clicker Hero</h3>
                 <p>¿Qué tan rápidos son tus dedos? Tienes exactamente 10 segundos para demostrar tu velocidad.</p>
-                <a href="/juego/clicker" class="btn-play">Jugar ahora</a>
             </div>
             <div class="game-preview">
                 <img src="{{ url_for('static', filename='img/clicker-preview.gif') }}" alt="Clicker Preview">
@@ -96,11 +94,16 @@
                 <span class="game-tag">Simón · Estrategia</span>
                 <h3>Simón Dice: Runner</h3>
                 <p>Muévete rápido al bloque correcto antes de que Simón pierda la paciencia. Preguntas de física y código.</p>
-                <a href="/juego/simon" class="btn-play">Jugar ahora</a>
             </div>
             <div class="game-preview">
                 <img src="{{ url_for('static', filename='img/simon-preview.gif') }}" alt="Simon Preview">
             </div>
+        </div>
+
+        <!-- CTA para iniciar sesión -->
+        <div id="cta-sesion" style="text-align:center; margin-top: 3rem; display:none;">
+            <p style="color:var(--text-2); margin-bottom:1rem; font-size:0.95rem;">Inicia sesión para acceder a todos los juegos y ver tu ranking</p>
+            <a href="/login" class="hero-cta">Entrar al arcade →</a>
         </div>
     </section>
 
@@ -123,9 +126,11 @@
                         ? `<img src="${data.avatar}" alt="avatar">`
                         : inicial;
 
-                    // ── Botón con dropdown ──────────────────────────
                     zona.innerHTML = `
-                        <div style="position:relative;">
+                        <div style="position:relative; display:flex; align-items:center; gap:10px;">
+                            <a href="/dashboard" class="btn-login-nav" style="font-size:0.82rem; padding:7px 16px;">
+                                🎮 Ir al panel
+                            </a>
                             <button class="nav-user-btn" id="nav-user-btn" aria-expanded="false" aria-haspopup="true">
                                 <div class="nav-avatar">${avatarHTML}</div>
                                 <span class="nav-username">${data.username}</span>
@@ -137,7 +142,10 @@
                                     <span>Sesión activa</span>
                                     <strong>${data.username}</strong>
                                 </div>
-
+                                <a href="/dashboard" class="dropdown-item" role="menuitem">
+                                    <span class="dropdown-icon">🎮</span>
+                                    Mi panel
+                                </a>
                                 <a href="/perfil" class="dropdown-item" role="menuitem">
                                     <span class="dropdown-icon">👤</span>
                                     Mi perfil
@@ -146,13 +154,7 @@
                                     <span class="dropdown-icon">🏆</span>
                                     Top Global
                                 </a>
-                                <a href="#juegos" class="dropdown-item" role="menuitem">
-                                    <span class="dropdown-icon">🎮</span>
-                                    Ver juegos
-                                </a>
-
                                 <div class="dropdown-divider"></div>
-
                                 <a href="/logout" class="dropdown-item danger" role="menuitem">
                                     <span class="dropdown-icon">→</span>
                                     Cerrar sesión
@@ -160,7 +162,6 @@
                             </div>
                         </div>`;
 
-                    // ── Toggle del dropdown ─────────────────────────
                     const btn      = document.getElementById('nav-user-btn');
                     const dropdown = document.getElementById('nav-dropdown');
 
@@ -171,14 +172,12 @@
                         btn.setAttribute('aria-expanded', open);
                     });
 
-                    // Cerrar al hacer clic fuera
                     document.addEventListener('click', () => {
                         dropdown.classList.remove('open');
                         btn.classList.remove('open');
                         btn.setAttribute('aria-expanded', 'false');
                     });
 
-                    // Cerrar con Escape
                     document.addEventListener('keydown', (e) => {
                         if (e.key === 'Escape') {
                             dropdown.classList.remove('open');
@@ -190,10 +189,15 @@
 
                 } else {
                     zona.innerHTML = `<a href="/login" class="btn-login-nav">Iniciar sesión</a>`;
+                    // Mostrar CTA de login en sección juegos
+                    const cta = document.getElementById('cta-sesion');
+                    if (cta) cta.style.display = 'block';
                 }
             })
             .catch(() => {
                 zona.innerHTML = `<a href="/login" class="btn-login-nav">Iniciar sesión</a>`;
+                const cta = document.getElementById('cta-sesion');
+                if (cta) cta.style.display = 'block';
             });
     })();
     </script>
