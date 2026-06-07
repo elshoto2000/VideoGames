@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arcade | Mis Logros</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=Syne+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <style>
+    .logros-page { max-width: 900px; margin: 0 auto; padding: 3rem 2rem 5rem; }
+
+    .page-header { margin-bottom: 2.5rem; }
+    .page-header h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: 2rem; font-weight: 800;
+      letter-spacing: -0.03em; margin-bottom: 0.3rem;
+    }
+    .page-header p { font-size: 0.875rem; color: var(--text-2, #a09f9a); font-weight: 300; }
+
+    .logros-stats {
+      display: flex; gap: 1rem; margin-bottom: 2.5rem; flex-wrap: wrap;
+    }
+    .lstat {
+      background: var(--bg-2, #0f0f11);
+      border: 1px solid var(--border, rgba(255,255,255,0.06));
+      border-radius: 14px; padding: 1rem 1.5rem; flex: 1; min-width: 130px;
+    }
+    .lstat-val {
+      font-family: 'Syne Mono', monospace;
+      font-size: 2rem; font-weight: 400;
+      color: var(--accent, #e8c97a); line-height: 1;
+    }
+    .lstat-label { font-size: 0.75rem; color: var(--text-3, #5a5957); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.07em; }
+
+    /* Filtros */
+    .logros-tabs {
+      display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 2rem;
+    }
+    .ltab {
+      padding: 7px 18px; border-radius: 40px;
+      font-size: 0.82rem; font-weight: 500; font-family: 'DM Sans', sans-serif;
+      background: var(--bg-2, #0f0f11);
+      border: 1px solid var(--border, rgba(255,255,255,0.06));
+      color: var(--text-2, #a09f9a); cursor: pointer; transition: all 0.15s;
+    }
+    .ltab:hover { border-color: var(--border-h, rgba(255,255,255,0.14)); color: var(--text, #f0efe8); }
+    .ltab.active { background: var(--accent, #e8c97a); border-color: var(--accent, #e8c97a); color: #080809; }
+
+    /* Grid */
+    .logros-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem;
+    }
+
+    .logro-card {
+      background: var(--bg-2, #0f0f11);
+      border: 1px solid var(--border, rgba(255,255,255,0.06));
+      border-radius: 16px; padding: 1.25rem 1.5rem;
+      display: flex; align-items: center; gap: 1rem;
+      transition: border-color 0.2s, transform 0.2s;
+      position: relative; overflow: hidden;
+    }
+    .logro-card.desbloqueado {
+      border-color: rgba(232,201,122,0.2);
+    }
+    .logro-card.desbloqueado:hover {
+      border-color: rgba(232,201,122,0.4);
+      transform: translateY(-2px);
+    }
+    .logro-card.bloqueado { opacity: 0.45; }
+    .logro-card.bloqueado .logro-icono { filter: grayscale(1); }
+
+    /* Brillo desbloqueado */
+    .logro-card.desbloqueado::before {
+      content: '';
+      position: absolute;
+      top: -40px; right: -40px;
+      width: 100px; height: 100px;
+      background: radial-gradient(circle, rgba(232,201,122,0.08), transparent 70%);
+      pointer-events: none;
+    }
+
+    .logro-icono {
+      font-size: 2rem; width: 52px; height: 52px;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--bg-3, #161618);
+      border-radius: 12px; flex-shrink: 0;
+      border: 1px solid var(--border, rgba(255,255,255,0.06));
+    }
+    .logro-card.desbloqueado .logro-icono {
+      border-color: rgba(232,201,122,0.2);
+    }
+
+    .logro-info { flex: 1; min-width: 0; }
+    .logro-titulo {
+      font-family: 'Syne', sans-serif;
+      font-size: 0.9rem; font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--text, #f0efe8); margin-bottom: 3px;
+    }
+    .logro-desc {
+      font-size: 0.78rem; color: var(--text-3, #5a5957);
+      font-weight: 300; line-height: 1.4;
+    }
+    .logro-badge {
+      position: absolute; top: 10px; right: 10px;
+      font-size: 0.65rem; font-family: 'Syne Mono', monospace;
+      letter-spacing: 0.06em; color: var(--accent, #e8c97a);
+      background: rgba(232,201,122,0.08);
+      border: 1px solid rgba(232,201,122,0.15);
+      border-radius: 4px; padding: 2px 6px;
+    }
+
+    /* Empty state */
+    .empty-logros {
+      text-align: center; padding: 4rem 2rem;
+      color: var(--text-3, #5a5957);
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 600px) {
+      .logros-page { padding: 1.5rem 1rem 3rem; }
+      .logros-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar">
+    <a href="/" class="logo">
+      <img src="{{ url_for('static', filename='img/favicon.gif') }}" class="nav-gif" alt="">
+      Arc<span>ade</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="/">Inicio</a></li>
+      <li><a href="/dashboard">Mi panel</a></li>
+      <li><a href="/ranking">Ranking</a></li>
+    </ul>
+    <div id="nav-ses"></div>
+  </nav>
+
+  <div class="logros-page">
+    <div class="page-header">
+      <h1>Mis Logros</h1>
+      <p>Desbloquea medallas jugando y superando tus récords</p>
+    </div>
+
+    <!-- Stats -->
+    <div class="logros-stats">
+      <div class="lstat">
+        <div class="lstat-val" id="st-total">—</div>
+        <div class="lstat-label">Total</div>
+      </div>
+      <div class="lstat">
+        <div class="lstat-val" id="st-desbloqueados">—</div>
+        <div class="lstat-label">Desbloqueados</div>
+      </div>
+      <div class="lstat">
+        <div class="lstat-val" id="st-pct">—</div>
+        <div class="lstat-label">Completado</div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="logros-tabs">
+      <button class="ltab active" onclick="filtrar('todos', this)">Todos</button>
+      <button class="ltab" onclick="filtrar('desbloqueado', this)">Desbloqueados</button>
+      <button class="ltab" onclick="filtrar('bloqueado', this)">Bloqueados</button>
+    </div>
+
+    <!-- Grid -->
+    <div class="logros-grid" id="logros-grid">
+      <div class="empty-logros">Cargando logros…</div>
+    </div>
+  </div>
+
+  <footer class="footer">&copy; 2026 ArcadeGames — Proyecto Escolar</footer>
+
+  <script>
+    let todosLosLogros = [];
+
+    async function cargarLogros() {
+      try {
+        const res  = await fetch('/api/logros');
+        todosLosLogros = await res.json();
+        renderLogros(todosLosLogros);
+        actualizarStats();
+      } catch (e) {
+        document.getElementById('logros-grid').innerHTML =
+          '<div class="empty-logros">Error al cargar logros</div>';
+      }
+    }
+
+    function renderLogros(lista) {
+      const grid = document.getElementById('logros-grid');
+      if (!lista.length) {
+        grid.innerHTML = '<div class="empty-logros">No hay logros en esta categoría</div>';
+        return;
+      }
+      // Orden: desbloqueados primero
+      const ordenados = [...lista].sort((a, b) => b.desbloqueado - a.desbloqueado);
+      grid.innerHTML = ordenados.map(l => `
+        <div class="logro-card ${l.desbloqueado ? 'desbloqueado' : 'bloqueado'}">
+          <div class="logro-icono">${l.icono}</div>
+          <div class="logro-info">
+            <div class="logro-titulo">${l.titulo}</div>
+            <div class="logro-desc">${l.desc}</div>
+          </div>
+          ${l.desbloqueado ? '<span class="logro-badge">✓ logrado</span>' : ''}
+        </div>
+      `).join('');
+    }
+
+    function actualizarStats() {
+      const total = todosLosLogros.length;
+      const des   = todosLosLogros.filter(l => l.desbloqueado).length;
+      document.getElementById('st-total').textContent         = total;
+      document.getElementById('st-desbloqueados').textContent = des;
+      document.getElementById('st-pct').textContent           = Math.round((des / total) * 100) + '%';
+    }
+
+    function filtrar(tipo, btn) {
+      document.querySelectorAll('.ltab').forEach(t => t.classList.remove('active'));
+      btn.classList.add('active');
+      if (tipo === 'todos')          renderLogros(todosLosLogros);
+      else if (tipo === 'desbloqueado') renderLogros(todosLosLogros.filter(l => l.desbloqueado));
+      else                              renderLogros(todosLosLogros.filter(l => !l.desbloqueado));
+    }
+
+    // Navbar sesión
+    fetch('/api/sesion').then(r => r.json()).then(d => {
+      const z = document.getElementById('nav-ses');
+      if (d.loggedin) {
+        const av = d.avatar
+          ? `<img src="${d.avatar}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`
+          : d.username.charAt(0).toUpperCase();
+        z.innerHTML = `
+          <div style="display:flex;align-items:center;gap:8px;">
+            <a href="/dashboard" class="btn-nav-primary" style="font-size:0.82rem;padding:7px 14px;">Mi panel</a>
+            <div class="nav-avatar">${av}</div>
+          </div>`;
+      } else {
+        z.innerHTML = `<a href="/login" class="btn-nav-primary">Iniciar sesión</a>`;
+      }
+    });
+
+    cargarLogros();
+  </script>
+</body>
+</html>
