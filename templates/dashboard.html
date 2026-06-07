@@ -487,26 +487,61 @@
         nuevoAvatarDash = "";
     }
 
-    // Procesar archivo seleccionado
+    // Procesar y COMPRIMIR el archivo seleccionado
     document.getElementById('file-avatar-dash').addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (!file) return;
 
-        if (file.size > 2 * 1024 * 1024) {
-            document.getElementById('modal-msg-dash').textContent = 'Máximo 2 MB';
-            return;
-        }
         const reader = new FileReader();
-        reader.onload = e => {
-            nuevoAvatarDash = e.target.result;
-            const prev = document.getElementById('modal-prev-dash');
-            prev.innerHTML = `<img src="${nuevoAvatarDash}" style="width:100%;height:100%;object-fit:cover;" alt=\"av\">`;
+        reader.onload = function(event) {
+            const img = new Image();
+            img.onload = function() {
+                // Creamos un canvas para redimensionar la foto a un tamaño de avatar (ej: 150x150 píxeles)
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                const size = 150; // Tamaño ideal para rendimiento y calidad de avatar
+                canvas.width = size;
+                canvas.height = size;
+
+                // Calculamos proporciones para centrar y recortar la imagen en un cuadrado perfecto (aspect ratio)
+                let cx, cy, cw, ch;
+                if (img.width > img.height) {
+                    ch = img.height;
+                    cw = img.height;
+                    cy = 0;
+                    cx = (img.width - img.height) / 2;
+                } else {
+                    cw = img.width;
+                    ch = img.width;
+                    cx = 0;
+                    cy = (img.height - img.width) / 2;
+                }
+
+                // Dibujamos la imagen optimizada
+                ctx.drawImage(img, cx, cy, cw, ch, 0, 0, size, size);
+                
+                // Convertimos a Base64 pero comprimido en formato JPEG de peso ultraligero
+                nuevoAvatarDash = canvas.toDataURL('image/jpeg', 0.7);
+
+                // Mostramos la vista previa de inmediato
+                const prev = document.getElementById('modal-prev-dash');
+                prev.innerHTML = `<img src="${nuevoAvatarDash}" style="width:100%;height:100%;object-fit:cover;" alt="av">`;
+            };
+            img.src = event.target.result;
         };
         reader.readAsDataURL(file);
     });
 
     async function guardarAvatar() {
-        if (!nuevoAvatarDash) { cerrarModal(); return; }
+        const msgEl = document.getElementById('modal-msg-dash');
+        if (!nuevoAvatarDash) { 
+            msgEl.textContent = "Selecciona una imagen primero";
+            return; 
+        }
+        
+        msgEl.textContent = "Guardando...";
+        
         try {
             const res = await fetch('/actualizar_avatar', {
                 method: 'POST',
@@ -515,18 +550,20 @@
             });
             const data = await res.json();
             if (data.status === 'success') {
-                document.getElementById('modal-msg-dash').textContent = '¡Foto actualizada!';
-                // Actualizar todos los avatares en pantalla
-                const imgTag = `<img src="${nuevoAvatarDash}" style="width:100%;height:100%;object-fit:cover;" alt=\"av\">`;
+                msgEl.textContent = '¡Foto actualizada!';
+                
+                const imgTag = `<img src="${nuevoAvatarDash}" style="width:100%;height:100%;object-fit:cover;" alt="av">`;
                 document.getElementById('sb-avatar').innerHTML = imgTag;
                 document.getElementById('cuenta-av-big').innerHTML = imgTag;
-                setTimeout(cerrarModal, 900);
+                
+                setTimeout(cerrarModal, 1000);
+            } else {
+                msgEl.textContent = 'Error al procesar la imagen';
             }
-        } catch {
-            document.getElementById('modal-msg-dash').textContent = 'Error al guardar';
+        } catch (err) {
+            msgEl.textContent = 'Error de conexión al guardar';
         }
     }
 </script>
-
 </body>
 </html>
