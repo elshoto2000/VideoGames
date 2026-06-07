@@ -25,7 +25,7 @@ def registro():
     datos = request.json
     username = datos.get('username', '').strip()
     password = datos.get('password', '').strip()
-    avatar    = datos.get('avatar', '')   # base64 o vacío
+    avatar    = datos.get('avatar', '')
 
     if not username or not password:
         return jsonify({"status": "error", "message": "Usuario y contraseña requeridos"}), 400
@@ -39,7 +39,7 @@ def registro():
     usuarios_col.insert_one({
         "username": username,
         "password": generate_password_hash(password),
-        "avatar": avatar   # cadena base64 o "" para usar iniciales
+        "avatar": avatar
     })
     return jsonify({"status": "success"})
 
@@ -93,7 +93,6 @@ def actualizar_avatar():
 
 @app.route('/api/sesion')
 def api_sesion():
-    """El JS del frontend consulta esto para saber si hay sesión activa."""
     if 'username' in session:
         return jsonify({
             "loggedin": True,
@@ -108,6 +107,17 @@ def api_sesion():
 @app.route('/')
 def home():
     return render_template('index.html')
+
+
+# ─── DASHBOARD (panel del usuario) ───────────────────────────────
+
+@app.route('/dashboard')
+def dashboard():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    return render_template('dashboard.html',
+                           username=session['username'],
+                           avatar=session.get('avatar', ''))
 
 
 @app.route('/juego/<nombre_juego>')
@@ -139,7 +149,7 @@ def guardar_puntaje():
         return jsonify({"status": "error", "message": "No autenticado"}), 401
 
     datos = request.json
-    nombre = session['username']        # usamos el nombre de sesión, no el que manda el JS
+    nombre = session['username']
     puntos = datos.get('puntos')
     juego  = datos.get('juego', '').lower()
 
@@ -178,3 +188,4 @@ def ver_ranking():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
