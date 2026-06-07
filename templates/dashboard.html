@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arcade | Panel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        /* ─── Layout del dashboard ─────────────────── */
+        body { overflow-x: hidden; }
+
+        .dash-wrap {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            width: 240px;
+            flex-shrink: 0;
+            background: var(--bg-card);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 1.5rem 0;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 50;
+        }
+
+        .sidebar-logo {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-family: var(--font-display);
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: var(--text);
+            text-decoration: none;
+            padding: 0 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            letter-spacing: -0.01em;
+        }
+        .sidebar-logo span { color: var(--accent); }
+        .sidebar-logo img { width: 26px; height: 26px; border-radius: 5px; }
+
+        .sidebar-section {
+            padding: 1rem 1rem 0.25rem;
+        }
+
+        .sidebar-label {
+            font-size: 0.68rem;
+            font-family: var(--font-mono);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--muted);
+            padding: 0 0.25rem;
+            margin-bottom: 0.4rem;
+        }
+
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 12px;
+            border-radius: var(--radius-sm);
+            color: var(--text-2);
+            font-size: 0.875rem;
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            background: none;
+            border: none;
+            width: 100%;
+            text-align: left;
+            font-family: var(--font-body);
+            transition: background 0.12s, color 0.12s;
+            margin-bottom: 2px;
+        }
+
+        .sidebar-item:hover {
+            background: var(--bg-hover);
+            color: var(--text);
+        }
+
+        .sidebar-item.active {
+            background: rgba(79,124,255,0.12);
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .sidebar-item .si-icon {
+            font-size: 1rem;
+            width: 20px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .sidebar-bottom {
+            margin-top: auto;
+            padding: 1rem;
+            border-top: 1px solid var(--border);
+        }
+
+        /* Avatar en sidebar */
+        .sidebar-user {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: var(--radius-md);
+            background: var(--bg-raised);
+            border: 1px solid var(--border);
+        }
+
+        .sidebar-avatar {
+            width: 34px; height: 34px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), #7c6aff);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: white;
+            font-family: var(--font-mono);
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .sidebar-avatar img { width:100%; height:100%; object-fit:cover; }
+
+        .sidebar-user-info { flex: 1; min-width: 0; }
+        .sidebar-user-name {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .sidebar-user-role {
+            font-size: 0.72rem;
+            color: var(--muted);
+        }
+
+        /* ── Main content ── */
+        .dash-main {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Topbar del dashboard */
+        .dash-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2rem;
+            height: 60px;
+            background: rgba(8,8,16,0.85);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 40;
+        }
+
+        .dash-topbar-title {
+            font-family: var(--font-display);
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .dash-topbar-title span {
+            color: var(--muted);
+            font-weight: 400;
+            font-size: 0.85rem;
+            margin-left: 6px;
+        }
+
+        /* Botón hamburguesa móvil */
+        .ham-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--text-2);
+            cursor: pointer;
+            font-size: 1.3rem;
+            padding: 4px 8px;
+        }
+
+        /* ─── VISTAS ──────────────────────────────── */
+        .dash-view {
+            display: none;
+            padding: 2rem;
+            flex: 1;
+        }
+        .dash-view.active { display: block; }
+
+        /* ── Vista: Juegos ── */
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 1.25rem;
+            margin-top: 1.5rem;
+        }
+
+        .game-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+            text-decoration: none;
+            display: block;
+            cursor: pointer;
+        }
+
+        .game-card:hover {
+            border-color: var(--border-md);
+            box-shadow: var(--shadow-md), 0 0 0 1px rgba(79,124,255,0.08);
+            transform: translateY(-2px);
+        }
+
+        .game-card-thumb {
+            width: 100%;
+            height: 160px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .game-card-body {
+            padding: 1.1rem 1.25rem 1.25rem;
+        }
+
+        .game-card-tag {
+            font-family: var(--font-mono);
+            font-size: 0.68rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 0.4rem;
+        }
+
+        .game-card-title {
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 0.4rem;
+        }
+
+        .game-card-desc {
+            font-size: 0.82rem;
+            color: var(--text-2);
+            line-height: 1.55;
+            margin-bottom: 1rem;
+        }
+
+        .game-card-play {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 16px;
+            background: var(--accent);
+            color: white;
+            font-size: 0.8rem;
+            font-weight: 600;
+            border-radius: 40px;
+            transition: background 0.2s;
+        }
+
+        .game-card:hover .game-card-play { background: var(--accent-s); }
+
+        /* ── Vista: Cuenta ── */
+        .cuenta-header {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            padding: 1.75rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            margin-bottom: 1.5rem;
+        }
+
+        .cuenta-avatar-big {
+            width: 80px; height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), #7c6aff);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: 700;
+            color: white;
+            font-family: var(--font-mono);
+            overflow: hidden;
+            flex-shrink: 0;
+            border: 2px solid rgba(79,124,255,0.3);
+        }
+        .cuenta-avatar-big img { width:100%; height:100%; object-fit:cover; }
+
+        .cuenta-info h2 {
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--text);
+        }
+        .cuenta-info p { font-size: 0.875rem; color: var(--muted); margin-top: 4px; }
+
+        .btn-edit-foto {
+            margin-left: auto;
+            background: none;
+            border: 1px solid var(--border-md);
+            color: var(--text-2);
+            border-radius: var(--radius-sm);
+            padding: 8px 16px;
+            font-size: 0.85rem;
+            font-family: var(--font-body);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-edit-foto:hover { border-color: var(--accent); color: var(--text); }
+
+        .scores-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .score-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 1.15rem;
+            transition: border-color 0.2s;
+        }
+        .score-card:hover { border-color: rgba(79,124,255,0.25); }
+
+        .score-card-label {
+            font-size: 0.72rem;
+            color: var(--muted);
+            font-family: var(--font-mono);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+        }
+
+        .score-card-value {
+            font-size: 1.6rem;
+            font-weight: 500;
+            font-family: var(--font-mono);
+            color: var(--text);
+        }
+
+        .btn-cerrar-sesion {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 9px 20px;
+            background: none;
+            border: 1px solid rgba(232,68,90,0.25);
+            color: var(--danger);
+            border-radius: var(--radius-sm);
+            font-size: 0.875rem;
+            font-family: var(--font-body);
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+            margin-top: 1rem;
+        }
+        .btn-cerrar-sesion:hover { background: rgba(232,68,90,0.07); border-color: var(--danger); }
+
+        /* ── Vista: Ranking ── */
+        .ranking-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .rank-tab {
+            padding: 7px 18px;
+            border-radius: 40px;
+            font-size: 0.82rem;
+            font-weight: 500;
+            font-family: var(--font-body);
+            background: var(--bg-raised);
+            border: 1px solid var(--border-md);
+            color: var(--text-2);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .rank-tab:hover { border-color: var(--border-hi); color: var(--text); }
+        .rank-tab.active { background: var(--accent); border-color: var(--accent); color: white; }
+
+        .rank-panel { display: none; }
+        .rank-panel.active { display: block; }
+
+        .rank-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            overflow: hidden;
+        }
+
+        .rank-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .rank-table th {
+            text-align: left;
+            padding: 14px 20px;
+            font-size: 0.75rem;
+            font-family: var(--font-mono);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--muted);
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-raised);
+        }
+
+        .rank-table td {
+            padding: 13px 20px;
+            font-size: 0.88rem;
+            color: var(--text-2);
+            border-bottom: 1px solid var(--border);
+        }
+        .rank-table tr:last-child td { border-bottom: none; }
+        .rank-table tr:hover td { background: var(--bg-hover); }
+
+        .rank-pos {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color: var(--muted);
+            width: 50px;
+        }
+        .rank-pos.gold   { color: var(--gold); font-weight: 700; }
+        .rank-pos.silver { color: var(--silver); font-weight: 700; }
+        .rank-pos.bronze { color: var(--bronze); font-weight: 700; }
+
+        .rank-score {
+            font-family: var(--font-mono);
+            font-weight: 500;
+            color: var(--accent);
+        }
+
+        .rank-empty {
+            text-align: center;
+            padding: 3rem;
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        /* ── Podio ── */
+        .podium-wrap {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 12px;
+            height: 180px;
+            margin-bottom: 2rem;
+        }
+
+        .pod-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100px;
+        }
+
+        .pod-name {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text-2);
+            text-align: center;
+            margin-bottom: 8px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 90px;
+        }
+
+        .pod-pts {
+            font-size: 0.68rem;
+            color: var(--muted);
+            font-family: var(--font-mono);
+            margin-bottom: 4px;
+        }
+
+        .pod-bar {
+            width: 80px;
+            border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: white;
+        }
+
+        .pod-step.first .pod-bar  { height: 120px; background: var(--gold);   box-shadow: 0 0 18px rgba(232,185,74,0.35); }
+        .pod-step.second .pod-bar { height: 88px;  background: var(--silver); }
+        .pod-step.third .pod-bar  { height: 60px;  background: var(--bronze); }
+
+        /* ── Sección de bienvenida (view inicial) ── */
+        .welcome-banner {
+            background: linear-gradient(135deg, rgba(79,124,255,0.08), rgba(79,124,255,0.02));
+            border: 1px solid rgba(79,124,255,0.15);
+            border-radius: var(--radius-xl);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1.5rem;
+        }
+
+        .welcome-banner h2 {
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--text);
+            margin-bottom: 0.4rem;
+        }
+
+        .welcome-banner p { font-size: 0.9rem; color: var(--text-2); }
+
+        .view-title {
+            font-family: var(--font-display);
+            font-size: 1.3rem;
+            font-weight: 800;
+            color: var(--text);
+            margin-bottom: 0.25rem;
+        }
+
+        .view-subtitle {
+            font-size: 0.875rem;
+            color: var(--muted);
+            margin-bottom: 0;
+        }
+
+        /* Modal avatar */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(4px);
+            z-index: 500;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.open { display: flex; }
+
+        .modal-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-md);
+            border-radius: var(--radius-xl);
+            padding: 2rem;
+            width: 100%;
+            max-width: 360px;
+            text-align: center;
+        }
+
+        .modal-box h2 {
+            font-family: var(--font-display);
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin-bottom: 1.25rem;
+        }
+
+        .modal-avatar-click {
+            width: 80px; height: 80px;
+            border-radius: 50%;
+            background: var(--bg-raised);
+            border: 2px solid var(--border-md);
+            margin: 0 auto 0.75rem;
+            cursor: pointer;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--accent);
+            font-family: var(--font-mono);
+            transition: border-color 0.2s;
+        }
+        .modal-avatar-click:hover { border-color: var(--accent); }
+        .modal-avatar-click img { width:100%; height:100%; object-fit:cover; }
+
+        .modal-hint { font-size: 0.8rem; color: var(--muted); margin-bottom: 1.25rem; }
+        #file-edit-dash { display: none; }
+
+        .modal-btns { display: flex; gap: 0.75rem; }
+
+        .btn-m-cancel {
+            flex: 1;
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text-2);
+            border-radius: var(--radius-sm);
+            padding: 0.75rem;
+            cursor: pointer;
+            font-family: var(--font-body);
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        .btn-m-cancel:hover { border-color: var(--text); color: var(--text); }
+
+        .btn-m-save {
+            flex: 1;
+            background: var(--accent);
+            border: none;
+            color: white;
+            border-radius: var(--radius-sm);
+            padding: 0.75rem;
+            cursor: pointer;
+            font-family: var(--font-body);
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: background 0.2s;
+        }
+        .btn-m-save:hover { background: var(--accent-s); }
+
+        .modal-msg {
+            font-size: 0.82rem;
+            margin-top: 0.75rem;
+            min-height: 1em;
+            color: var(--success);
+        }
+
+        /* ── Responsive móvil ── */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                left: -240px;
+                top: 0;
+                height: 100%;
+                transition: left 0.25s;
+                z-index: 200;
+            }
+            .sidebar.open { left: 0; }
+            .ham-btn { display: block; }
+            .dash-view { padding: 1.25rem; }
+            .games-grid { grid-template-columns: 1fr; }
+            .scores-grid { grid-template-columns: 1fr 1fr; }
+            .cuenta-header { flex-wrap: wrap; }
+            .btn-edit-foto { margin-left: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="dash-wrap">
+
+    <!-- ══ SIDEBAR ══════════════════════════════ -->
+    <aside class="sidebar" id="sidebar">
+        <a href="/" class="sidebar-logo">
+            <img src="{{ url_for('static', filename='img/favicon.gif') }}" alt="">
+            Arc<span>ade</span>
+        </a>
+
+        <!-- Juegos -->
+        <div class="sidebar-section">
+            <div class="sidebar-label">Jugar</div>
+            <button class="sidebar-item active" data-view="juegos" onclick="cambiarVista('juegos', this)">
+                <span class="si-icon">🕹️</span> Juegos
+            </button>
+        </div>
+
+        <!-- Cuenta -->
+        <div class="sidebar-section">
+            <div class="sidebar-label">Mi espacio</div>
+            <button class="sidebar-item" data-view="cuenta" onclick="cambiarVista('cuenta', this)">
+                <span class="si-icon">👤</span> Mi cuenta
+            </button>
+        </div>
+
+        <!-- Ranking -->
+        <div class="sidebar-section">
+            <div class="sidebar-label">Competencia</div>
+            <button class="sidebar-item" data-view="ranking" onclick="cambiarVista('ranking', this)">
+                <span class="si-icon">🏆</span> Ranking
+            </button>
+            <a href="/ranking" class="sidebar-item">
+                <span class="si-icon">🌐</span> Top Global
+            </a>
+        </div>
+
+        <!-- Abajo: usuario -->
+        <div class="sidebar-bottom">
+            <div class="sidebar-user">
+                <div class="sidebar-avatar" id="sb-avatar">
+                    {% if avatar %}
+                        <img src="{{ avatar }}" alt="avatar">
+                    {% else %}
+                        {{ username[0]|upper }}
+                    {% endif %}
+                </div>
+                <div class="sidebar-user-info">
+                    <div class="sidebar-user-name">{{ username }}</div>
+                    <div class="sidebar-user-role">Jugador</div>
+                </div>
+            </div>
+            <a href="/logout" class="sidebar-item" style="margin-top:8px; color:var(--danger);">
+                <span class="si-icon">→</span> Cerrar sesión
+            </a>
+        </div>
+    </aside>
+
+    <!-- ══ MAIN ══════════════════════════════════ -->
+    <div class="dash-main">
+
+        <!-- Topbar -->
+        <div class="dash-topbar">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <button class="ham-btn" id="ham-btn" onclick="toggleSidebar()">☰</button>
+                <div class="dash-topbar-title" id="topbar-title">
+                    Juegos <span>— elige y juega</span>
+                </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <div style="
+                    width:32px; height:32px; border-radius:50%;
+                    background:linear-gradient(135deg,var(--accent),#7c6aff);
+                    display:flex; align-items:center; justify-content:center;
+                    font-size:0.78rem; font-weight:700; color:white;
+                    font-family:var(--font-mono); overflow:hidden; flex-shrink:0;">
+                    {% if avatar %}
+                        <img src="{{ avatar }}" style="width:100%;height:100%;object-fit:cover;" alt="av">
+                    {% else %}
+                        {{ username[0]|upper }}
+                    {% endif %}
+                </div>
+                <span style="font-size:0.85rem; font-weight:500; color:var(--text);">{{ username }}</span>
+            </div>
+        </div>
+
+        <!-- ══ VISTA: JUEGOS ══════════════════════ -->
+        <div class="dash-view active" id="view-juegos">
+            <div class="welcome-banner">
+                <div>
+                    <h2>Hola, {{ username }} 👋</h2>
+                    <p>Elige un juego para empezar a competir</p>
+                </div>
+            </div>
+
+            <div class="games-grid">
+                <a href="/juego/snake" class="game-card">
+                    <img src="{{ url_for('static', filename='img/snake-preview.gif') }}" class="game-card-thumb" alt="Snake">
+                    <div class="game-card-body">
+                        <div class="game-card-tag">Clásico · Acción</div>
+                        <div class="game-card-title">Snake Clásico</div>
+                        <div class="game-card-desc">Crece sin límites, no choques con las paredes ni contigo mismo.</div>
+                        <span class="game-card-play">Jugar ahora →</span>
+                    </div>
+                </a>
+
+                <a href="/juego/trivia" class="game-card">
+                    <img src="{{ url_for('static', filename='img/trivia-preview.gif') }}" class="game-card-thumb" alt="Trivia">
+                    <div class="game-card-body">
+                        <div class="game-card-tag">Trivia · Cultura</div>
+                        <div class="game-card-title">Trivia Master</div>
+                        <div class="game-card-desc">Ciencia, tecnología, anime y cultura general. ¿Cuánto sabes?</div>
+                        <span class="game-card-play">Jugar ahora →</span>
+                    </div>
+                </a>
+
+                <a href="/juego/clicker" class="game-card">
+                    <img src="{{ url_for('static', filename='img/clicker-preview.gif') }}" class="game-card-thumb" alt="Clicker">
+                    <div class="game-card-body">
+                        <div class="game-card-tag">Reflejos · Velocidad</div>
+                        <div class="game-card-title">Clicker Hero</div>
+                        <div class="game-card-desc">10 segundos, todos tus clicks. ¿Eres el más rápido del arcade?</div>
+                        <span class="game-card-play">Jugar ahora →</span>
+                    </div>
+                </a>
+
+                <a href="/juego/simon" class="game-card">
+                    <img src="{{ url_for('static', filename='img/simon-preview.gif') }}" class="game-card-thumb" alt="Simón">
+                    <div class="game-card-body">
+                        <div class="game-card-tag">Simón · Estrategia</div>
+                        <div class="game-card-title">Simón Dice: Runner</div>
+                        <div class="game-card-desc">Muévete al bloque correcto antes de que Simón pierda la paciencia.</div>
+                        <span class="game-card-play">Jugar ahora →</span>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <!-- ══ VISTA: CUENTA ══════════════════════ -->
+        <div class="dash-view" id="view-cuenta">
+            <div class="view-title">Mi cuenta</div>
+            <div class="view-subtitle" style="margin-bottom:1.5rem;">Tu perfil y estadísticas personales</div>
+
+            <div class="cuenta-header">
+                <div class="cuenta-avatar-big" id="cuenta-av-big">
+                    {% if avatar %}
+                        <img src="{{ avatar }}" alt="avatar">
+                    {% else %}
+                        {{ username[0]|upper }}
+                    {% endif %}
+                </div>
+                <div class="cuenta-info">
+                    <h2>{{ username }}</h2>
+                    <p>Jugador del Arcade · 2026</p>
+                </div>
+                <button class="btn-edit-foto" onclick="abrirModal()">✎ Editar foto</button>
+            </div>
+
+            <div class="view-title" style="font-size:0.78rem; color:var(--muted); letter-spacing:0.08em; text-transform:uppercase; font-family:var(--font-mono); font-weight:500; margin-bottom:0.75rem;">
+                Mis mejores puntajes
+            </div>
+
+            <div class="scores-grid">
+                <div class="score-card">
+                    <div class="score-card-label">Snake</div>
+                    <div class="score-card-value" id="sc-snake">—</div>
+                </div>
+                <div class="score-card">
+                    <div class="score-card-label">Trivia</div>
+                    <div class="score-card-value" id="sc-trivia">—</div>
+                </div>
+                <div class="score-card">
+                    <div class="score-card-label">Clicker</div>
+                    <div class="score-card-value" id="sc-clicker">—</div>
+                </div>
+                <div class="score-card">
+                    <div class="score-card-label">Simón</div>
+                    <div class="score-card-value" id="sc-simon">—</div>
+                </div>
+            </div>
+
+            <a href="/logout" class="btn-cerrar-sesion">→ Cerrar sesión</a>
+        </div>
+
+        <!-- ══ VISTA: RANKING ════════════════════ -->
+        <div class="dash-view" id="view-ranking">
+            <div class="view-title">Ranking</div>
+            <div class="view-subtitle" style="margin-bottom:1.5rem;">Los mejores jugadores por juego</div>
+
+            <div class="ranking-tabs">
+                <button class="rank-tab active" onclick="cambiarTab('snake', this)">🐍 Snake</button>
+                <button class="rank-tab" onclick="cambiarTab('trivia', this)">🧠 Trivia</button>
+                <button class="rank-tab" onclick="cambiarTab('clicker', this)">👆 Clicker</button>
+                <button class="rank-tab" onclick="cambiarTab('simon', this)">🎯 Simón</button>
+            </div>
+
+            <!-- Snake -->
+            <div class="rank-panel active" id="rp-snake">
+                <div class="podium-wrap" id="pod-snake"></div>
+                <div class="rank-card">
+                    <table class="rank-table">
+                        <thead><tr>
+                            <th style="width:50px">#</th>
+                            <th>Jugador</th>
+                            <th>Puntos</th>
+                        </tr></thead>
+                        <tbody id="rt-snake"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Trivia -->
+            <div class="rank-panel" id="rp-trivia">
+                <div class="podium-wrap" id="pod-trivia"></div>
+                <div class="rank-card">
+                    <table class="rank-table">
+                        <thead><tr>
+                            <th style="width:50px">#</th>
+                            <th>Jugador</th>
+                            <th>Puntos</th>
+                        </tr></thead>
+                        <tbody id="rt-trivia"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Clicker -->
+            <div class="rank-panel" id="rp-clicker">
+                <div class="podium-wrap" id="pod-clicker"></div>
+                <div class="rank-card">
+                    <table class="rank-table">
+                        <thead><tr>
+                            <th style="width:50px">#</th>
+                            <th>Jugador</th>
+                            <th>Puntos</th>
+                        </tr></thead>
+                        <tbody id="rt-clicker"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Simón -->
+            <div class="rank-panel" id="rp-simon">
+                <div class="podium-wrap" id="pod-simon"></div>
+                <div class="rank-card">
+                    <table class="rank-table">
+                        <thead><tr>
+                            <th style="width:50px">#</th>
+                            <th>Jugador</th>
+                            <th>Puntos</th>
+                        </tr></thead>
+                        <tbody id="rt-simon"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /.dash-main -->
+</div><!-- /.dash-wrap -->
+
+<!-- ══ Modal avatar ══════════════════════════ -->
+<div class="modal-overlay" id="modal-av">
+    <div class="modal-box">
+        <h2>Cambiar foto de perfil</h2>
+        <div class="modal-avatar-click" id="modal-prev-dash" onclick="document.getElementById('file-edit-dash').click()">
+            {% if avatar %}
+                <img src="{{ avatar }}" id="modal-img-dash" alt="av">
+            {% else %}
+                <span id="modal-ini-dash">{{ username[0]|upper }}</span>
+            {% endif %}
+        </div>
+        <p class="modal-hint">Haz clic para cambiar (máx. 2 MB)</p>
+        <input type="file" id="file-edit-dash" accept="image/*">
+        <div class="modal-btns">
+            <button class="btn-m-cancel" onclick="cerrarModal()">Cancelar</button>
+            <button class="btn-m-save" onclick="guardarAvatar()">Guardar</button>
+        </div>
+        <div class="modal-msg" id="modal-msg-dash"></div>
+    </div>
+</div>
+
+<script>
+    const USERNAME = "{{ username }}";
+
+    // ── Navegación sidebar ──────────────────────────
+    const titles = {
+        juegos:  ['Juegos', '— elige y juega'],
+        cuenta:  ['Mi cuenta', '— perfil y estadísticas'],
+        ranking: ['Ranking', '— los mejores del arcade'],
+    };
+
+    function cambiarVista(id, btn) {
+        // Vistas
+        document.querySelectorAll('.dash-view').forEach(v => v.classList.remove('active'));
+        document.getElementById('view-' + id).classList.add('active');
+        // Sidebar items
+        document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        // Topbar title
+        const [t, s] = titles[id] || ['Panel', ''];
+        document.getElementById('topbar-title').innerHTML = `${t} <span>${s}</span>`;
+        // Cerrar sidebar en móvil
+        document.getElementById('sidebar').classList.remove('open');
+        // Cargar datos si aplica
+        if (id === 'cuenta') cargarScores();
+        if (id === 'ranking') cargarRanking();
+    }
+
+    // ── Sidebar hamburguesa ─────────────────────────
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('open');
+    }
+    // Cerrar sidebar al clicar fuera (móvil)
+    document.addEventListener('click', e => {
+        const sb = document.getElementById('sidebar');
+        const ham = document.getElementById('ham-btn');
+        if (!sb.contains(e.target) && e.target !== ham) {
+            sb.classList.remove('open');
+        }
+    });
+
+    // ── Tabs de ranking ─────────────────────────────
+    function cambiarTab(juego, btn) {
+        document.querySelectorAll('.rank-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.rank-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('rp-' + juego).classList.add('active');
+    }
+
+    // ── Cargar puntajes personales ──────────────────
+    function cargarScores() {
+        fetch('/obtener_ranking')
+            .then(r => r.json())
+            .then(data => {
+                ['snake','trivia','clicker','simon'].forEach(j => {
+                    const mis = data.ranking
+                        .filter(r => r.juego === j && r.nombre === USERNAME)
+                        .sort((a,b) => b.puntos - a.puntos);
+                    const el = document.getElementById('sc-' + j);
+                    if (el) el.textContent = mis.length ? mis[0].puntos : '—';
+                });
+            });
+    }
+
+    // ── Cargar ranking por juego ────────────────────
+    let rankingCargado = false;
+    function cargarRanking() {
+        if (rankingCargado) return;
+        fetch('/obtener_ranking')
+            .then(r => r.json())
+            .then(data => {
+                ['snake','trivia','clicker','simon'].forEach(juego => {
+                    const lista = data.ranking
+                        .filter(r => r.juego === juego)
+                        .sort((a,b) => b.puntos - a.puntos);
+                    renderTabla(juego, lista);
+                    renderPodio(juego, lista);
+                });
+                rankingCargado = true;
+            });
+    }
+
+    function renderTabla(juego, lista) {
+        const tbody = document.getElementById('rt-' + juego);
+        if (!tbody) return;
+        if (!lista.length) {
+            tbody.innerHTML = `<tr><td colspan="3" class="rank-empty">Aún no hay récords</td></tr>`;
+            return;
+        }
+        const medals = ['gold','silver','bronze'];
+        tbody.innerHTML = lista.map((r, i) => `
+            <tr>
+                <td class="rank-pos ${medals[i] || ''}">${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i+1}</td>
+                <td style="color:var(--text); font-weight:${i < 3 ? 600 : 400};">${r.nombre || 'Anónimo'}</td>
+                <td class="rank-score">${r.puntos}</td>
+            </tr>
+        `).join('');
+    }
+
+    function renderPodio(juego, lista) {
+        const wrap = document.getElementById('pod-' + juego);
+        if (!wrap) return;
+        const p = [0,1,2].map(i => lista[i] || { nombre: '—', puntos: '?' });
+        wrap.innerHTML = `
+            <div class="pod-step second">
+                <div class="pod-name">${p[1].nombre}</div>
+                <div class="pod-pts">${p[1].puntos} pts</div>
+                <div class="pod-bar">2°</div>
+            </div>
+            <div class="pod-step first">
+                <div class="pod-name">${p[0].nombre}</div>
+                <div class="pod-pts">${p[0].puntos} pts</div>
+                <div class="pod-bar">1°</div>
+            </div>
+            <div class="pod-step third">
+                <div class="pod-name">${p[2].nombre}</div>
+                <div class="pod-pts">${p[2].puntos} pts</div>
+                <div class="pod-bar">3°</div>
+            </div>
+        `;
+    }
+
+    // ── Modal avatar ────────────────────────────────
+    let nuevoAvatarDash = '';
+
+    function abrirModal()  { document.getElementById('modal-av').classList.add('open'); }
+    function cerrarModal() {
+        document.getElementById('modal-av').classList.remove('open');
+        nuevoAvatarDash = '';
+    }
+
+    document.getElementById('file-edit-dash').addEventListener('change', function() {
+        const file = this.files[0];
+        if (!file) return;
+        if (file.size > 2 * 1024 * 1024) {
+            document.getElementById('modal-msg-dash').textContent = 'Máximo 2 MB';
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = e => {
+            nuevoAvatarDash = e.target.result;
+            const prev = document.getElementById('modal-prev-dash');
+            prev.innerHTML = `<img src="${nuevoAvatarDash}" style="width:100%;height:100%;object-fit:cover;" alt="av">`;
+        };
+        reader.readAsDataURL(file);
+    });
+
+    async function guardarAvatar() {
+        if (!nuevoAvatarDash) { cerrarModal(); return; }
+        try {
+            const res = await fetch('/actualizar_avatar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ avatar: nuevoAvatarDash })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                document.getElementById('modal-msg-dash').textContent = '¡Foto actualizada!';
+                // Actualizar todos los avatares en pantalla
+                const imgTag = `<img src="${nuevoAvatarDash}" style="width:100%;height:100%;object-fit:cover;" alt="av">`;
+                document.getElementById('sb-avatar').innerHTML = imgTag;
+                document.getElementById('cuenta-av-big').innerHTML = imgTag;
+                setTimeout(cerrarModal, 900);
+            }
+        } catch {
+            document.getElementById('modal-msg-dash').textContent = 'Error al guardar';
+        }
+    }
+</script>
+
+</body>
+</html>
