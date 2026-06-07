@@ -81,14 +81,20 @@ def perfil():
 def actualizar_avatar():
     if 'username' not in session:
         return jsonify({"status": "error"}), 401
+    
     datos = request.json
     avatar = datos.get('avatar', '')
-    usuarios_col.update_one(
-        {"username": session['username']},
-        {"$set": {"avatar": avatar}}
-    )
-    session['avatar'] = avatar
-    return jsonify({"status": "success"})
+    
+    try:
+        # Guardamos la imagen comprimida en la base de datos de MongoDB Atlas
+        usuarios_col.update_one(
+            {"username": session['username']},
+            {"$set": {"avatar": avatar}}
+        )
+        # IMPORTANTE: NO guardes el avatar en session['avatar'] para no romper las cookies de Flask.
+        return jsonify({"status": "success"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 @app.route('/api/sesion')
