@@ -199,40 +199,44 @@
 
     <script>
         async function login() {
-            const username = document.getElementById('username').value.trim();
-            const password = document.getElementById('password').value;
-            const btn = document.getElementById('btn-login');
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    const btn = document.getElementById('btn-login');
 
-            if (!username || !password) { mostrarMsg('Completa todos los campos', 'error'); return; }
+    if (!username || !password) { 
+        mostrarMsg('Completa todos los campos', 'error'); 
+        return; 
+    }
 
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner"></span>Verificando…';
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Verificando…';
 
-            try {
-                const res = await fetch('/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
-                });
-                const data = await res.json();
-                // Busca esta parte exacta dentro de la función login() en login.html y cámbiala:
-if (data.status === 'success') {
-    mostrarMsg('¡Bienvenido!', 'success');
-    setTimeout(() => {
-        // Al usar replace aseguramos que el navegador no use el caché viejo del index
-        window.location.replace('/dashboard');
-    }, 800);
-} else {
-                    mostrarMsg(data.message || 'Error desconocido', 'error');
-                    btn.disabled = false;
-                    btn.innerHTML = 'Entrar al arcade';
-                }
-            } catch {
-                mostrarMsg('Error de conexión', 'error');
-                btn.disabled = false;
-                btn.innerHTML = 'Entrar al arcade';
-            }
+    try {
+        const res = await fetch('/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        
+        const data = await res.json();
+        
+        if (data.status === 'success') {
+            mostrarMsg('¡Bienvenido al Arcade!', 'success');
+            setTimeout(() => {
+                // Esto te mandará directo al hermoso panel que ya creaste
+                window.location.replace('/dashboard');
+            }, 800);
+        } else {
+            mostrarMsg(data.message || 'Error desconocido', 'error');
+            btn.disabled = false;
+            btn.innerHTML = 'Entrar al arcade';
         }
+    } catch {
+        mostrarMsg('Error de conexión', 'error');
+        btn.disabled = false;
+        btn.innerHTML = 'Entrar al arcade';
+    }
+}
 
         function mostrarMsg(texto, tipo) {
             const el = document.getElementById('msg');
