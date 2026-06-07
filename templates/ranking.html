@@ -13,7 +13,7 @@
             margin: 0 auto;
             padding: 2.5rem 2rem 4rem;
         }
- 
+
         .rank-page-header {
             display: flex;
             align-items: center;
@@ -22,15 +22,14 @@
             flex-wrap: wrap;
             gap: 1rem;
         }
- 
+
         .rank-page-header h1 {
             font-family: var(--font-display);
             font-size: clamp(1.6rem, 4vw, 2.4rem);
             font-weight: 800;
             letter-spacing: -0.03em;
         }
- 
-        /* Tabs de navegación de juegos */
+
         .rank-tabs-global {
             display: flex;
             gap: 8px;
@@ -41,7 +40,7 @@
             margin-bottom: 2rem;
             overflow-x: auto;
         }
- 
+
         .rtab {
             background: transparent;
             border: none;
@@ -55,34 +54,32 @@
             transition: all 0.2s ease;
             white-space: nowrap;
         }
- 
+
         .rtab:hover {
             color: var(--text);
             background: rgba(255,255,255,0.02);
         }
- 
+
         .rtab.active {
             background: var(--accent);
             color: white;
             box-shadow: 0 4px 12px rgba(255, 75, 43, 0.25);
         }
- 
-        /* Paneles contenedores */
+
         .rpanel {
             display: none;
         }
- 
+
         .rpanel.active {
             display: block;
             animation: fadeIn 0.3s ease;
         }
- 
+
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(8px); }
             to { opacity: 1; transform: translateY(0); }
         }
- 
-        /* Estructuras de Podio (Top 3) */
+
         .podium-global {
             display: flex;
             justify-content: center;
@@ -92,7 +89,7 @@
             padding-top: 2rem;
             min-height: 200px;
         }
- 
+
         .podium-step {
             display: flex;
             flex-direction: column;
@@ -100,7 +97,7 @@
             width: 130px;
             position: relative;
         }
- 
+
         .pod-avatar {
             width: 64px;
             height: 64px;
@@ -116,11 +113,11 @@
             overflow: hidden;
             box-shadow: 0 8px 20px rgba(0,0,0,0.3);
         }
- 
+
         .podium-step.p1 .pod-avatar { border-color: #ffd700; width: 76px; height: 76px; font-size: 1.6rem; }
         .podium-step.p2 .pod-avatar { border-color: #c0c0c0; }
         .podium-step.p3 .pod-avatar { border-color: #cd7f32; }
- 
+
         .pod-pillar {
             width: 100%;
             background: linear-gradient(180deg, var(--bg-card), rgba(20,20,30,0.6));
@@ -133,30 +130,29 @@
             justify-content: center;
             padding: 12px 6px;
         }
- 
+
         .podium-step.p1 .pod-pillar { height: 110px; background: linear-gradient(180deg, rgba(255,215,0,0.1), rgba(20,20,30,0.6)); border-color: rgba(255,215,0,0.3); }
         .podium-step.p2 .pod-pillar { height: 80px; }
         .podium-step.p3 .pod-pillar { height: 60px; }
- 
+
         .pod-name { font-weight: 700; font-size: 0.9rem; color: var(--text); max-width: 110px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; text-align: center;}
         .pod-pts { font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent); font-weight: 600; margin-top: 2px; }
         .pod-num { font-size: 1.8rem; font-weight: 800; font-family: var(--font-display); opacity: 0.15; margin-top: auto; color: white; }
- 
-        /* Estilos de Tabla tradicional */
+
         .rank-table-wrap {
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: 16px;
             overflow: hidden;
         }
- 
+
         .rtable {
             width: 100%;
             border-collapse: collapse;
             text-align: left;
             font-size: 0.92rem;
         }
- 
+
         .rtable th {
             background: rgba(255,255,255,0.01);
             padding: 14px 20px;
@@ -167,21 +163,21 @@
             letter-spacing: 0.05em;
             border-bottom: 1px solid var(--border);
         }
- 
+
         .rtable td {
             padding: 14px 20px;
             border-bottom: 1px solid rgba(255,255,255,0.03);
             color: var(--text);
         }
- 
+
         .rtable tr:last-child td { border-bottom: none; }
         .rtable tr:hover td { background: rgba(255,255,255,0.01); }
- 
+
         .td-pos { font-family: var(--font-mono); font-weight: 700; color: var(--text-muted); width: 60px; }
         .td-user { display: flex; align-items: center; gap: 12px; font-weight: 600; }
         .td-avatar { width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 700; overflow: hidden; }
         .td-pts { text-align: right; font-family: var(--font-mono); font-weight: 700; color: var(--accent); }
- 
+
         .btn-login-nav {
             background: linear-gradient(135deg, var(--accent), #ff6b4a);
             color: white; border: none; padding: 8px 18px;
@@ -190,14 +186,13 @@
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
         .btn-login-nav:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(255,75,43,0.2); }
- 
-        /* Clases de utilidad para el Navbar Dinámico creadas para evitar conflictos en JS */
+
         .nav-container-user { display: flex; align-items: center; gap: 8px; }
         .nav-avatar-mini { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), #7c6aff); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; color: white; overflow: hidden; }
     </style>
 </head>
 <body>
- 
+
     <header class="main-header" style="border-bottom: 1px solid var(--border); background: rgba(10,10,15,0.7); backdrop-filter: blur(12px); position: sticky; top:0; z-index:100;">
         <div style="max-width: 1200px; margin: 0 auto; padding: 0 2rem; height: 64px; display: flex; align-items: center; justify-content: space-between;">
             <a href="/dashboard" style="font-family: var(--font-display); font-weight: 800; font-size: 1.3rem; color: white; text-decoration: none; letter-spacing: -0.02em; display: flex; align-items: center; gap: 8px;">
@@ -206,7 +201,7 @@
             <div id="nav-session-rank"></div>
         </div>
     </header>
- 
+
     <main class="rank-page">
         <div class="rank-page-header">
             <div>
@@ -214,7 +209,7 @@
                 <p style="color: var(--text-muted); font-size: 0.95rem; margin-top: 4px;">Los mejores puntajes de toda la plataforma.</p>
             </div>
         </div>
- 
+
         <div class="rank-tabs-global">
             <button class="rtab active" onclick="cambiarTab('snake', this)">🐍 Snake</button>
             <button class="rtab" onclick="cambiarTab('trivia', this)">🧠 Trivia</button>
@@ -222,33 +217,33 @@
             <button class="rtab" onclick="cambiarTab('simon', this)">🔴 Simón</button>
             <button class="rtab" onclick="cambiarTab('geo', this)">📐 Geo Dash</button>
         </div>
- 
+
         <div class="rpanel active" id="rp-snake">
             <div class="podium-global" id="pod-snake"></div>
             <div class="rank-table-wrap"><table class="rtable" id="tb-snake"></table></div>
         </div>
- 
+
         <div class="rpanel" id="rp-trivia">
             <div class="podium-global" id="pod-trivia"></div>
             <div class="rank-table-wrap"><table class="rtable" id="tb-trivia"></table></div>
         </div>
- 
+
         <div class="rpanel" id="rp-clicker">
             <div class="podium-global" id="pod-clicker"></div>
             <div class="rank-table-wrap"><table class="rtable" id="tb-clicker"></table></div>
         </div>
- 
+
         <div class="rpanel" id="rp-simon">
             <div class="podium-global" id="pod-simon"></div>
             <div class="rank-table-wrap"><table class="rtable" id="tb-simon"></table></div>
         </div>
- 
+
         <div class="rpanel" id="rp-geo">
             <div class="podium-global" id="pod-geo"></div>
             <div class="rank-table-wrap"><table class="rtable" id="tb-geo"></table></div>
         </div>
     </main>
- 
+
 <script>
     function cambiarTab(juego, btn) {
         document.querySelectorAll('.rtab').forEach(b => b.classList.remove('active'));
@@ -258,42 +253,45 @@
         const targetPanel = document.getElementById('rp-' + juego);
         if(targetPanel) targetPanel.classList.add('active');
     }
- 
+
     document.addEventListener('DOMContentLoaded', cargarRankings);
- 
+
     async function cargarRankings() {
         try {
             const res = await fetch('/api/ranking');
             const data = await res.json();
+            const rankingTotal = data.ranking || [];
             
             ['snake','trivia','clicker','simon','geo'].forEach(j => {
-                const lista = data.ranking
-                    .filter(r => r.juego && r.juego.toLowerCase() === j)
-                    .sort((a,b) => b.puntos - a.puntos);
- 
-                renderTabla(j, lista);
+                const lista = rankingTotal.filter(r => {
+                    if (!r.juego) return false;
+                    const juegoClean = r.juego.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                    return juegoClean === j;
+                }).sort((a,b) => b.puntos - a.puntos);
+
                 renderPodio(j, lista);
+                renderTabla(j, lista);
             });
         } catch(e) {
             console.error('Error cargando ranking:', e);
         }
     }
- 
+
     function renderPodio(juego, lista) {
         const contenedor = document.getElementById('pod-' + juego);
         if(!contenedor) return;
- 
-        if (lista.length === 0) {
-            contenedor.innerHTML = `<div style="color: var(--text-muted); font-size: 0.9rem; padding: 2rem 0;">¡Nadie ha jugado aún! Sé el primero.</div>`;
+
+        if (!lista || lista.length === 0) {
+            contenedor.innerHTML = `<div style="color: var(--text-muted); font-size: 0.95rem; text-align: center; padding: 3rem 0; width: 100%;">👾 ¡Nadie ha jugado aún en este servidor! Sé el primero en marcar un récord.</div>`;
             return;
         }
- 
+
         const p1 = lista[0] || null;
         const p2 = lista[1] || null;
         const p3 = lista[2] || null;
- 
+
         let html = '';
- 
+
         if (p2) {
             const av2 = p2.avatar ? `<img src="${p2.avatar}" style="width:100%;height:100%;object-fit:cover;">` : p2.nombre.charAt(0).toUpperCase();
             html += `
@@ -322,7 +320,7 @@
                 </div>
             </div>`;
         }
- 
+
         if (p3) {
             const av3 = p3.avatar ? `<img src="${p3.avatar}" style="width:100%;height:100%;object-fit:cover;">` : p3.nombre.charAt(0).toUpperCase();
             html += `
@@ -335,23 +333,22 @@
                 </div>
             </div>`;
         }
- 
+
         contenedor.innerHTML = html;
     }
- 
+
     function renderTabla(juego, lista) {
         const tabla = document.getElementById('tb-' + juego);
         if(!tabla) return;
- 
-        if (lista.length === 0) {
+
+        if (!lista || lista.length <= 3) {
             tabla.style.display = 'none';
-            // Show empty message in podium area instead
             return;
         }
         tabla.style.display = 'table';
- 
-        const medals = ['🥇','🥈','🥉'];
- 
+
+        const resto = lista.slice(3);
+
         let html = `
         <thead>
             <tr>
@@ -361,32 +358,30 @@
             </tr>
         </thead>
         <tbody>`;
- 
-        lista.forEach((u, index) => {
-            const posLabel = index < 3 ? medals[index] : `#${index + 1}`;
+
+        resto.forEach((u, index) => {
+            const posicionReal = index + 4;
             const av = u.avatar 
                 ? `<img src="${u.avatar}" style="width:100%;height:100%;object-fit:cover;">` 
                 : u.nombre.charAt(0).toUpperCase();
-            const isTop3 = index < 3 ? 'font-weight:700;' : '';
- 
+
             html += `
             <tr>
-                <td class="td-pos" style="font-size:1rem;">${posLabel}</td>
+                <td class="td-pos">#${posicionReal}</td>
                 <td>
                     <div class="td-user">
                         <div class="td-avatar">${av}</div>
-                        <span style="${isTop3}">${u.nombre}</span>
+                        <span>${u.nombre}</span>
                     </div>
                 </td>
                 <td class="td-pts">${u.puntos}</td>
             </tr>`;
         });
- 
+
         html += '</tbody>';
         tabla.innerHTML = html;
     }
- 
-    // Cambios limpios para evitar que el motor Jinja2 falle al interpretar llaves
+
     (function() {
         const zona = document.getElementById('nav-session-rank');
         fetch('/api/sesion')
@@ -410,4 +405,3 @@
 </script>
 </body>
 </html>
- 
