@@ -27,337 +27,249 @@
             font-family: var(--font-display);
             font-size: clamp(1.6rem, 4vw, 2.4rem);
             font-weight: 800;
-            letter-spacing: -0.02em;
-            color: var(--text);
+            letter-spacing: -0.03em;
         }
 
-        .rank-page-header h1 span { color: var(--accent); }
-
-        .btn-back-rank {
-            display: inline-flex;
-            align-items: center;
-            gap: 7px;
-            padding: 8px 18px;
-            background: var(--bg-raised);
-            border: 1px solid var(--border-md);
-            border-radius: 40px;
-            color: var(--text-2);
-            font-size: 0.875rem;
-            font-weight: 500;
-            font-family: var(--font-body);
-            text-decoration: none;
-            transition: all 0.2s;
-        }
-
-        .btn-back-rank:hover {
-            border-color: var(--border-hi);
-            color: var(--text);
-        }
-
-        /* Tabs */
+        /* Tabs de navegación de juegos */
         .rank-tabs-global {
             display: flex;
-            gap: 0.5rem;
+            gap: 8px;
+            background: rgba(255,255,255,0.03);
+            padding: 6px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
             margin-bottom: 2rem;
-            flex-wrap: wrap;
+            overflow-x: auto;
         }
 
         .rtab {
-            padding: 8px 20px;
-            border-radius: 40px;
-            font-size: 0.85rem;
-            font-weight: 500;
-            font-family: var(--font-body);
-            background: var(--bg-raised);
-            border: 1px solid var(--border-md);
-            color: var(--text-2);
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 10px 20px;
+            font-family: var(--font-sans);
+            font-size: 0.9rem;
+            font-weight: 600;
             cursor: pointer;
-            transition: all 0.15s;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            white-space: nowrap;
         }
-        .rtab:hover { border-color: var(--border-hi); color: var(--text); }
-        .rtab.active { background: var(--accent); border-color: var(--accent); color: white; }
 
-        /* Panel */
-        .rpanel { display: none; }
-        .rpanel.active { display: block; }
+        .rtab:hover {
+            color: var(--text);
+            background: rgba(255,255,255,0.02);
+        }
 
-        /* Podio */
+        .rtab.active {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 4px 12px rgba(255, 75, 43, 0.25);
+        }
+
+        /* Paneles contenedores */
+        .rpanel {
+            display: none;
+        }
+
+        .rpanel.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Estructuras de Podio (Top 3) */
         .podium-global {
             display: flex;
             justify-content: center;
             align-items: flex-end;
-            gap: 16px;
-            height: 200px;
-            margin-bottom: 2rem;
+            gap: 20px;
+            margin-bottom: 3rem;
+            padding-top: 2rem;
+            min-height: 200px;
         }
 
-        .pod-col {
+        .podium-step {
             display: flex;
             flex-direction: column;
             align-items: center;
-            min-width: 110px;
+            width: 130px;
+            position: relative;
         }
 
-        .pod-col-name {
-            font-size: 0.82rem;
-            font-weight: 600;
-            color: var(--text-2);
-            margin-bottom: 4px;
-            text-align: center;
-            max-width: 100px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .pod-col-pts {
-            font-size: 0.7rem;
-            color: var(--muted);
-            font-family: var(--font-mono);
-            margin-bottom: 6px;
-        }
-
-        .pod-col-bar {
-            width: 90px;
-            border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+        .pod-avatar {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: #252538;
+            border: 3px solid #444;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1rem;
             font-weight: 700;
-            color: #0a0a14;
+            font-size: 1.4rem;
+            margin-bottom: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
         }
 
-        .pod-col.first .pod-col-bar  { height: 140px; background: var(--gold);   box-shadow: 0 -4px 24px rgba(232,185,74,0.3); }
-        .pod-col.second .pod-col-bar { height: 100px; background: var(--silver); }
-        .pod-col.third .pod-col-bar  { height: 68px;  background: var(--bronze); }
+        .podium-step.p1 .pod-avatar { border-color: #ffd700; width: 76px; height: 76px; font-size: 1.6rem; }
+        .podium-step.p2 .pod-avatar { border-color: #c0c0c0; }
+        .podium-step.p3 .pod-avatar { border-color: #cd7f32; }
 
-        /* Tabla */
+        .pod-pillar {
+            width: 100%;
+            background: linear-gradient(180deg, var(--bg-card), rgba(20,20,30,0.6));
+            border: 1px solid var(--border);
+            border-bottom: none;
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 6px;
+        }
+
+        .podium-step.p1 .pod-pillar { height: 110px; background: linear-gradient(180deg, rgba(255,215,0,0.1), rgba(20,20,30,0.6)); border-color: rgba(255,215,0,0.3); }
+        .podium-step.p2 .pod-pillar { height: 80px; }
+        .podium-step.p3 .pod-pillar { height: 60px; }
+
+        .pod-name { font-weight: 700; font-size: 0.9rem; color: var(--text); max-width: 110px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; text-align: center;}
+        .pod-pts { font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent); font-weight: 600; margin-top: 2px; }
+        .pod-num { font-size: 1.8rem; font-weight: 800; font-family: var(--font-display); opacity: 0.15; margin-top: auto; color: white; }
+
+        /* Estilos de Tabla tradicional para posiciones inferiores */
         .rank-table-wrap {
             background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: var(--radius-xl);
+            border-radius: 16px;
             overflow: hidden;
         }
 
-        .rank-table-wrap table {
+        .rtable {
             width: 100%;
             border-collapse: collapse;
-        }
-
-        .rank-table-wrap th {
             text-align: left;
+            font-size: 0.92rem;
+        }
+
+        .rtable th {
+            background: rgba(255,255,255,0.01);
             padding: 14px 20px;
-            font-size: 0.72rem;
-            font-family: var(--font-mono);
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            color: var(--muted);
-            border-bottom: 1px solid var(--border);
-            background: var(--bg-raised);
-        }
-
-        .rank-table-wrap td {
-            padding: 13px 20px;
-            font-size: 0.9rem;
-            color: var(--text-2);
-            border-bottom: 1px solid var(--border);
-        }
-
-        .rank-table-wrap tr:last-child td { border-bottom: none; }
-        .rank-table-wrap tr:hover td { background: var(--bg-hover); }
-
-        .pos-cell {
-            font-family: var(--font-mono);
+            color: var(--text-muted);
+            font-weight: 600;
             font-size: 0.82rem;
-            width: 52px;
-            color: var(--muted);
-        }
-        .pos-cell.g { color: var(--gold);   font-weight: 700; }
-        .pos-cell.s { color: var(--silver); font-weight: 700; }
-        .pos-cell.b { color: var(--bronze); font-weight: 700; }
-
-        .name-cell { color: var(--text); font-weight: 500; }
-        .pts-cell  {
-            font-family: var(--font-mono);
-            font-weight: 500;
-            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid var(--border);
         }
 
-        .empty-row td {
-            text-align: center;
-            padding: 3rem;
-            color: var(--muted);
-            font-size: 0.9rem;
+        .rtable td {
+            padding: 14px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            color: var(--text);
         }
 
-        @media (max-width: 600px) {
-            .rank-page { padding: 1.5rem 1rem 3rem; }
-            .podium-global { height: 160px; gap: 10px; }
-            .pod-col { min-width: 85px; }
-            .pod-col.first .pod-col-bar  { height: 110px; }
-            .pod-col.second .pod-col-bar { height: 80px;  }
-            .pod-col.third .pod-col-bar  { height: 55px;  }
+        .rtable tr:last-child td { border-bottom: none; }
+        .rtable tr:hover td { background: rgba(255,255,255,0.01); }
+
+        .td-pos { font-family: var(--font-mono); font-weight: 700; color: var(--text-muted); width: 60px; }
+        .td-user { display: flex; align-items: center; gap: 12px; font-weight: 600; }
+        .td-avatar { width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 700; overflow: hidden; }
+        .td-pts { text-align: right; font-family: var(--font-mono); font-weight: 700; color: var(--accent); }
+
+        .btn-login-nav {
+            background: linear-gradient(135deg, var(--accent), #ff6b4a);
+            color: white; border: none; padding: 8px 18px;
+            font-family: var(--font-sans); font-size: 0.85rem; font-weight: 600;
+            border-radius: 8px; cursor: pointer; text-decoration: none;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
+        .btn-login-nav:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(255,75,43,0.2); }
     </style>
 </head>
 <body>
 
-    <!-- Navbar -->
-    <nav class="navbar">
-        <a href="/" class="logo">
-            <img src="{{ url_for('static', filename='img/favicon.gif') }}" class="nav-gif" alt="">
-            Arc<span>ade</span>
-        </a>
-        <ul class="nav-links">
-            <li><a href="/">Inicio</a></li>
-            <li><a href="/dashboard">Mi panel</a></li>
-        </ul>
-        <div id="nav-session-rank"></div>
-    </nav>
+    <header class="main-header" style="border-bottom: 1px solid var(--border); background: rgba(10,10,15,0.7); backdrop-filter: blur(12px); position: sticky; top:0; z-index:100;">
+        <div style="max-width: 1200px; margin: 0 auto; padding: 0 2rem; height: 64px; display: flex; align-items: center; justify-content: space-between;">
+            <a href="/dashboard" style="font-family: var(--font-display); font-weight: 800; font-size: 1.3rem; color: white; text-decoration: none; letter-spacing: -0.02em; display: flex; align-items: center; gap: 8px;">
+                <span style="color: var(--accent);">🕹️</span> ARCADE
+            </a>
+            <div id="nav-session-rank"></div>
+        </div>
+    </header>
 
-    <div class="rank-page">
-
+    <main class="rank-page">
         <div class="rank-page-header">
             <div>
-                <h1>Top <span>Global</span></h1>
-                <p style="color:var(--muted); font-size:0.875rem; margin-top:4px;">Todos los jugadores · Todos los juegos</p>
+                <h1>Salón de la Fama</h1>
+                <p style="color: var(--text-muted); font-size: 0.95rem; margin-top: 4px;">Los mejores puntajes de toda la plataforma.</p>
             </div>
-            <a href="/" class="btn-back-rank">← Volver al menú</a>
         </div>
 
-        <!-- Tabs -->
         <div class="rank-tabs-global">
-            <button class="rtab active" onclick="cambiarTab('snake', this)"> Snake</button>
-            <button class="rtab" onclick="cambiarTab('trivia', this)"> Trivia</button>
-            <button class="rtab" onclick="cambiarTab('clicker', this)"> Clicker</button>
-            <button class="rtab" onclick="cambiarTab('simon', this)"> Simón</button>
+            <button class="rtab active" onclick="cambiarTab('snake', this)">🐍 Snake</button>
+            <button class="rtab" onclick="cambiarTab('trivia', this)">🧠 Trivia</button>
+            <button class="rtab" onclick="cambiarTab('clicker', this)">⚡ Clicker</button>
+            <button class="rtab" onclick="cambiarTab('simon', this)">🔴 Simón</button>
+            <button class="rtab" onclick="cambiarTab('geo', this)">📐 Geo Dash</button>
         </div>
 
-        <!-- Snake -->
         <div class="rpanel active" id="rp-snake">
             <div class="podium-global" id="pod-snake"></div>
-            <div class="rank-table-wrap">
-                <table>
-                    <thead><tr>
-                        <th style="width:52px">#</th>
-                        <th>Jugador</th>
-                        <th>Puntos</th>
-                    </tr></thead>
-                    <tbody id="tb-snake"></tbody>
-                </table>
-            </div>
+            <div class="rank-table-wrap"><table class="rtable" id="tb-snake"></table></div>
         </div>
 
-        <!-- Trivia -->
         <div class="rpanel" id="rp-trivia">
             <div class="podium-global" id="pod-trivia"></div>
-            <div class="rank-table-wrap">
-                <table>
-                    <thead><tr>
-                        <th style="width:52px">#</th>
-                        <th>Jugador</th>
-                        <th>Puntos</th>
-                    </tr></thead>
-                    <tbody id="tb-trivia"></tbody>
-                </table>
-            </div>
+            <div class="rank-table-wrap"><table class="rtable" id="tb-trivia"></table></div>
         </div>
 
-        <!-- Clicker -->
         <div class="rpanel" id="rp-clicker">
             <div class="podium-global" id="pod-clicker"></div>
-            <div class="rank-table-wrap">
-                <table>
-                    <thead><tr>
-                        <th style="width:52px">#</th>
-                        <th>Jugador</th>
-                        <th>Puntos</th>
-                    </tr></thead>
-                    <tbody id="tb-clicker"></tbody>
-                </table>
-            </div>
+            <div class="rank-table-wrap"><table class="rtable" id="tb-clicker"></table></div>
         </div>
 
-        <!-- Simón -->
         <div class="rpanel" id="rp-simon">
             <div class="podium-global" id="pod-simon"></div>
-            <div class="rank-table-wrap">
-                <table>
-                    <thead><tr>
-                        <th style="width:52px">#</th>
-                        <th>Jugador</th>
-                        <th>Puntos</th>
-                    </tr></thead>
-                    <tbody id="tb-simon"></tbody>
-                </table>
-            </div>
+            <div class="rank-table-wrap"><table class="rtable" id="tb-simon"></table></div>
         </div>
 
-    </div><!-- /.rank-page -->
+        <div class="rpanel" id="rp-geo">
+            <div class="podium-global" id="pod-geo"></div>
+            <div class="rank-table-wrap"><table class="rtable" id="tb-geo"></table></div>
+        </div>
+    </main>
 
-    <footer class="footer">&copy; 2026 ArcadeGames — Proyecto Escolar</footer>
-
-    <script>
-    // ── Tabs ────────────────────────────────────────
+<script>
+    // Cambiar de pestaña visualmente
     function cambiarTab(juego, btn) {
-        document.querySelectorAll('.rtab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.rtab').forEach(b => b.classList.remove('active'));
         document.querySelectorAll('.rpanel').forEach(p => p.classList.remove('active'));
+        
         btn.classList.add('active');
-        document.getElementById('rp-' + juego).classList.add('active');
+        const targetPanel = document.getElementById('rp-' + juego);
+        if(targetPanel) targetPanel.classList.add('active');
     }
 
-    // ── Render ──────────────────────────────────────
-    function renderTabla(juego, lista) {
-        const tbody = document.getElementById('tb-' + juego);
-        if (!tbody) return;
-        if (!lista.length) {
-            tbody.innerHTML = `<tr class="empty-row"><td colspan="3">Aún no hay récords para este juego</td></tr>`;
-            return;
-        }
-        const posClass = ['g','s','b'];
-        const posEmoji = ['🥇','🥈','🥉'];
-        tbody.innerHTML = lista.map((r, i) => `
-            <tr>
-                <td class="pos-cell ${posClass[i] || ''}">${i < 3 ? posEmoji[i] : i + 1}</td>
-                <td class="name-cell">${r.nombre || 'Anónimo'}</td>
-                <td class="pts-cell">${r.puntos}</td>
-            </tr>
-        `).join('');
-    }
+    // Inicializar carga de datos al abrir el documento
+    document.addEventListener('DOMContentLoaded', cargarRankings);
 
-    function renderPodio(juego, lista) {
-        const wrap = document.getElementById('pod-' + juego);
-        if (!wrap) return;
-        const p = [0,1,2].map(i => lista[i] || { nombre: 'Vacante', puntos: '—' });
-        wrap.innerHTML = `
-            <div class="pod-col second">
-                <div class="pod-col-name">${p[1].nombre}</div>
-                <div class="pod-col-pts">${p[1].puntos} pts</div>
-                <div class="pod-col-bar">2°</div>
-            </div>
-            <div class="pod-col first">
-                <div class="pod-col-name">${p[0].nombre}</div>
-                <div class="pod-col-pts">${p[0].puntos} pts</div>
-                <div class="pod-col-bar">1°</div>
-            </div>
-            <div class="pod-col third">
-                <div class="pod-col-name">${p[2].nombre}</div>
-                <div class="pod-col-pts">${p[2].puntos} pts</div>
-                <div class="pod-col-bar">3°</div>
-            </div>
-        `;
-    }
-
-    // ── Cargar datos ────────────────────────────────
     async function cargarRankings() {
         try {
-            const res  = await fetch('/obtener_ranking');
+            const res = await fetch('/api/ranking');
             const data = await res.json();
-            ['snake','trivia','clicker','simon'].forEach(j => {
+            
+            // SE AÑADIÓ 'geo' A LA LISTA DE PROCESAMIENTO
+            ['snake','trivia','clicker','simon','geo'].forEach(j => {
                 const lista = data.ranking
                     .filter(r => r.juego && r.juego.toLowerCase() === j)
                     .sort((a,b) => b.puntos - a.puntos);
+
                 renderTabla(j, lista);
                 renderPodio(j, lista);
             });
@@ -366,7 +278,118 @@
         }
     }
 
-    // ── Navbar sesión ───────────────────────────────
+    function renderPodio(juego, lista) {
+        const contenedor = document.getElementById('pod-' + juego);
+        if(!contenedor) return;
+
+        if (lista.length === 0) {
+            contenedor.innerHTML = `<div style="color: var(--text-muted); font-size: 0.9rem; padding: 2rem 0;">¡Nadie ha jugado aún! Sé el primero.</div>`;
+            return;
+        }
+
+        // Extraer top 3
+        const p1 = lista[0] || null;
+        const p2 = lista[1] || null;
+        const p3 = lista[2] || null;
+
+        let html = '';
+
+        // Render P2 (Izquierda)
+        if (p2) {
+            const av2 = p2.avatar ? `<img src="${p2.avatar}" style="width:100%;height:100%;object-fit:cover;">` : p2.nombre.charAt(0).toUpperCase();
+            html += `
+            <div class="podium-step p2">
+                <div class="pod-avatar">${av2}</div>
+                <div class="pod-pillar">
+                    <div class="pod-name">${p2.nombre}</div>
+                    <div class="pod-pts">${p2.puntos} pts</div>
+                    <div class="pod-num">2</div>
+                </div>
+            </div>`;
+        }
+        
+        // Render P1 (Centro - Más alto)
+        if (p1) {
+            const av1 = p1.avatar ? `<img src="${p1.avatar}" style="width:100%;height:100%;object-fit:cover;">` : p1.nombre.charAt(0).toUpperCase();
+            html += `
+            <div class="podium-step p1">
+                <div class="pod-avatar" style="position:relative;">
+                    <span style="position:absolute; top:-16px; left:50%; transform:translateX(-50%) rotate(-5deg); font-size:1.4rem;">👑</span>
+                    ${av1}
+                </div>
+                <div class="pod-pillar">
+                    <div class="pod-name">${p1.nombre}</div>
+                    <div class="pod-pts">${p1.puntos} pts</div>
+                    <div class="pod-num">1</div>
+                </div>
+            </div>`;
+        }
+
+        // Render P3 (Derecha)
+        if (p3) {
+            const av3 = p3.avatar ? `<img src="${p3.avatar}" style="width:100%;height:100%;object-fit:cover;">` : p3.nombre.charAt(0).toUpperCase();
+            html += `
+            <div class="podium-step p3">
+                <div class="pod-avatar">${av3}</div>
+                <div class="pod-pillar">
+                    <div class="pod-name">${p3.nombre}</div>
+                    <div class="pod-pts">${p3.puntos} pts</div>
+                    <div class="pod-num">3</div>
+                </div>
+            </div>`;
+        }
+
+        contenedor.innerHTML = html;
+    }
+
+    function renderTabla(juego, lista) {
+        const tabla = document.getElementById('tb-' + juego);
+        if(!tabla) return;
+
+        // Si hay 3 jugadores o menos, ya se lucen en el podio superior, no requiere tabla inferior amplia
+        if (lista.length <= 3) {
+            tabla.style.display = 'none';
+            return;
+        }
+        tabla.style.display = 'table';
+
+        // Los primeros 3 van al podio, el resto (posición 4 en adelante) se lista abajo
+        const resto = lista.slice(3);
+
+        let html = `
+        <thead>
+            <tr>
+                <th class="td-pos">Pos</th>
+                <th>Jugador</th>
+                <th style="text-align: right;">Puntuación</th>
+            </tr>
+        </thead>
+        <tbody>`;
+
+        resto.forEach((u, index) => {
+            const posicionReal = index + 4;
+            const av = u.avatar 
+                ? `<img src="${u.avatar}" style="width:100%;height:100%;object-fit:cover;">` 
+                : u.nombre.charAt(0).toUpperCase();
+
+            html += `
+            <tr>
+                <td class="td-pos">#${posicionReal}</td>
+                <td>
+                    <div class="td-user">
+                        <div class="td-avatar">${av}</div>
+                        <span>${u.nombre}</span>
+                    </div>
+                </td>
+                <td class="td-pts">${u.puntos}</td>
+            </tr>`;
+        });
+
+        html += '</tbody>';
+        tabla.innerHTML = html;
+    }
+
+    // Navbar sesión dinámica
     (function() {
         const zona = document.getElementById('nav-session-rank');
         fetch('/api/sesion')
@@ -377,19 +400,16 @@
                         ? `<img src="${data.avatar}" alt="av" style="width:100%;height:100%;object-fit:cover;">`
                         : data.username.charAt(0).toUpperCase();
                     zona.innerHTML = `
-                        <div style="display:flex;align-items:center;gap:8px;">
-                            <a href="/dashboard" class="btn-login-nav" style="font-size:0.82rem;padding:7px 14px;">Mi panel</a>
-                            <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#7c6aff);display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;color:white;overflow:hidden;">${av}</div>
+                        <div style=\"display:flex;align-items:center;gap:8px;\">
+                            <a href=\"/dashboard\" class=\"btn-login-nav\" style=\"font-size:0.82rem;padding:7px 14px;\">Mi panel</a>
+                            <div style=\"width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#7c6aff);display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;color:white;overflow:hidden;\">${av}</div>
                         </div>`;
                 } else {
-                    zona.innerHTML = `<a href="/login" class="btn-login-nav">Iniciar sesión</a>`;
+                    zona.innerHTML = `<a href=\"/login\" class=\"btn-login-nav\">Iniciar sesión</a>`;
                 }
             })
-            .catch(() => { zona.innerHTML = `<a href="/login" class="btn-login-nav">Iniciar sesión</a>`; });
+            .catch(() => { zona.innerHTML = `<a href=\"/login\" class=\"btn-login-nav\">Iniciar sesión</a>`; });
     })();
-
-    window.onload = cargarRankings;
-    </script>
-
+</script>
 </body>
 </html>
