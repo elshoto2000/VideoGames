@@ -14,7 +14,7 @@ MONGO_URI = "mongodb+srv://herreraleandro628:apu20082009@cluster0.q4tnkcc.mongod
 client = MongoClient(MONGO_URI)
 db = client.arcade_db
 puntajes_col = db.puntajes
-usuarios_col  = db.usuarios
+usuarios_col = db.usuarios  # <-- Corregido el espacio invisible aquí
 
 print("✅ Conectado exitosamente a MongoDB Atlas")
 
@@ -147,17 +147,18 @@ def home():
 def cargar_juego(nombre_juego):
     if 'username' not in session:
         return redirect(url_for('login'))
+    
     u = get_usuario()
     if not u:
-        session.clear()
         return redirect(url_for('login'))
-
+        
     nombre_juego = nombre_juego.lower()
+    
     r_snake   = list(puntajes_col.find({"juego": "snake"  }).sort("puntos", -1).limit(5))
     r_trivia  = list(puntajes_col.find({"juego": "trivia" }).sort("puntos", -1).limit(5))
     r_clicker = list(puntajes_col.find({"juego": "clicker"}).sort("puntos", -1).limit(5))
     r_simon   = list(puntajes_col.find({"juego": "simon"  }).sort("puntos", -1).limit(5))
-    r_geo     = list(puntajes_col.find({"juego": "geo"    }).sort("puntos", -1).limit(5))
+    r_geo     = list(puntajes_col.find({"juego": "geo"    }).sort("puntos", -1).limit(5))[cite: 1]
 
     return render_template('juego.html',
                            juego=nombre_juego,
@@ -167,7 +168,7 @@ def cargar_juego(nombre_juego):
                            ranking_trivia=r_trivia,
                            ranking_clicker=r_clicker,
                            ranking_simon=r_simon,
-                           ranking_geo=r_geo)
+                           ranking_geo=r_geo)[cite: 1]
 
 
 # ─── PUNTAJES Y RANKING ───────────────────────────────────────────
@@ -188,11 +189,29 @@ def guardar_puntaje():
             {"$max": {"puntos": puntos}},
             upsert=True
         )
-        # Verificar logros después de guardar puntaje
         _verificar_logros(nombre, juego, puntos)
         return jsonify({"status": "success"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route('/api/ranking')
+def api_ranking():
+    """Ruta que requiere ranking.html para cargar todas las tablas con avatares reales."""
+    docs = list(puntajes_col.find({}, {"_id": 0}))
+    resultado = []
+    for d in docs:
+        nombre = d.get('nombre', 'Anónimo')
+        user_db = usuarios_col.find_one({"username": nombre}, {"avatar": 1})
+        avatar_url = user_db.get('avatar', '') if user_db else ''
+        
+        resultado.append({
+            "nombre": nombre,
+            "juego":  d.get('juego', 'unknown'),
+            "puntos": d.get('puntos', 0),
+            "avatar": avatar_url
+        })
+    return jsonify({"ranking": resultado})
 
 
 @app.route('/obtener_ranking')
@@ -221,7 +240,7 @@ def ver_ranking():
 LOGROS = [
     # Snake
     {"id": "snake_first",   "juego": "snake",   "titulo": "Primera Serpiente",  "desc": "Juega Snake por primera vez",         "icono": "🐍", "umbral": 1},
-    {"id": "snake_100",     "juego": "snake",   "titulo": "Hambrienta",          "desc": "Alcanza 100 puntos en Snake",          "icono": "🍎", "umbral": 100},
+    {"id": "snake_100",     "juego": "snake",   "titulo": "Hambrienta",           "desc": "Alcanza 100 puntos en Snake",          "icono": "🍎", "umbral": 100},
     {"id": "snake_500",     "juego": "snake",   "titulo": "Serpiente Larga",     "desc": "Alcanza 500 puntos en Snake",          "icono": "⚡", "umbral": 500},
     # Clicker
     {"id": "clicker_first", "juego": "clicker", "titulo": "Primer Click",        "desc": "Juega Clicker por primera vez",        "icono": "👆", "umbral": 1},
@@ -229,14 +248,14 @@ LOGROS = [
     {"id": "clicker_80",    "juego": "clicker", "titulo": "Máquina",             "desc": "Logra 80 clicks en 10 segundos",       "icono": "🤖", "umbral": 80},
     # Trivia
     {"id": "trivia_first",  "juego": "trivia",  "titulo": "Curioso",             "desc": "Juega Trivia por primera vez",         "icono": "🧠", "umbral": 1},
-    {"id": "trivia_300",    "juego": "trivia",  "titulo": "Sabio",               "desc": "Alcanza 300 puntos en Trivia",         "icono": "📚", "umbral": 300},
+    {"id": "trivia_300",    "juego": "trivia",  "titulo": "Sabio",                "desc": "Alcanza 300 puntos en Trivia",         "icono": "📚", "umbral": 300},
     # Simón
     {"id": "simon_first",   "juego": "simon",   "titulo": "Primer Simón",        "desc": "Juega Simón Dice por primera vez",     "icono": "🎮", "umbral": 1},
     {"id": "simon_200",     "juego": "simon",   "titulo": "Buen Memoria",        "desc": "Alcanza 200 puntos en Simón",          "icono": "💡", "umbral": 200},
-    # Geo Dash
-    {"id": "geo_first",     "juego": "geo",     "titulo": "Geometría",           "desc": "Completa el Nivel 1 de Geo Dash",      "icono": "🟦", "umbral": 1},
-    {"id": "geo_nivel2",    "juego": "geo",     "titulo": "Desafiante",          "desc": "Completa el Nivel 2 de Geo Dash",      "icono": "🔶", "umbral": 2},
-    {"id": "geo_nivel3",    "juego": "geo",     "titulo": "Maestro del Cubo",    "desc": "Completa el Nivel 3 de Geo Dash",      "icono": "🏆", "umbral": 3},
+    # Geo Dash[cite: 1]
+    {"id": "geo_first",     "juego": "geo",     "titulo": "Geometría",           "desc": "Completa el Nivel 1 de Geo Dash",      "icono": "🟦", "umbral": 1},[cite: 1]
+    {"id": "geo_nivel2",    "juego": "geo",     "titulo": "Desafiante",          "desc": "Completa el Nivel 2 de Geo Dash",      "icono": "🔶", "umbral": 2},[cite: 1]
+    {"id": "geo_nivel3",    "juego": "geo",     "titulo": "Maestro del Cubo",    "desc": "Completa el Nivel 3 de Geo Dash",      "icono": "🏆", "umbral": 3},[cite: 1]
     # Global
     {"id": "all_games",     "juego": None,      "titulo": "Polivalente",         "desc": "Juega todos los juegos al menos una vez", "icono": "🌟", "umbral": None},
 ]
@@ -253,11 +272,10 @@ def _verificar_logros(nombre, juego, puntos):
         if logro['id'] in desbloqueados:
             continue
         if logro['juego'] is None:
-            # Logro global: verificar que tenga puntaje en todos los juegos
             juegos_jugados = set(
                 r['juego'] for r in puntajes_col.find({"nombre": nombre})
             )
-            if {'snake','clicker','trivia','simon','geo'}.issubset(juegos_jugados):
+            if {'snake','clicker','trivia','simon','geo'}.issubset(juegos_jugados):[cite: 1]
                 nuevos.append(logro['id'])
         elif logro['juego'] == juego and puntos >= logro['umbral']:
             nuevos.append(logro['id'])
@@ -271,20 +289,18 @@ def _verificar_logros(nombre, juego, puntos):
 
 @app.route('/api/logros')
 def api_logros():
-    """Devuelve todos los logros con estado desbloqueado/bloqueado para el usuario actual."""
     u = get_usuario()
     desbloqueados = set(u.get('logros', [])) if u else set()
     resultado = []
     for l in LOGROS:
         resultado.append({
-            "id":          l['id'],
-            "titulo":      l['titulo'],
-            "desc":        l['desc'],
-            "icono":       l['icono'],
+            "id":           l['id'],
+            "titulo":       l['titulo'],
+            "desc":         l['desc'],
+            "icono":        l['icono'],
             "desbloqueado": l['id'] in desbloqueados
         })
     return jsonify(resultado)
-
 
 
 @app.route('/logros')
@@ -296,6 +312,3 @@ def ver_logros():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
-
-
-# Esta línea no va — ya está en el archivo, solo verificamos
