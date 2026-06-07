@@ -14,7 +14,7 @@ MONGO_URI = "mongodb+srv://herreraleandro628:apu20082009@cluster0.q4tnkcc.mongod
 client = MongoClient(MONGO_URI)
 db = client.arcade_db
 puntajes_col = db.puntajes
-usuarios_col = db.usuarios  # <-- Corregido el espacio invisible aquí
+usuarios_col = db.usuarios
 
 print("✅ Conectado exitosamente a MongoDB Atlas")
 
@@ -158,7 +158,7 @@ def cargar_juego(nombre_juego):
     r_trivia  = list(puntajes_col.find({"juego": "trivia" }).sort("puntos", -1).limit(5))
     r_clicker = list(puntajes_col.find({"juego": "clicker"}).sort("puntos", -1).limit(5))
     r_simon   = list(puntajes_col.find({"juego": "simon"  }).sort("puntos", -1).limit(5))
-    r_geo     = list(puntajes_col.find({"juego": "geo"    }).sort("puntos", -1).limit(5))[cite: 1]
+    r_geo     = list(puntajes_col.find({"juego": "geo"    }).sort("puntos", -1).limit(5))
 
     return render_template('juego.html',
                            juego=nombre_juego,
@@ -168,7 +168,7 @@ def cargar_juego(nombre_juego):
                            ranking_trivia=r_trivia,
                            ranking_clicker=r_clicker,
                            ranking_simon=r_simon,
-                           ranking_geo=r_geo)[cite: 1]
+                           ranking_geo=r_geo)
 
 
 # ─── PUNTAJES Y RANKING ───────────────────────────────────────────
@@ -197,7 +197,7 @@ def guardar_puntaje():
 
 @app.route('/api/ranking')
 def api_ranking():
-    """Ruta que requiere ranking.html para cargar todas las tablas con avatares reales."""
+    """Ruta consultada por ranking.html para armar las tablas dinámicas con avatares."""
     docs = list(puntajes_col.find({}, {"_id": 0}))
     resultado = []
     for d in docs:
@@ -252,10 +252,10 @@ LOGROS = [
     # Simón
     {"id": "simon_first",   "juego": "simon",   "titulo": "Primer Simón",        "desc": "Juega Simón Dice por primera vez",     "icono": "🎮", "umbral": 1},
     {"id": "simon_200",     "juego": "simon",   "titulo": "Buen Memoria",        "desc": "Alcanza 200 puntos en Simón",          "icono": "💡", "umbral": 200},
-    # Geo Dash[cite: 1]
-    {"id": "geo_first",     "juego": "geo",     "titulo": "Geometría",           "desc": "Completa el Nivel 1 de Geo Dash",      "icono": "🟦", "umbral": 1},[cite: 1]
-    {"id": "geo_nivel2",    "juego": "geo",     "titulo": "Desafiante",          "desc": "Completa el Nivel 2 de Geo Dash",      "icono": "🔶", "umbral": 2},[cite: 1]
-    {"id": "geo_nivel3",    "juego": "geo",     "titulo": "Maestro del Cubo",    "desc": "Completa el Nivel 3 de Geo Dash",      "icono": "🏆", "umbral": 3},[cite: 1]
+    # Geo Dash
+    {"id": "geo_first",     "juego": "geo",     "titulo": "Geometría",           "desc": "Completa el Nivel 1 de Geo Dash",      "icono": "🟦", "umbral": 1},
+    {"id": "geo_nivel2",    "juego": "geo",     "titulo": "Desafiante",          "desc": "Completa el Nivel 2 de Geo Dash",      "icono": "🔶", "umbral": 2},
+    {"id": "geo_nivel3",    "juego": "geo",     "titulo": "Maestro del Cubo",    "desc": "Completa el Nivel 3 de Geo Dash",      "icono": "🏆", "umbral": 3},
     # Global
     {"id": "all_games",     "juego": None,      "titulo": "Polivalente",         "desc": "Juega todos los juegos al menos una vez", "icono": "🌟", "umbral": None},
 ]
@@ -272,10 +272,11 @@ def _verificar_logros(nombre, juego, puntos):
         if logro['id'] in desbloqueados:
             continue
         if logro['juego'] is None:
+            # Logro global: verificar que tenga puntaje en todos los juegos
             juegos_jugados = set(
                 r['juego'] for r in puntajes_col.find({"nombre": nombre})
             )
-            if {'snake','clicker','trivia','simon','geo'}.issubset(juegos_jugados):[cite: 1]
+            if {'snake','clicker','trivia','simon','geo'}.issubset(juegos_jugados):
                 nuevos.append(logro['id'])
         elif logro['juego'] == juego and puntos >= logro['umbral']:
             nuevos.append(logro['id'])
@@ -289,6 +290,7 @@ def _verificar_logros(nombre, juego, puntos):
 
 @app.route('/api/logros')
 def api_logros():
+    """Devuelve todos los logros con estado desbloqueado/bloqueado para el usuario actual."""
     u = get_usuario()
     desbloqueados = set(u.get('logros', [])) if u else set()
     resultado = []
