@@ -220,7 +220,7 @@ if (data.status === 'success') {
     mostrarMsg('¡Bienvenido!', 'success');
     setTimeout(() => {
         // Al usar replace aseguramos que el navegador no use el caché viejo del index
-        window.location.replace('/');
+        window.location.replace('/dashboard');
     }, 800);
 } else {
                     mostrarMsg(data.message || 'Error desconocido', 'error');
