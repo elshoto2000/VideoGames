@@ -9,9 +9,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <style>
         /* ── Dropdown en juego.html ─────────────── */
-        .game-nav-user {
-            position: relative;
-        }
+        .game-nav-user { position: relative; }
 
         .game-nav-btn {
             display: flex;
@@ -24,7 +22,6 @@
             cursor: pointer;
             transition: border-color 0.2s, background 0.2s;
         }
-
         .game-nav-btn:hover {
             border-color: var(--border-hi);
             background: var(--bg-hover);
@@ -34,152 +31,90 @@
             width: 28px; height: 28px;
             border-radius: 50%;
             background: linear-gradient(135deg, var(--accent), #7c6aff);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.7rem;
-            font-weight: 700;
-            color: white;
-            font-family: var(--font-mono);
-            overflow: hidden;
-            flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.7rem; font-weight: 700;
+            color: white; font-family: var(--font-mono);
+            overflow: hidden; flex-shrink: 0;
         }
-
         .game-nav-avatar img { width:100%; height:100%; object-fit:cover; }
 
         .game-nav-name {
-            font-size: 0.8rem;
-            font-weight: 500;
-            color: var(--text);
-            font-family: var(--font-body);
-            max-width: 80px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+            font-size: 0.8rem; font-weight: 500;
+            color: var(--text); font-family: var(--font-body);
+            max-width: 80px; overflow: hidden;
+            text-overflow: ellipsis; white-space: nowrap;
         }
 
         .game-nav-chevron {
-            font-size: 0.55rem;
-            color: var(--muted);
+            font-size: 0.55rem; color: var(--muted);
             transition: transform 0.2s;
         }
-
         .game-nav-btn.open .game-nav-chevron { transform: rotate(180deg); }
 
-        /* Dropdown idéntico al del index */
         .game-nav-dropdown {
             position: absolute;
-            top: calc(100% + 10px);
-            right: 0;
+            top: calc(100% + 10px); right: 0;
             min-width: 190px;
             background: var(--bg-card);
             border: 1px solid var(--border-md);
             border-radius: var(--radius-lg);
             box-shadow: var(--shadow-lg), 0 0 0 1px rgba(255,255,255,0.03);
             padding: 6px;
-            opacity: 0;
-            pointer-events: none;
+            opacity: 0; pointer-events: none;
             transform: translateY(-6px) scale(0.98);
             transition: opacity 0.18s, transform 0.18s;
             z-index: 300;
         }
-
         .game-nav-dropdown.open {
-            opacity: 1;
-            pointer-events: auto;
+            opacity: 1; pointer-events: auto;
             transform: translateY(0) scale(1);
         }
-
         .game-nav-dropdown .nav-dropdown-header {
             padding: 9px 11px 7px;
             border-bottom: 1px solid var(--border);
             margin-bottom: 4px;
         }
-
         .game-nav-dropdown .nav-dropdown-header span {
-            display: block;
-            font-size: 0.72rem;
-            color: var(--muted);
-            font-family: var(--font-mono);
+            display: block; font-size: 0.72rem;
+            color: var(--muted); font-family: var(--font-mono);
         }
-
         .game-nav-dropdown .nav-dropdown-header strong {
-            display: block;
-            font-size: 0.88rem;
-            color: var(--text);
-            font-weight: 600;
-            font-family: var(--font-display);
-            margin-top: 2px;
+            display: block; font-size: 0.88rem;
+            color: var(--text); font-weight: 600;
+            font-family: var(--font-display); margin-top: 2px;
         }
 
-        /* ── Canvas responsivo: tamaños por dispositivo ── */
-
-        /* Desktop: cuadrado grande */
+        /* ── Canvas responsivo ── */
         @media (min-width: 901px) {
             .canvas-placeholder {
-                width: 100%;
-                aspect-ratio: 1 / 1;
-                max-width: 500px;
+                width: 100%; aspect-ratio: 1 / 1; max-width: 500px;
             }
         }
-
-        /* Tablet */
         @media (min-width: 601px) and (max-width: 900px) {
-            .game-layout {
-                grid-template-columns: 1fr !important;
-            }
+            .game-layout { grid-template-columns: 1fr !important; }
             .canvas-placeholder {
-                width: 100%;
-                max-width: min(480px, 90vw);
-                aspect-ratio: 1 / 1;
+                width: 100%; max-width: min(480px, 90vw); aspect-ratio: 1 / 1;
             }
         }
-
-        /* Móvil */
         @media (max-width: 600px) {
             .game-layout {
                 grid-template-columns: 1fr !important;
-                padding: 0.75rem !important;
-                gap: 1rem !important;
+                padding: 0.75rem !important; gap: 1rem !important;
             }
-
             .canvas-placeholder {
-                width: 100%;
-                max-width: 100%;
-                /* En móvil no forzamos aspect-ratio para que cada juego se ajuste */
-                aspect-ratio: unset;
-                min-height: min(340px, 85vw);
+                width: 100%; max-width: 100%;
+                aspect-ratio: unset; min-height: min(340px, 85vw);
             }
-
-            /* Snake canvas cuadrado en móvil */
             .canvas-placeholder canvas {
-                width: 100% !important;
-                height: auto !important;
-                max-height: 85vw;
+                width: 100% !important; height: auto !important; max-height: 85vw;
             }
-
-            .game-user-bar h2 {
-                font-size: 0.85rem;
-            }
-
-            .game-main h2 {
-                font-size: 0.9rem;
-            }
-
-            .ranking-side {
-                margin-top: 0;
-            }
+            .game-user-bar h2 { font-size: 0.85rem; }
+            .game-main h2 { font-size: 0.9rem; }
+            .ranking-side { margin-top: 0; }
         }
-
-        /* Pantalla muy pequeña (<380px) */
         @media (max-width: 380px) {
-            .canvas-placeholder {
-                min-height: 280px;
-            }
-
-            #game-over-screen h1 {
-                font-size: 1.3rem !important;
-            }
+            .canvas-placeholder { min-height: 280px; }
+            #game-over-screen h1 { font-size: 1.3rem !important; }
         }
     </style>
 </head>
@@ -193,7 +128,7 @@
         </a>
 
         <ul class="nav-links">
-            <li><a href="/">← Menú</a></li>
+            <li><a href="/dashboard">← Panel</a></li>
             <li><a href="/ranking">Top Global</a></li>
         </ul>
 
@@ -205,13 +140,7 @@
                         <img src="{{ avatar }}" alt="avatar">
                     {% else %}
                         {{ username[0]|upper }}
-                    {% elif j == 'geo' %}
-        {% for fila in ranking_geo %}
-            <li><span>{{ loop.index }}. {{ fila.nombre }}</span><b>{{ fila.puntos }}</b></li>
-        {% else %}
-            <li>Nadie ha jugado aún…</li>
-        {% endfor %}
-    {% endif %}
+                    {% endif %}
                 </div>
                 <span class="game-nav-name">{{ username }}</span>
                 <span class="game-nav-chevron">▼</span>
@@ -222,25 +151,18 @@
                     <span>Jugando como</span>
                     <strong>{{ username }}</strong>
                 </div>
-
-                <a href="/perfil" class="dropdown-item" role="menuitem">
-                    <span class="dropdown-icon">👤</span>
-                    Mi perfil
+                <a href="/dashboard" class="dropdown-item" role="menuitem">
+                    <span class="dropdown-icon">🎮</span> Mi panel
                 </a>
-                <a href="/" class="dropdown-item" role="menuitem">
-                    <span class="dropdown-icon">🏠</span>
-                    Menú principal
+                <a href="/perfil" class="dropdown-item" role="menuitem">
+                    <span class="dropdown-icon">👤</span> Mi perfil
                 </a>
                 <a href="/ranking" class="dropdown-item" role="menuitem">
-                    <span class="dropdown-icon">🏆</span>
-                    Top Global
+                    <span class="dropdown-icon">🏆</span> Top Global
                 </a>
-
                 <div class="dropdown-divider"></div>
-
                 <a href="/logout" class="dropdown-item danger" role="menuitem">
-                    <span class="dropdown-icon">→</span>
-                    Cerrar sesión
+                    <span class="dropdown-icon">→</span> Cerrar sesión
                 </a>
             </div>
         </div>
@@ -252,8 +174,6 @@
 
             <!-- Área principal -->
             <div class="game-main">
-
-                <!-- Barra de usuario -->
                 <div class="game-user-bar">
                     <div class="game-avatar">
                         {% if avatar %}
@@ -281,8 +201,8 @@
                             <h1>¡FIN DEL JUEGO!</h1>
                             <p id="final-score-msg"></p>
                             <button class="btn-play" onclick="reiniciarJuego()">REINTENTAR</button>
-                            <a href="/" class="btn-play" style="background:var(--bg-raised);border:1px solid var(--border-md);color:var(--text-2);margin-top:8px;">
-                                Salir al menú
+                            <a href="/dashboard" class="btn-play" style="background:var(--bg-raised);border:1px solid var(--border-md);color:var(--text-2);margin-top:8px;">
+                                Volver al panel
                             </a>
                         </div>
                     </div>
@@ -318,6 +238,14 @@
                         {% else %}
                             <li>Nadie ha jugado aún…</li>
                         {% endfor %}
+                    {% elif j == 'geo' %}
+                        {% for fila in ranking_geo %}
+                            <li><span>{{ loop.index }}. {{ fila.nombre }}</span><b>{{ fila.puntos }}</b></li>
+                        {% else %}
+                            <li>Nadie ha jugado aún…</li>
+                        {% endfor %}
+                    {% else %}
+                        <li>Nadie ha jugado aún…</li>
                     {% endif %}
                 </ul>
             </div>
@@ -330,7 +258,6 @@
         window.JUEGO_ACTUAL = "{{ juego.lower() }}";
         window.ARCADE_USER  = "{{ username }}";
 
-        // ── Iniciar ───────────────────────────────────
         window.onload = function() {
             document.getElementById('display-user').innerText = window.ARCADE_USER;
             cargarScriptJuego();
@@ -422,4 +349,3 @@
     </script>
 </body>
 </html>
-
