@@ -40,15 +40,35 @@
     function coinSound() { beep(660, 0.1, 'sine', 0.1); setTimeout(() => beep(880, 0.1, 'sine', 0.1), 80); }
     function buySound() { beep(440, 0.1, 'sine', 0.12); setTimeout(() => beep(660, 0.15, 'sine', 0.12), 100); }
     function waveSound() { beep(220, 0.4, 'triangle', 0.1); }
+    function bossAppearSound() {
+        beep(80, 0.6, 'sawtooth', 0.2);
+        setTimeout(() => beep(60, 0.8, 'sawtooth', 0.25), 300);
+        setTimeout(() => beep(100, 0.5, 'square', 0.2), 700);
+    }
+    function bossLaserSound() { beep(1200, 0.12, 'sawtooth', 0.15); setTimeout(() => beep(400, 0.2, 'sawtooth', 0.1), 60); }
+    function bossChatarraSound() { beep(300, 0.08, 'square', 0.08); }
+    function bossDeathSound() {
+        beep(200, 0.3, 'sawtooth', 0.2); setTimeout(() => beep(150, 0.3, 'sawtooth', 0.2), 150);
+        setTimeout(() => beep(100, 0.4, 'sawtooth', 0.25), 300); setTimeout(() => beep(60, 0.6, 'sawtooth', 0.3), 500);
+    }
+    function victorySound() {
+        [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => beep(f, 0.3, 'sine', 0.15), i * 150));
+    }
 
     /* ── Estado global ── */
-    const ESTADOS = { MENU: 'menu', JUGANDO: 'jugando', TIENDA: 'tienda', GAMEOVER: 'gameover' };
+    const ESTADOS = { MENU: 'menu', JUGANDO: 'jugando', TIENDA: 'tienda', GAMEOVER: 'gameover', VICTORIA: 'victoria' };
     let estado = ESTADOS.MENU;
     let puntuacion = 0;
     let chatarra = 0;       // moneda del juego
     let oleada = 0;
     let animFrame = null;
     let bgPulse = 0;
+
+    /* ── Jefe final ── */
+    let jefe = null;
+    let balasJefe = [];   // proyectiles del jefe hacia el jugador
+    let bossIntroTimer = 0;  // frames de animación de entrada del jefe
+    const MAX_OLEADAS = 100;
 
     /* ── Mejoras del jugador ── */
     const mejoras = {
@@ -257,6 +277,7 @@
         jugador.x = ANCHO / 2; jugador.y = ALTO - 55;
         jugador.vidas = 3; jugador.invulnerable = 0;
         balas = []; enemigos = []; explosiones = []; particulas = [];
+        jefe = null; balasJefe = []; bossIntroTimer = 0;
         actualizarHUD();
         iniciarOleada();
         estado = ESTADOS.JUGANDO;
@@ -266,9 +287,56 @@
     /* ── OLEADAS ── */
     function iniciarOleada() {
         oleada++;
-        waveSound();
         elOleada.textContent = oleada;
-        generarEnemigos();
+        balas = []; balasJefe = [];
+        if (oleada % 5 === 0) {
+            // OLEADA DE JEFE
+            enemigos = [];
+            bossIntroTimer = 120;
+            bossAppearSound();
+            crearJefe();
+        } else {
+            waveSound();
+            jefe = null;
+            generarEnemigos();
+        }
+    }
+
+    /* ── CREAR JEFE ── */
+    function crearJefe() {
+        const tier = Math.floor(oleada / 5);          // 1,2,3... sube cada 5 oleadas
+        const vidasBase = 15 + tier * 10;             // más vida cada jefe
+        // Tipos de ataque que desbloquea por tier
+        const ataques = tier >= 4
+            ? ['laser', 'chatarra', 'rafaga', 'laser']
+            : tier >= 2
+                ? ['laser', 'chatarra', 'laser']
+                : ['laser', 'chatarra'];
+
+        jefe = {
+            x: ANCHO / 2,
+            y: -80,                 // empieza fuera de pantalla (entra desde arriba)
+            yTarget: 90,            // posición final
+            ancho: 70,
+            alto: 55,
+            vidasMax: vidasBase,
+            vidas: vidasBase,
+            velocidadX: 1.2 + tier * 0.3,
+            dir: 1,
+            tier,
+            ataques,
+            ataqueTimer: 180,       // frames hasta primer ataque
+            ataqueFase: 0,
+            color: ['#ff4488','#ff2200','#aa00ff','#ff8800','#00ffcc'][Math.min(tier-1,4)],
+            colorSecundario: ['#ff88bb','#ff7755','#dd66ff','#ffcc44','#66ffee'][Math.min(tier-1,4)],
+            nombre: ['DEVORADOR','DESTRUCTOR','APOCALIPSIS','NÉMESIS','ABISMO','EXTERMINADOR',
+                     'CATACLISMO','ANIQUILADOR','OMEGA','INFINITO','CAOS','ARMAGEDÓN',
+                     'VOID','TITAN','BEHEMOTH','LEVIATAN','MOLOCH','BAALZEBUL',
+                     'MALPHAS','PURSON'][Math.min(tier-1, 19)],
+            chatarraVal: 200 + tier * 100,
+            rotorAng: 0,
+            entraAnimacion: true,
+        };
     }
 
     function generarEnemigos() {
@@ -429,14 +497,158 @@
         particulas.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += 0.08; p.alpha -= 0.04; });
         particulas = particulas.filter(p => p.alpha > 0);
 
-        // ¿Oleada completa?
-        if (enemigos.length === 0 && estado === ESTADOS.JUGANDO) {
-            estado = ESTADOS.TIENDA;
-            // Bonus de oleada
-            const bonus = oleada * 50;
-            puntuacion += bonus;
-            chatarra += bonus / 5;
-            actualizarHUD();
+        // ¿Oleada completa? (sin jefe)
+        if (!jefe && enemigos.length === 0 && estado === ESTADOS.JUGANDO) {
+            terminarOleada();
+        }
+
+        // ── JEFE ──
+        if (jefe) {
+            updateJefe();
+        }
+    }
+
+    function terminarOleada() {
+        estado = ESTADOS.TIENDA;
+        const bonus = oleada * 50;
+        puntuacion += bonus;
+        chatarra += Math.floor(bonus / 5);
+        actualizarHUD();
+    }
+
+    /* ── UPDATE JEFE ── */
+    function updateJefe() {
+        jefe.rotorAng += 0.03;
+
+        // Entrada animada
+        if (jefe.y < jefe.yTarget) {
+            jefe.y += 2.5;
+            return;  // no ataca mientras entra
+        }
+        jefe.entraAnimacion = false;
+
+        // Movimiento lateral
+        jefe.x += jefe.velocidadX * jefe.dir;
+        if (jefe.x > ANCHO - jefe.ancho / 2 - 10) jefe.dir = -1;
+        if (jefe.x < jefe.ancho / 2 + 10) jefe.dir = 1;
+
+        // Timers de ataque
+        jefe.ataqueTimer--;
+        if (jefe.ataqueTimer <= 0) {
+            const tipoAtaque = jefe.ataques[jefe.ataqueFase % jefe.ataques.length];
+            ejecutarAtaqueJefe(tipoAtaque);
+            jefe.ataqueFase++;
+            // Cooldown se reduce con el tier (más agresivo en niveles altos)
+            jefe.ataqueTimer = Math.max(60, 160 - jefe.tier * 12);
+        }
+
+        // Mover balas del jefe
+        balasJefe = balasJefe.filter(b => b.y < ALTO + 20 && b.x > -20 && b.x < ANCHO + 20);
+        balasJefe.forEach(b => {
+            b.x += b.vx;
+            b.y += b.vy;
+            b.rotacion = (b.rotacion || 0) + (b.rotVel || 0);
+        });
+
+        // Colisión balas jugador → jefe
+        balas.forEach(b => {
+            if (!b.eliminada && jefe &&
+                Math.abs(b.x - jefe.x) < jefe.ancho / 2 + 4 &&
+                Math.abs(b.y - jefe.y) < jefe.alto / 2 + 6) {
+                b.eliminada = true;
+                jefe.vidas--;
+                // Flash de daño
+                jefe.dañoFlash = 8;
+                if (jefe.vidas <= 0) matarJefe();
+            }
+        });
+        balas = balas.filter(b => !b.eliminada);
+        if (jefe) jefe.dañoFlash = Math.max(0, (jefe.dañoFlash || 0) - 1);
+
+        // Colisión balas jefe → jugador
+        balasJefe.forEach(b => {
+            if (!b.eliminada &&
+                Math.abs(b.x - jugador.x) < jugador.ancho / 2 + (b.radio || 6) &&
+                Math.abs(b.y - jugador.y) < jugador.alto / 2 + (b.radio || 6)) {
+                b.eliminada = true;
+                dañarJugador();
+            }
+        });
+        balasJefe = balasJefe.filter(b => !b.eliminada);
+    }
+
+    function ejecutarAtaqueJefe(tipo) {
+        if (!jefe) return;
+        if (tipo === 'laser') {
+            // Láser apuntado al jugador
+            const dx = jugador.x - jefe.x;
+            const dy = jugador.y - jefe.y;
+            const dist = Math.hypot(dx, dy);
+            const spd = 5 + jefe.tier * 0.5;
+            balasJefe.push({
+                x: jefe.x, y: jefe.y + jefe.alto / 2,
+                vx: (dx / dist) * spd,
+                vy: (dy / dist) * spd,
+                radio: 5, tipo: 'laser',
+                color: jefe.color, eliminada: false
+            });
+            bossLaserSound();
+        } else if (tipo === 'chatarra') {
+            // Dispersión de chatarra en abanico
+            const cantidad = 5 + jefe.tier;
+            for (let i = 0; i < cantidad; i++) {
+                const ang = (Math.PI / (cantidad + 1)) * (i + 1);  // abanico hacia abajo
+                const spd = 2.5 + Math.random() * 1.5;
+                balasJefe.push({
+                    x: jefe.x + (Math.random() - 0.5) * 30,
+                    y: jefe.y + jefe.alto / 2,
+                    vx: Math.cos(ang - Math.PI / 2) * spd + (Math.random() - 0.5),
+                    vy: Math.sin(ang) * spd,
+                    radio: 7, tipo: 'chatarra',
+                    rotacion: Math.random() * Math.PI * 2,
+                    rotVel: (Math.random() - 0.5) * 0.15,
+                    color: '#e8c97a', eliminada: false
+                });
+                bossChatarraSound();
+            }
+        } else if (tipo === 'rafaga') {
+            // Ráfaga rápida de 3 láseres seguidos
+            for (let i = 0; i < 3; i++) {
+                setTimeout(() => {
+                    if (!jefe) return;
+                    const dx = jugador.x - jefe.x + (i - 1) * 30;
+                    const dy = jugador.y - jefe.y;
+                    const dist = Math.hypot(dx, dy) || 1;
+                    const spd = 6;
+                    balasJefe.push({
+                        x: jefe.x, y: jefe.y + jefe.alto / 2,
+                        vx: (dx / dist) * spd, vy: (dy / dist) * spd,
+                        radio: 4, tipo: 'laser',
+                        color: jefe.colorSecundario, eliminada: false
+                    });
+                    bossLaserSound();
+                }, i * 120);
+            }
+        }
+    }
+
+    function matarJefe() {
+        if (!jefe) return;
+        crearExplosion(jefe.x, jefe.y, jefe.color);
+        crearExplosion(jefe.x - 20, jefe.y - 10, jefe.colorSecundario);
+        crearExplosion(jefe.x + 20, jefe.y + 10, jefe.color);
+        bossDeathSound();
+        const ganado = jefe.chatarraVal;
+        chatarra += ganado;
+        puntuacion += ganado * 10;
+        actualizarHUD();
+        jefe = null;
+        balasJefe = [];
+        // Comprobar victoria (oleada 100)
+        if (oleada >= MAX_OLEADAS) {
+            setTimeout(() => { estado = ESTADOS.VICTORIA; victorySound(); }, 800);
+        } else {
+            setTimeout(() => terminarOleada(), 800);
         }
     }
 
@@ -504,6 +716,7 @@
         if (estado === ESTADOS.MENU) { drawMenu(); return; }
         if (estado === ESTADOS.TIENDA) { drawTienda(); return; }
         if (estado === ESTADOS.GAMEOVER) { drawGameOver(); return; }
+        if (estado === ESTADOS.VICTORIA) { drawVictoria(); return; }
 
         // Explosiones
         explosiones.forEach(ex => {
@@ -538,7 +751,46 @@
             ctx.restore();
         });
 
-        // Balas
+        // Jefe
+        if (jefe) drawJefe();
+
+        // Balas del jefe
+        balasJefe.forEach(b => {
+            ctx.save();
+            ctx.globalAlpha = 0.95;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = b.color;
+            if (b.tipo === 'laser') {
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, b.radio, 0, Math.PI * 2);
+                ctx.fillStyle = b.color;
+                ctx.fill();
+                // núcleo blanco
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, b.radio * 0.4, 0, Math.PI * 2);
+                ctx.fillStyle = '#fff';
+                ctx.fill();
+            } else {
+                // chatarra: pequeño hexágono rotado
+                ctx.translate(b.x, b.y);
+                ctx.rotate(b.rotacion || 0);
+                ctx.beginPath();
+                for (let i = 0; i < 6; i++) {
+                    const a = (i / 6) * Math.PI * 2;
+                    i === 0 ? ctx.moveTo(Math.cos(a)*b.radio, Math.sin(a)*b.radio)
+                            : ctx.lineTo(Math.cos(a)*b.radio, Math.sin(a)*b.radio);
+                }
+                ctx.closePath();
+                ctx.strokeStyle = b.color;
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+                ctx.fillStyle = b.color + '44';
+                ctx.fill();
+            }
+            ctx.restore();
+        });
+
+        // Balas jugador
         balas.forEach(b => {
             ctx.save();
             ctx.shadowBlur = 8;
@@ -567,16 +819,30 @@
             ctx.restore();
         }
 
-        // HUD en canvas — oleada y chatarra flotante
-        ctx.fillStyle = 'rgba(0,0,0,0.4)';
-        ctx.fillRect(0, 0, ANCHO, 28);
+        // HUD en canvas
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(0, 0, ANCHO, jefe ? 58 : 28);
         ctx.fillStyle = '#454560';
         ctx.font = '11px "DM Mono", monospace';
         ctx.textAlign = 'left';
-        ctx.fillText(`OLEADA ${oleada}`, 10, 18);
+        const esBoss = oleada % 5 === 0;
+        const oleadaLabel = esBoss ? `⚠ JEFE — OLEADA ${oleada}` : `OLEADA ${oleada}/100`;
+        ctx.fillStyle = esBoss ? '#ff4488' : '#454560';
+        ctx.fillText(oleadaLabel, 10, 18);
         ctx.textAlign = 'right';
+        ctx.fillStyle = '#34c77b';
         ctx.fillText(`⚙ ${chatarra}`, ANCHO - 10, 18);
         ctx.textAlign = 'center';
+        // Barra de progreso hacia próximo jefe (solo si no hay jefe activo)
+        if (!jefe) {
+            const hasta = 5 - (oleada % 5);
+            const pct = hasta === 5 ? 1 : (5 - hasta) / 5;
+            ctx.fillStyle = 'rgba(255,68,136,0.15)';
+            ctx.fillRect(0, 22, ANCHO * pct, 4);
+            ctx.fillStyle = '#303040';
+            ctx.font = '8px "DM Mono", monospace';
+            ctx.fillText(hasta === 5 ? '¡JEFE VENCIDO!' : `Próximo jefe en ${hasta} oleada${hasta > 1 ? 's' : ''}`, ANCHO / 2, 27);
+        }
     }
 
     /* ── Dibujar nave jugador ── */
@@ -683,6 +949,134 @@
         ctx.restore();
     }
 
+    /* ── Dibujar jefe ── */
+    function drawJefe() {
+        if (!jefe) return;
+        const x = jefe.x, y = jefe.y;
+        const flash = jefe.dañoFlash > 0;
+
+        ctx.save();
+        ctx.shadowBlur = 20 + Math.sin(bgPulse * 3) * 8;
+        ctx.shadowColor = jefe.color;
+
+        // Cuerpo central (hexágono)
+        ctx.fillStyle = flash ? '#ffffff' : jefe.color;
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+            const a = (i / 6) * Math.PI * 2 + jefe.rotorAng * 0.3;
+            const rx = jefe.ancho / 2, ry = jefe.alto / 2;
+            const px = Math.cos(a) * rx, py = Math.sin(a) * ry;
+            i === 0 ? ctx.moveTo(x + px, y + py) : ctx.lineTo(x + px, y + py);
+        }
+        ctx.closePath();
+        ctx.fill();
+
+        // Anillo exterior giratorio
+        ctx.strokeStyle = flash ? '#ffffff' : jefe.colorSecundario;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        for (let i = 0; i < 8; i++) {
+            const a = (i / 8) * Math.PI * 2 + jefe.rotorAng;
+            const r = jefe.ancho / 2 + 14;
+            const px = x + Math.cos(a) * r, py = y + Math.sin(a) * r;
+            i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.stroke();
+
+        // Núcleo brillante
+        ctx.fillStyle = flash ? jefe.color : '#ffffff';
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(x, y, 10 + Math.sin(bgPulse * 5) * 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Cañones laterales
+        [-1, 1].forEach(lado => {
+            ctx.fillStyle = flash ? '#fff' : jefe.colorSecundario;
+            ctx.beginPath();
+            ctx.roundRect(x + lado * (jefe.ancho / 2 - 4), y + 8, lado * 14, 8, 2);
+            ctx.fill();
+        });
+
+        ctx.restore();
+
+        // Nombre del jefe (encima)
+        ctx.save();
+        ctx.fillStyle = jefe.color;
+        ctx.font = `bold 11px "DM Mono", monospace`;
+        ctx.textAlign = 'center';
+        ctx.shadowBlur = 8; ctx.shadowColor = jefe.color;
+        ctx.fillText(`⚠ ${jefe.nombre} ⚠`, x, y - jefe.alto / 2 - 20);
+        ctx.restore();
+
+        // Barra de vida del jefe (en la parte superior del canvas)
+        const bw = ANCHO - 60, bh = 10, bx = 30, by = 32;
+        const pct = jefe.vidas / jefe.vidasMax;
+        // Fondo
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 4); ctx.fill();
+        // Barra
+        const barColor = pct > 0.5 ? jefe.color : pct > 0.25 ? '#e8c97a' : '#e8445a';
+        ctx.save();
+        ctx.shadowBlur = 8; ctx.shadowColor = barColor;
+        ctx.fillStyle = barColor;
+        ctx.beginPath(); ctx.roundRect(bx, by, bw * pct, bh, 4); ctx.fill();
+        ctx.restore();
+        // Texto
+        ctx.fillStyle = '#eeeef5';
+        ctx.font = '9px "DM Mono", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${jefe.nombre}  ${jefe.vidas}/${jefe.vidasMax}`, ANCHO / 2, by + bh + 12);
+
+        // Intro flash text
+        if (jefe.entraAnimacion) {
+            ctx.save();
+            ctx.globalAlpha = Math.min(1, (120 - (jefe.yTarget - jefe.y) / 2) / 60);
+            ctx.fillStyle = jefe.color;
+            ctx.font = `bold 20px "DM Mono", monospace`;
+            ctx.shadowBlur = 20; ctx.shadowColor = jefe.color;
+            ctx.textAlign = 'center';
+            ctx.fillText(`⚠ JEFE OLEADA ${oleada} ⚠`, ANCHO / 2, ALTO / 2 - 20);
+            ctx.restore();
+        }
+    }
+
+    /* ── Victoria ── */
+    function drawVictoria() {
+        ctx.fillStyle = 'rgba(4,4,14,0.88)';
+        ctx.fillRect(0, 0, ANCHO, ALTO);
+        ctx.save();
+        const g = ctx.createLinearGradient(0, ALTO / 2 - 60, 0, ALTO / 2);
+        g.addColorStop(0, '#e8c97a'); g.addColorStop(1, '#34c77b');
+        ctx.fillStyle = g;
+        ctx.shadowBlur = 30; ctx.shadowColor = '#e8c97a';
+        ctx.font = 'bold 30px "DM Mono", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('¡VICTORIA!', ANCHO / 2, ALTO / 2 - 50);
+        ctx.restore();
+        ctx.fillStyle = '#eeeef5';
+        ctx.font = '15px "DM Mono", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('100 OLEADAS COMPLETADAS', ANCHO / 2, ALTO / 2 - 14);
+        ctx.fillStyle = '#e8c97a';
+        ctx.font = 'bold 22px "DM Mono", monospace';
+        ctx.fillText(`${puntuacion} pts`, ANCHO / 2, ALTO / 2 + 20);
+        ctx.fillStyle = '#454580';
+        ctx.font = '11px "DM Mono", monospace';
+        ctx.fillText('Eres el Defensor Supremo del Espacio', ANCHO / 2, ALTO / 2 + 48);
+        // Estrellas celebración
+        estrellas.forEach(s => {
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, s.r + 0.5, 0, Math.PI * 2);
+            ctx.fillStyle = `hsl(${(s.x + bgPulse * 50) % 360}, 80%, 70%)`;
+            ctx.globalAlpha = 0.5 + s.br * 0.5;
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        });
+    }
+
     /* ══════════════════════════════════════════
        TIENDA
     ══════════════════════════════════════════ */
@@ -747,6 +1141,7 @@
 
     // Click en canvas para tienda
     canvas.addEventListener('click', e => {
+        if (estado === ESTADOS.VICTORIA) { iniciarJuego(); return; }
         if (estado !== ESTADOS.TIENDA) return;
         const rect = canvas.getBoundingClientRect();
         const scaleX = ANCHO / rect.width;
@@ -796,11 +1191,12 @@
 
         // Título
         ctx.save();
-        ctx.shadowBlur = 20; ctx.shadowColor = '#e8c97a';
-        ctx.fillStyle = '#e8c97a';
+        const proxBoss = (oleada + 1) % 5 === 0;
+        ctx.shadowBlur = 20; ctx.shadowColor = proxBoss ? '#ff4488' : '#e8c97a';
+        ctx.fillStyle = proxBoss ? '#ff4488' : '#e8c97a';
         ctx.font = 'bold 22px "DM Mono", monospace';
         ctx.textAlign = 'center';
-        ctx.fillText('⚙  TALLER ESPACIAL', ANCHO / 2, 44);
+        ctx.fillText(proxBoss ? '⚠  JEFE SE APROXIMA' : '⚙  TALLER ESPACIAL', ANCHO / 2, 44);
         ctx.restore();
 
         ctx.fillStyle = '#454560';
