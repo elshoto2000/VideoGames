@@ -28,349 +28,204 @@
             color: var(--text);
             min-height: 100vh;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 2rem 1rem;
+            overflow-y: auto;
+            padding: 40px 20px;
+            position: relative;
         }
 
-        /* Fondo con cuadrícula sutil */
-        body::before {
-            content: '';
+        #bg-canvas {
             position: fixed;
             inset: 0;
-            background-image:
-                linear-gradient(rgba(124,106,255,0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(124,106,255,0.03) 1px, transparent 1px);
-            background-size: 40px 40px;
+            width: 100%;
+            height: 100%;
             pointer-events: none;
+            z-index: 0;
         }
 
-        .logo-link {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            text-decoration: none;
-            margin-bottom: 2.5rem;
-            color: var(--muted);
-            font-size: 0.85rem;
-            letter-spacing: 0.08em;
-            font-family: 'DM Mono', monospace;
-            transition: color 0.2s;
-        }
-        .logo-link:hover { color: var(--text); }
-        .logo-link span { color: var(--accent); font-weight: 500; }
-
-        .card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 2.5rem;
+        .auth-container {
             width: 100%;
             max-width: 440px;
             position: relative;
-            overflow: hidden;
-        }
-        .card::before {
-            content: '';
-            position: absolute;
-            top: -80px; right: -80px;
-            width: 200px; height: 200px;
-            background: radial-gradient(circle, rgba(124,106,255,0.12), transparent 70%);
-            pointer-events: none;
+            z-index: 1;
         }
 
-        h1 {
-            font-size: 1.5rem;
-            font-weight: 500;
-            color: var(--text);
-            margin-bottom: 0.4rem;
+        .auth-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
         }
-        .subtitle {
-            font-size: 0.875rem;
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+        .header p {
             color: var(--muted);
-            margin-bottom: 2rem;
+            font-size: 14px;
+            margin-bottom: 28px;
         }
-
-        /* ── Avatar picker ── */
-        .avatar-section {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin-bottom: 1.75rem;
-            gap: 0.75rem;
-        }
-        .avatar-ring {
-            position: relative;
-            width: 90px; height: 90px;
-            cursor: pointer;
-        }
-        #avatar-preview {
-            width: 90px; height: 90px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid var(--border);
-            transition: border-color 0.2s;
-            background: var(--surface2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2rem;
-            font-weight: 500;
+        .header p a {
             color: var(--accent);
-            font-family: 'DM Mono', monospace;
+            text-decoration: none;
         }
-        .avatar-ring:hover #avatar-preview { border-color: var(--accent); }
-        .avatar-ring .edit-badge {
-            position: absolute;
-            bottom: 2px; right: 2px;
-            width: 26px; height: 26px;
-            background: var(--accent);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.75rem;
-            border: 2px solid var(--surface);
-        }
-        #file-input { display: none; }
-        .avatar-hint {
-            font-size: 0.78rem;
-            color: var(--muted);
-        }
+        .header p a:hover { text-decoration: underline; }
 
-        /* ── Campos ── */
-        .field { margin-bottom: 1.1rem; }
-        label {
+        .input-group {
+            margin-bottom: 18px;
+        }
+        .input-group label {
             display: block;
-            font-size: 0.78rem;
-            font-weight: 500;
+            font-family: 'DM Mono', monospace;
+            font-size: 12px;
             color: var(--muted);
-            letter-spacing: 0.06em;
-            margin-bottom: 0.45rem;
+            margin-bottom: 6px;
             text-transform: uppercase;
         }
-        input[type="text"],
-        input[type="password"] {
+        .input-group input {
             width: 100%;
             background: var(--surface2);
             border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            padding: 11px 14px;
             color: var(--text);
-            font-size: 0.95rem;
-            font-family: 'DM Sans', sans-serif;
-            transition: border-color 0.2s, box-shadow 0.2s;
+            font-size: 15px;
             outline: none;
+            transition: border-color 0.2s;
         }
-        input:focus {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(124,106,255,0.12);
-        }
-        input::placeholder { color: var(--muted); }
+        .input-group input:focus { border-color: var(--accent); }
 
-        /* ── Fuerza de contraseña ── */
-        .strength-bar {
-            height: 3px;
-            border-radius: 2px;
-            background: var(--border);
-            margin-top: 6px;
-            overflow: hidden;
+        /* Selector de Avatar Avanzado */
+        .avatar-section {
+            margin-bottom: 24px;
         }
-        .strength-fill {
-            height: 100%;
-            border-radius: 2px;
-            width: 0%;
-            transition: width 0.3s, background 0.3s;
+        .avatar-section p {
+            font-family: 'DM Mono', monospace;
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 10px;
+            text-transform: uppercase;
         }
-
-        /* ── Botón ── */
-        .btn-primary {
-            width: 100%;
-            background: var(--accent);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            padding: 0.85rem;
-            font-size: 0.95rem;
-            font-weight: 500;
-            font-family: 'DM Sans', sans-serif;
+        .avatar-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+        .avatar-option {
+            border: 2px solid var(--border);
+            background: var(--surface2);
+            border-radius: 12px;
+            padding: 8px;
             cursor: pointer;
-            transition: background 0.2s, transform 0.1s;
-            margin-top: 0.5rem;
-            letter-spacing: 0.02em;
+            text-align: center;
+            transition: all 0.2s ease;
         }
-        .btn-primary:hover { background: var(--accent-s); }
-        .btn-primary:active { transform: scale(0.99); }
-        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .avatar-option:hover {
+            border-color: var(--border-h);
+            transform: translateY(-2px);
+        }
+        .avatar-option.selected {
+            border-color: var(--accent);
+            background: rgba(124, 106, 255, 0.08);
+        }
+        .avatar-option svg {
+            width: 100%;
+            height: auto;
+            max-width: 44px;
+            display: inline-block;
+        }
 
         .msg {
-            margin-top: 1rem;
-            font-size: 0.85rem;
-            text-align: center;
-            min-height: 1.2em;
-            border-radius: 8px;
-            padding: 0.5rem;
+            font-size: 14px;
+            margin-bottom: 18px;
+            min-height: 20px;
+            display: none;
         }
-        .msg.error   { color: var(--danger);  background: rgba(255,79,79,0.08); }
-        .msg.success { color: var(--success); background: rgba(62,207,142,0.08); }
+        .msg.error { color: var(--danger); display: block; }
+        .msg.success { color: var(--success); display: block; }
 
-        .footer-link {
-            text-align: center;
-            margin-top: 1.5rem;
-            font-size: 0.85rem;
-            color: var(--muted);
-        }
-        .footer-link a {
-            color: var(--accent);
-            text-decoration: none;
-            font-weight: 500;
-        }
-        .footer-link a:hover { text-decoration: underline; }
-
-        /* Spinner */
-        .spinner {
+        .back-home {
             display: inline-block;
-            width: 16px; height: 16px;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-top-color: white;
-            border-radius: 50%;
-            animation: spin 0.7s linear infinite;
-            vertical-align: middle;
-            margin-right: 6px;
+            margin-top: 24px;
+            color: var(--muted);
+            font-size: 13px;
+            text-decoration: none;
+            font-family: 'DM Mono', monospace;
         }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        .back-home:hover { color: var(--text); }
     </style>
 </head>
 <body>
-    <a href="/" class="logo-link">← <span>ARCADE</span></a>
 
-    <div class="card">
-        <h1>Crear cuenta</h1>
-        <p class="subtitle">Únete al arcade y compite por el top</p>
-
-        <!-- Avatar -->
-        <div class="avatar-section">
-            <div class="avatar-ring" onclick="document.getElementById('file-input').click()">
-                <div id="avatar-preview" id="av-div">?</div>
-                <div class="edit-badge">✎</div>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="header">
+                <h1>Crear cuenta</h1>
+                <p>¿Ya tienes una cuenta? <a href="/login">Inicia sesión aquí</a></p>
             </div>
-            <input type="file" id="file-input" accept="image/*">
-            <span class="avatar-hint">Foto de perfil (opcional)</span>
-        </div>
 
-        <!-- Formulario -->
-        <div class="field">
-            <label>Nombre de usuario</label>
-            <input type="text" id="username" placeholder="ej. CosmicPlayer99" maxlength="20" autocomplete="off">
-        </div>
+            <form id="form-registro">
+                <div class="input-group">
+                    <label for="username">Nombre de usuario</label>
+                    <input type="text" id="username" name="username" required autocomplete="username">
+                </div>
 
-        <div class="field">
-            <label>Contraseña</label>
-            <input type="password" id="password" placeholder="Mínimo 6 caracteres">
-            <div class="strength-bar"><div class="strength-fill" id="strength-fill"></div></div>
-        </div>
+                <div class="input-group">
+                    <label for="password">Contraseña</label>
+                    <input type="password" id="password" name="password" required autocomplete="new-password">
+                </div>
 
-        <div class="field">
-            <label>Confirmar contraseña</label>
-            <input type="password" id="password2" placeholder="Repite tu contraseña">
-        </div>
+                <div class="input-group">
+                    <label for="password-confirm">Confirmar contraseña</label>
+                    <input type="password" id="password-confirm" name="password-confirm" required autocomplete="new-password">
+                </div>
 
-        <button class="btn-primary" id="btn-reg" onclick="registrar()">Crear cuenta</button>
-        <div class="msg" id="msg"></div>
+                <div class="avatar-section">
+                    <p>Selecciona tu avatar</p>
+                    <div class="avatar-grid">
+                        <div class="avatar-option selected" onclick="selectAvatar(this, 'michi1')">
+                            <svg viewBox="0 0 36 36"><circle fill="#FFD983" cx="18" cy="18" r="18"/><path fill="#E6A633" d="M18 25c-3.3 0-6-2.7-6-6h12c0 3.3-2.7 6-6 6z"/><circle fill="#273B4A" cx="12" cy="14" r="2.5"/><circle fill="#273B4A" cx="24" cy="14" r="2.5"/><path fill="#E6A633" d="M7 6l5 5H4zM29 6l-5 5h8z"/></svg>
+                        </div>
+                        <div class="avatar-option" onclick="selectAvatar(this, 'michi2')">
+                            <svg viewBox="0 0 36 36"><circle fill="#FFAC83" cx="18" cy="18" r="18"/><path fill="#DE6B32" d="M18 25c-3.3 0-6-2.7-6-6h12c0 3.3-2.7 6-6 6z"/><circle fill="#273B4A" cx="12" cy="14" r="2.5"/><circle fill="#273B4A" cx="24" cy="14" r="2.5"/><path fill="#DE6B32" d="M6 7l4 4H3zM30 7l-4 4h7z"/></svg>
+                        </div>
+                        <div class="avatar-option" onclick="selectAvatar(this, 'michi3')">
+                            <svg viewBox="0 0 36 36"><circle fill="#CCD6DD" cx="18" cy="18" r="18"/><path fill="#99AAB5" d="M18 25c-3.3 0-6-2.7-6-6h12c0 3.3-2.7 6-6 6z"/><circle fill="#273B4A" cx="12" cy="14" r="2.5"/><circle fill="#273B4A" cx="24" cy="14" r="2.5"/><path fill="#99AAB5" d="M6 7l4 4H3zM30 7l-4 4h7z"/></svg>
+                        </div>
+                        <div class="avatar-option" onclick="selectAvatar(this, 'michi4')">
+                            <svg viewBox="0 0 36 36"><circle fill="#A4D4AE" cx="18" cy="18" r="18"/><path fill="#68A675" d="M18 25c-3.3 0-6-2.7-6-6h12c0 3.3-2.7 6-6 6z"/><circle fill="#273B4A" cx="12" cy="14" r="2.5"/><circle fill="#273B4A" cx="24" cy="14" r="2.5"/><path fill="#68A675" d="M6 7l4 4H3zM30 7l-4 4h7z"/></svg>
+                        </div>
+                    </div>
+                    <input type="hidden" id="avatar-input" name="avatar" value="michi1">
+                </div>
 
-        <div class="footer-link">
-            ¿Ya tienes cuenta? <a href="/login">Inicia sesión</a>
+                <div id="msg" class="msg"></div>
+
+                <button type="submit" class="btn-auth btn-submit" data-label="Crear cuenta">
+                    Crear cuenta
+                </button>
+            </form>
+
+            <a href="/" class="back-home">← Volver al inicio</a>
         </div>
     </div>
 
+    <canvas id="bg-canvas"></canvas>
+
     <script>
-        let avatarBase64 = '';
-
-        // Vista previa del avatar
-        document.getElementById('file-input').addEventListener('change', function() {
-            const file = this.files[0];
-            if (!file) return;
-            if (file.size > 2 * 1024 * 1024) {
-                mostrarMsg('La imagen no debe superar 2 MB', 'error');
-                return;
-            }
-            const reader = new FileReader();
-            reader.onload = e => {
-                avatarBase64 = e.target.result; // data:image/...;base64,...
-                const prev = document.getElementById('avatar-preview');
-                prev.style.backgroundImage = `url(${avatarBase64})`;
-                prev.style.backgroundSize = 'cover';
-                prev.style.backgroundPosition = 'center';
-                prev.textContent = '';
-            };
-            reader.readAsDataURL(file);
-        });
-
-        // Actualizar inicial cuando escribe el nombre
-        document.getElementById('username').addEventListener('input', function() {
-            const prev = document.getElementById('avatar-preview');
-            if (!avatarBase64) {
-                prev.textContent = this.value.trim().charAt(0).toUpperCase() || '?';
-            }
-        });
-
-        // Barra de fuerza de contraseña
-        document.getElementById('password').addEventListener('input', function() {
-            const v = this.value;
-            const fill = document.getElementById('strength-fill');
-            let score = 0;
-            if (v.length >= 6)  score++;
-            if (v.length >= 10) score++;
-            if (/[A-Z]/.test(v)) score++;
-            if (/[0-9]/.test(v)) score++;
-            if (/[^a-zA-Z0-9]/.test(v)) score++;
-            const pct   = (score / 5) * 100;
-            const color = score <= 1 ? '#ff4f4f' : score <= 3 ? '#f5a623' : '#3ecf8e';
-            fill.style.width  = pct + '%';
-            fill.style.background = color;
-        });
-
-        async function registrar() {
-            const username  = document.getElementById('username').value.trim();
-            const password  = document.getElementById('password').value;
-            const password2 = document.getElementById('password2').value;
-            const btn = document.getElementById('btn-reg');
-
-            if (!username || !password) { mostrarMsg('Completa todos los campos', 'error'); return; }
-            if (password.length < 6)    { mostrarMsg('La contraseña debe tener al menos 6 caracteres', 'error'); return; }
-            if (password !== password2) { mostrarMsg('Las contraseñas no coinciden', 'error'); return; }
-
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner"></span>Creando cuenta…';
-
-            try {
-                const res = await fetch('/registro', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password, avatar: avatarBase64 })
-                });
-                const data = await res.json();
-                if (data.status === 'success') {
-                    mostrarMsg('¡Cuenta creada! Redirigiendo…', 'success');
-                    setTimeout(() => window.location.href = '/login', 1200);
-                } else {
-                    mostrarMsg(data.message || 'Error desconocido', 'error');
-                    btn.disabled = false;
-                    btn.innerHTML = 'Crear cuenta';
-                }
-            } catch {
-                mostrarMsg('Error de conexión', 'error');
-                btn.disabled = false;
-                btn.innerHTML = 'Crear cuenta';
-            }
-        }
-
-        function mostrarMsg(texto, tipo) {
-            const el = document.getElementById('msg');
-            el.textContent = texto;
-            el.className = 'msg ' + tipo;
+        function selectAvatar(element, avatarName) {
+            document.querySelectorAll('.avatar-option').forEach(opt => opt.classList.remove('selected'));
+            element.classList.add('selected');
+            document.getElementById('avatar-input').value = avatarName;
         }
     </script>
+
+    <script src="{{ url_for('static', filename='js/main-effects.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/auth-animations.js') }}"></script>
 </body>
 </html>
