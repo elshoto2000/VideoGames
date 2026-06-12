@@ -2,9 +2,9 @@
    ARCADE — Diseño Premium / Formal 2026
    Estética: Dark Editorial · Refinado · Tipográfico
    ═══════════════════════════════════════════════ */
-
+ 
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=DM+Mono:wght@400;500&display=swap');
-
+ 
 /* ── Variables ──────────────────────────────── */
 :root {
   /* Fondo */
@@ -12,51 +12,51 @@
   --bg-card:   #0f0f1a;
   --bg-raised: #14141f;
   --bg-hover:  #1a1a28;
-
+ 
   /* Bordes */
   --border:    rgba(255,255,255,0.06);
   --border-md: rgba(255,255,255,0.10);
   --border-hi: rgba(255,255,255,0.18);
-
+ 
   /* Texto */
   --text:      #eeeef5;
   --text-2:    #a8a8be;
   --muted:     #5a5a78;
-
+ 
   /* Acento único — Azul eléctrico sobrio */
   --accent:    #4f7cff;
   --accent-s:  #3a63e0;
   --accent-glow: rgba(79,124,255,0.18);
-
+ 
   /* Estados */
   --success:   #34c77b;
   --danger:    #e8445a;
   --gold:      #e8b94a;
   --silver:    #9eaabd;
   --bronze:    #c47f4a;
-
+ 
   /* Tipografía */
   --font-display: 'Syne', sans-serif;
   --font-body:    'DM Sans', sans-serif;
   --font-mono:    'DM Mono', monospace;
-
+ 
   /* Espacios */
   --radius-sm:  8px;
   --radius-md:  12px;
   --radius-lg:  18px;
   --radius-xl:  24px;
-
+ 
   /* Sombras */
   --shadow-sm: 0 2px 8px rgba(0,0,0,0.4);
   --shadow-md: 0 6px 24px rgba(0,0,0,0.5);
   --shadow-lg: 0 12px 48px rgba(0,0,0,0.6);
 }
-
+ 
 /* ── Reset & Base ───────────────────────────── */
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-
+ 
 html { scroll-behavior: smooth; }
-
+ 
 body {
   font-family: var(--font-body);
   background: var(--bg);
@@ -66,7 +66,7 @@ body {
   font-size: 15px;
   -webkit-font-smoothing: antialiased;
 }
-
+ 
 /* Ruido de fondo sutil */
 body::before {
   content: '';
@@ -78,7 +78,7 @@ body::before {
   pointer-events: none;
   z-index: 0;
 }
-
+ 
 /* ─────────────────────────────────────────────
    NAVBAR
 ───────────────────────────────────────────── */
@@ -96,7 +96,7 @@ body::before {
   top: 0;
   z-index: 200;
 }
-
+ 
 .logo {
   display: flex;
   align-items: center;
@@ -108,16 +108,16 @@ body::before {
   letter-spacing: -0.01em;
   text-decoration: none;
 }
-
+ 
 .logo span { color: var(--accent); }
 .nav-gif { width: 30px; height: 30px; border-radius: 6px; }
-
+ 
 .nav-links {
   display: flex;
   list-style: none;
   gap: 0.25rem;
 }
-
+ 
 .nav-links a {
   display: block;
   padding: 6px 14px;
@@ -128,15 +128,15 @@ body::before {
   border-radius: var(--radius-sm);
   transition: color 0.15s, background 0.15s;
 }
-
+ 
 .nav-links a:hover {
   color: var(--text);
   background: var(--bg-hover);
 }
-
+ 
 /* ── Zona de sesión en navbar ── */
 #nav-session { display: flex; align-items: center; }
-
+ 
 .nav-user-btn {
   display: flex;
   align-items: center;
@@ -150,12 +150,12 @@ body::before {
   text-decoration: none;
   position: relative;
 }
-
+ 
 .nav-user-btn:hover {
   border-color: var(--border-hi);
   background: var(--bg-hover);
 }
-
+ 
 .nav-avatar {
   width: 30px; height: 30px;
   border-radius: 50%;
@@ -170,9 +170,9 @@ body::before {
   overflow: hidden;
   flex-shrink: 0;
 }
-
+ 
 .nav-avatar img { width:100%; height:100%; object-fit:cover; }
-
+ 
 .nav-username {
   font-size: 0.82rem;
   font-weight: 500;
@@ -182,15 +182,15 @@ body::before {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
+ 
 .nav-chevron {
   font-size: 0.6rem;
   color: var(--muted);
   transition: transform 0.2s;
 }
-
+ 
 .nav-user-btn.open .nav-chevron { transform: rotate(180deg); }
-
+ 
 /* ── Dropdown menu ── */
 .nav-dropdown {
   position: absolute;
@@ -208,26 +208,26 @@ body::before {
   transition: opacity 0.18s, transform 0.18s;
   z-index: 300;
 }
-
+ 
 .nav-dropdown.open {
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0) scale(1);
 }
-
+ 
 .nav-dropdown-header {
   padding: 10px 12px 8px;
   border-bottom: 1px solid var(--border);
   margin-bottom: 4px;
 }
-
+ 
 .nav-dropdown-header span {
   display: block;
   font-size: 0.78rem;
   color: var(--muted);
   font-family: var(--font-mono);
 }
-
+ 
 .nav-dropdown-header strong {
   display: block;
   font-size: 0.9rem;
@@ -236,7 +236,7 @@ body::before {
   font-family: var(--font-display);
   margin-top: 2px;
 }
-
+ 
 .dropdown-item {
   display: flex;
   align-items: center;
@@ -255,28 +255,28 @@ body::before {
   font-family: var(--font-body);
   transition: background 0.12s, color 0.12s;
 }
-
+ 
 .dropdown-item:hover {
   background: var(--bg-hover);
   color: var(--text);
 }
-
+ 
 .dropdown-item.danger { color: var(--danger); }
 .dropdown-item.danger:hover { background: rgba(232,68,90,0.08); }
-
+ 
 .dropdown-divider {
   height: 1px;
   background: var(--border);
   margin: 4px 0;
 }
-
+ 
 .dropdown-icon {
   font-size: 1rem;
   width: 20px;
   text-align: center;
   flex-shrink: 0;
 }
-
+ 
 .btn-login-nav {
   display: inline-flex;
   align-items: center;
@@ -291,12 +291,12 @@ body::before {
   border-radius: 40px;
   transition: background 0.2s, box-shadow 0.2s;
 }
-
+ 
 .btn-login-nav:hover {
   background: var(--accent-s);
   box-shadow: 0 0 20px var(--accent-glow);
 }
-
+ 
 /* ─────────────────────────────────────────────
    HERO
 ───────────────────────────────────────────── */
@@ -308,7 +308,7 @@ body::before {
   position: relative;
   overflow: hidden;
 }
-
+ 
 /* Líneas de cuadrícula en el hero */
 .hero-section::before {
   content: '';
@@ -321,7 +321,7 @@ body::before {
   mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, black 30%, transparent 100%);
   pointer-events: none;
 }
-
+ 
 .hero-content {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -331,7 +331,7 @@ body::before {
   margin: 0 auto;
   width: 100%;
 }
-
+ 
 .hero-eyebrow {
   display: inline-flex;
   align-items: center;
@@ -348,7 +348,7 @@ body::before {
   font-family: var(--font-mono);
   margin-bottom: 1.25rem;
 }
-
+ 
 .hero-eyebrow::before {
   content: '';
   width: 6px; height: 6px;
@@ -356,12 +356,12 @@ body::before {
   background: var(--accent);
   animation: pulse-dot 2s ease-in-out infinite;
 }
-
+ 
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; transform: scale(1); }
   50%       { opacity: 0.4; transform: scale(0.7); }
 }
-
+ 
 .hero-text h1 {
   font-family: var(--font-display);
   font-size: clamp(2.2rem, 5vw, 3.8rem);
@@ -371,12 +371,12 @@ body::before {
   color: var(--text);
   margin-bottom: 1.25rem;
 }
-
+ 
 .hero-text h1 em {
   font-style: normal;
   color: var(--accent);
 }
-
+ 
 .hero-text p {
   font-size: 1.05rem;
   color: var(--text-2);
@@ -384,7 +384,7 @@ body::before {
   max-width: 440px;
   margin-bottom: 2rem;
 }
-
+ 
 .hero-cta {
   display: inline-flex;
   align-items: center;
@@ -399,30 +399,30 @@ body::before {
   border-radius: 40px;
   transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
 }
-
+ 
 .hero-cta:hover {
   background: var(--accent-s);
   box-shadow: 0 0 28px var(--accent-glow);
   transform: translateY(-1px);
 }
-
+ 
 .hero-image {
   display: flex;
   justify-content: center;
   align-items: center;
 }
-
+ 
 .floating-cup {
   width: min(340px, 100%);
   animation: float 4s ease-in-out infinite;
   filter: drop-shadow(0 8px 40px rgba(79,124,255,0.25));
 }
-
+ 
 @keyframes float {
   0%, 100% { transform: translateY(0); }
   50%       { transform: translateY(-16px); }
 }
-
+ 
 /* ── Separador ── */
 .separator {
   border: none;
@@ -430,7 +430,7 @@ body::before {
   background: linear-gradient(90deg, transparent, var(--border-md) 30%, var(--border-md) 70%, transparent);
   margin: 0;
 }
-
+ 
 /* ─────────────────────────────────────────────
    JUEGOS — Sección showcase
 ───────────────────────────────────────────── */
@@ -439,12 +439,12 @@ body::before {
   max-width: 1100px;
   margin: 0 auto;
 }
-
+ 
 .section-header {
   margin-bottom: 3.5rem;
   text-align: center;
 }
-
+ 
 .section-label {
   display: inline-block;
   font-family: var(--font-mono);
@@ -455,7 +455,7 @@ body::before {
   color: var(--accent);
   margin-bottom: 0.75rem;
 }
-
+ 
 .section-title {
   font-family: var(--font-display);
   font-size: clamp(1.8rem, 4vw, 2.8rem);
@@ -464,7 +464,7 @@ body::before {
   color: var(--text);
   text-shadow: none;
 }
-
+ 
 /* Tarjetas de juego */
 .game-entry {
   display: grid;
@@ -478,19 +478,19 @@ body::before {
   overflow: hidden;
   transition: border-color 0.25s, box-shadow 0.25s;
 }
-
+ 
 .game-entry:hover {
   border-color: var(--border-md);
   box-shadow: var(--shadow-md), 0 0 0 1px rgba(79,124,255,0.06);
 }
-
+ 
 .game-info {
   padding: 2.5rem;
   display: flex;
   flex-direction: column;
   justify-content: center;
 }
-
+ 
 .game-tag {
   display: inline-block;
   font-family: var(--font-mono);
@@ -501,7 +501,7 @@ body::before {
   color: var(--muted);
   margin-bottom: 0.75rem;
 }
-
+ 
 .game-info h3 {
   font-family: var(--font-display);
   font-size: 1.75rem;
@@ -510,7 +510,7 @@ body::before {
   color: var(--text);
   margin-bottom: 0.75rem;
 }
-
+ 
 .game-info p {
   font-size: 0.9rem;
   color: var(--text-2);
@@ -518,13 +518,13 @@ body::before {
   margin-bottom: 1.75rem;
   max-width: 320px;
 }
-
+ 
 .game-preview {
   position: relative;
   overflow: hidden;
   min-height: 240px;
 }
-
+ 
 .game-preview img {
   width: 100%;
   height: 100%;
@@ -532,12 +532,12 @@ body::before {
   display: block;
   transition: transform 0.4s ease;
 }
-
+ 
 .game-entry:hover .game-preview img { transform: scale(1.04); }
-
+ 
 .game-entry.reverse .game-info { order: 2; }
 .game-entry.reverse .game-preview { order: 1; }
-
+ 
 /* ── Botones ── */
 .btn-play {
   display: inline-flex;
@@ -556,16 +556,16 @@ body::before {
   transition: background 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
   align-self: flex-start;
 }
-
+ 
 .btn-play:hover {
   background: var(--accent);
   border-color: var(--accent);
   color: white;
   box-shadow: 0 4px 18px var(--accent-glow);
 }
-
+ 
 .btn-play::after { content: '→'; }
-
+ 
 /* ── Auth buttons ── */
 .btn-auth {
   display: inline-flex;
@@ -582,17 +582,17 @@ body::before {
   cursor: pointer;
   transition: background 0.2s, box-shadow 0.2s;
 }
-
+ 
 .btn-auth:hover {
   background: var(--accent-s);
   box-shadow: 0 4px 18px var(--accent-glow);
 }
-
+ 
 /* ─────────────────────────────────────────────
    PANTALLA DE JUEGO
 ───────────────────────────────────────────── */
 #game-screen { position: relative; z-index: 1; }
-
+ 
 .game-layout {
   display: grid;
   grid-template-columns: 1fr 280px;
@@ -602,13 +602,13 @@ body::before {
   margin: 0 auto;
   align-items: start;
 }
-
+ 
 .game-main {
   display: flex;
   flex-direction: column;
   align-items: center;
 }
-
+ 
 .game-main h2 {
   font-family: var(--font-display);
   font-size: 1.1rem;
@@ -617,16 +617,16 @@ body::before {
   margin-bottom: 1.25rem;
   align-self: flex-start;
 }
-
+ 
 .game-main h2 span { color: var(--accent); }
-
+ 
 .game-container {
   position: relative;
   width: 100%;
   max-width: 500px;
   margin: 0 auto;
 }
-
+ 
 /* ── Canvas placeholder ── */
 .canvas-placeholder {
   width: 100%;
@@ -643,7 +643,7 @@ body::before {
   border-radius: var(--radius-lg);
   overflow: hidden;
 }
-
+ 
 .canvas-placeholder canvas {
   display: block;
   width: 100% !important;
@@ -651,7 +651,7 @@ body::before {
   max-width: 100%;
   object-fit: contain;
 }
-
+ 
 /* Para juegos que inyectan divs */
 .canvas-placeholder > div:not(#game-over-screen):not(#simon-game-container) {
   width: 100%;
@@ -661,7 +661,7 @@ body::before {
   align-items: center;
   justify-content: center;
 }
-
+ 
 /* ── Game Over Screen ── */
 #game-over-screen {
   position: absolute !important;
@@ -676,7 +676,7 @@ body::before {
   padding: 2rem;
   border-radius: var(--radius-lg);
 }
-
+ 
 #game-over-screen h1 {
   font-family: var(--font-display);
   font-size: clamp(1.5rem, 4vw, 2.2rem) !important;
@@ -686,20 +686,20 @@ body::before {
   margin-bottom: 0.5rem !important;
   letter-spacing: -0.02em;
 }
-
+ 
 #final-score-msg {
   font-size: 1rem !important;
   color: var(--text-2) !important;
   margin-bottom: 1.5rem !important;
 }
-
+ 
 #game-over-screen .btn-play {
   width: auto;
   min-width: 160px;
   margin: 5px auto;
   justify-content: center;
 }
-
+ 
 /* ── Botón fullscreen ── */
 .fullscreen-btn {
   position: absolute;
@@ -717,13 +717,13 @@ body::before {
   transition: all 0.2s;
   z-index: 10;
 }
-
+ 
 .fullscreen-btn:hover {
   background: rgba(255,255,255,0.1);
   color: var(--text);
   border-color: var(--border-hi);
 }
-
+ 
 /* Fullscreen mode */
 .canvas-placeholder.is-fullscreen {
   position: fixed !important;
@@ -735,15 +735,15 @@ body::before {
   border-radius: 0 !important;
   z-index: 9000;
 }
-
+ 
 .canvas-placeholder.is-fullscreen canvas {
   width: 100% !important;
   height: 100% !important;
 }
-
+ 
 /* ── Contenedor Simón ── */
 #simon-game-container { width: 100%; }
-
+ 
 /* ── Boton loco clicker ── */
 #boton-loco {
   display: block;
@@ -762,13 +762,13 @@ body::before {
   transition: transform 0.1s, box-shadow 0.2s;
   touch-action: manipulation;
 }
-
+ 
 #boton-loco:hover {
   box-shadow: 0 0 36px var(--accent-glow);
 }
-
+ 
 #boton-loco:active { transform: scale(0.93); }
-
+ 
 /* ── Ranking lateral ── */
 .ranking-side {
   background: var(--bg-card);
@@ -779,7 +779,7 @@ body::before {
   position: sticky;
   top: 76px;
 }
-
+ 
 .ranking-side h3 {
   font-family: var(--font-display);
   font-size: 0.8rem;
@@ -791,9 +791,9 @@ body::before {
   margin-bottom: 1rem;
   text-shadow: none;
 }
-
+ 
 #ranking-list { list-style: none; }
-
+ 
 #ranking-list li {
   display: flex;
   justify-content: space-between;
@@ -804,18 +804,18 @@ body::before {
   font-size: 0.82rem;
   transition: color 0.15s;
 }
-
+ 
 #ranking-list li:last-child { border-bottom: none; }
 #ranking-list li:first-child { color: var(--gold); }
 #ranking-list li:nth-child(2) { color: var(--silver); }
 #ranking-list li:nth-child(3) { color: var(--bronze); }
-
+ 
 #ranking-list li b {
   font-family: var(--font-mono);
   font-weight: 500;
   font-size: 0.85rem;
 }
-
+ 
 /* ─────────────────────────────────────────────
    USER AVATAR (juego.html)
 ───────────────────────────────────────────── */
@@ -826,7 +826,7 @@ body::before {
   margin-bottom: 1.25rem;
   align-self: flex-start;
 }
-
+ 
 .game-avatar {
   width: 36px; height: 36px;
   border-radius: 50%;
@@ -841,9 +841,9 @@ body::before {
   overflow: hidden;
   flex-shrink: 0;
 }
-
+ 
 .game-avatar img { width:100%; height:100%; object-fit:cover; }
-
+ 
 /* ─────────────────────────────────────────────
    FOOTER
 ───────────────────────────────────────────── */
@@ -856,7 +856,7 @@ body::before {
   margin-top: 4rem;
   font-family: var(--font-mono);
 }
-
+ 
 /* ─────────────────────────────────────────────
    RANKING GLOBAL (ranking.html)
 ───────────────────────────────────────────── */
@@ -865,26 +865,26 @@ body::before {
   max-width: 800px;
   margin: 0 auto;
 }
-
+ 
 .ranking-container {
   background: var(--bg-card);
   padding: 1.5rem;
   border-radius: var(--radius-xl);
   border: 1px solid var(--border);
 }
-
+ 
 .ranking-table-container {
   max-height: 420px;
   overflow-y: auto;
 }
-
+ 
 .ranking-table-container::-webkit-scrollbar { width: 6px; }
 .ranking-table-container::-webkit-scrollbar-track { background: transparent; }
 .ranking-table-container::-webkit-scrollbar-thumb {
   background: var(--border-hi);
   border-radius: 10px;
 }
-
+ 
 /* ─────────────────────────────────────────────
    AUTH (login.html / registro.html)
 ───────────────────────────────────────────── */
@@ -895,7 +895,7 @@ body::before {
   min-height: 80vh;
   padding: 2rem;
 }
-
+ 
 .auth-card {
   background: var(--bg-card);
   padding: 2.5rem;
@@ -906,16 +906,16 @@ body::before {
   max-width: 440px;
   width: 100%;
 }
-
+ 
 .auth-card h2 {
   font-family: var(--font-display);
   font-size: 1.5rem;
   font-weight: 800;
   margin-bottom: 0.5rem;
 }
-
+ 
 .auth-card p { color: var(--text-2); margin-bottom: 1.5rem; }
-
+ 
 .auth-card input {
   width: 100%;
   padding: 0.85rem 1rem;
@@ -930,12 +930,12 @@ body::before {
   transition: border-color 0.2s, box-shadow 0.2s;
   outline: none;
 }
-
+ 
 .auth-card input:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-glow);
 }
-
+ 
 /* ─────────────────────────────────────────────
    RESPONSIVE
 ───────────────────────────────────────────── */
@@ -943,7 +943,7 @@ body::before {
   /* Navbar */
   .navbar { padding: 0 1.25rem; }
   .nav-links { display: none; }
-
+ 
   /* Hero */
   .hero-content {
     grid-template-columns: 1fr;
@@ -953,7 +953,7 @@ body::before {
   .hero-text p { max-width: 100%; margin-inline: auto; }
   .hero-cta { margin: 0 auto; }
   .hero-section { padding: 3rem 1.5rem; min-height: unset; }
-
+ 
   /* Juegos grid */
   .game-entry {
     grid-template-columns: 1fr;
@@ -963,51 +963,51 @@ body::before {
   .game-entry.reverse .game-preview { order: 1; }
   .game-preview { min-height: 200px; }
   .games-showcase { padding: 3rem 1.25rem; }
-
+ 
   /* Game layout */
   .game-layout {
     grid-template-columns: 1fr;
     padding: 1rem 1.25rem;
   }
-
+ 
   /* Canvas — adaptativo en móvil */
   .canvas-placeholder {
     aspect-ratio: unset;
     min-height: min(420px, 85vw);
     max-width: 100%;
   }
-
+ 
   .canvas-placeholder canvas {
     width: 100% !important;
     height: auto !important;
   }
-
+ 
   .ranking-side {
     position: static;
     width: 100%;
     margin-top: 1rem;
   }
-
+ 
   #boton-loco {
     width: min(120px, 35vw) !important;
     height: min(120px, 35vw) !important;
     font-size: 1.2rem !important;
   }
 }
-
+ 
 @media (max-width: 600px) {
   .hero-text h1 { font-size: 2rem; }
   .section-title { font-size: 1.75rem; }
   .game-info { padding: 1.5rem; }
   .game-info h3 { font-size: 1.4rem; }
   .navbar { height: 54px; }
-
+ 
   /* Simón en móvil: canvas más compacto */
   .canvas-placeholder {
     min-height: min(360px, 80vw);
   }
 }
-
+ 
 /* ─────────────────────────────────────────────
    UTILIDADES
 ───────────────────────────────────────────── */
@@ -1020,7 +1020,7 @@ body::before {
   max-width: 360px;
   text-align: center;
 }
-
+ 
 .game-over h2 {
   font-family: var(--font-display);
   font-size: 1.75rem;
@@ -1028,7 +1028,7 @@ body::before {
   color: var(--text);
   margin-bottom: 1rem;
 }
-
+ 
 /* Podio */
 .podium-container {
   display: flex;
@@ -1037,13 +1037,212 @@ body::before {
   gap: 10px;
   height: 220px;
 }
-
+ 
 .first .step  { height: 140px; background: var(--gold);   box-shadow: 0 0 20px rgba(232,185,74,0.4); }
 .second .step { height: 105px; background: var(--silver); }
 .third .step  { height: 70px;  background: var(--bronze); }
-
+ 
 /* Scrollbar global */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 6px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+ 
+/* ═══════════════════════════════════════════════
+   ADICIONES — Modernización UI/UX 2026
+   (main-effects.js · auth-animations.js · index rediseñado)
+   ═══════════════════════════════════════════════ */
+ 
+/* ── Navbar fija (upgrade de sticky → fixed) ── */
+.navbar {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 200;
+}
+ 
+/* Compensar el espacio de la navbar fija en el body */
+body { padding-top: 60px; }
+@media (max-width: 600px) { body { padding-top: 54px; } }
+ 
+/* ── Capas de pantalla del index ── */
+#layer-bienvenida,
+#layer-catalogo {
+  position: relative;
+  z-index: 1;
+}
+ 
+/* Canvas de fondo: siempre debajo de todo */
+#bg-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  width: 100%;
+  height: 100%;
+}
+ 
+/* ── Navbar botones auth separados (Login / Registro) ── */
+.nav-auth-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+ 
+.btn-nav-login {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 18px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: var(--font-body);
+  text-decoration: none;
+  border: 1px solid var(--border-md);
+  border-radius: 40px;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+.btn-nav-login:hover {
+  border-color: var(--border-hi);
+  color: var(--text);
+  background: var(--bg-hover);
+}
+ 
+.btn-nav-registro {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 18px;
+  background: var(--accent);
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: var(--font-body);
+  text-decoration: none;
+  border: 1px solid var(--accent);
+  border-radius: 40px;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.btn-nav-registro:hover {
+  background: var(--accent-s);
+  box-shadow: 0 0 20px var(--accent-glow);
+}
+ 
+@media (max-width: 600px) {
+  .btn-nav-login { display: none; }
+}
+ 
+/* ── Animación del botón de submit (auth-animations.js) ── */
+.btn-submit {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  min-width: 160px;
+  min-height: 46px;
+}
+ 
+.btn-label, .btn-spinner, .btn-check {
+  position: absolute;
+  transition: opacity 0.25s, transform 0.25s;
+}
+ 
+/* Reposo */
+.btn-label   { opacity: 1;  transform: scale(1);   }
+.btn-spinner { opacity: 0;  transform: scale(0.6); }
+.btn-check   { opacity: 0;  transform: scale(0.6); }
+ 
+/* Procesando */
+.btn--procesando .btn-label   { opacity: 0; transform: scale(0.7); }
+.btn--procesando .btn-spinner { opacity: 1; transform: scale(1);   }
+.btn--procesando .btn-check   { opacity: 0; transform: scale(0.6); }
+ 
+/* Éxito */
+.btn--exito .btn-label   { opacity: 0; transform: scale(0.7); }
+.btn--exito .btn-spinner { opacity: 0; transform: scale(0.6); }
+.btn--exito .btn-check   { opacity: 1; transform: scale(1);   }
+.btn--exito {
+  background: var(--success) !important;
+  border-color: var(--success) !important;
+}
+ 
+/* Spinner circular */
+.btn-spinner::before {
+  content: '';
+  display: block;
+  width: 20px; height: 20px;
+  border: 2.5px solid rgba(255,255,255,0.25);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: btn-spin 0.75s linear infinite;
+}
+ 
+@keyframes btn-spin {
+  to { transform: rotate(360deg); }
+}
+ 
+/* Checkmark */
+.btn-check::before {
+  content: '';
+  display: block;
+  width: 22px; height: 22px;
+  border: 2.5px solid white;
+  border-radius: 50%;
+}
+.btn-check::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 12px; height: 7px;
+  border-left: 2.5px solid white;
+  border-bottom: 2.5px solid white;
+  transform: translate(-55%, -60%) rotate(-45deg);
+}
+ 
+/* Ring pulsante alrededor del botón al procesar */
+.btn-submit::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  border: 2px solid transparent;
+  transition: border-color 0.3s, box-shadow 0.3s;
+  pointer-events: none;
+}
+.btn--procesando::after {
+  border-color: rgba(79,124,255,0.4);
+  box-shadow: 0 0 14px rgba(79,124,255,0.25);
+  animation: ring-pulse 1.2s ease-in-out infinite;
+}
+@keyframes ring-pulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(79,124,255,0.3); }
+  50%      { box-shadow: 0 0 0 8px rgba(79,124,255,0); }
+}
+.btn--exito::after {
+  border-color: rgba(52,199,123,0.5);
+}
+ 
+/* Entrada de la auth-card */
+.auth-card {
+  animation: authCardIn 0.5s cubic-bezier(0.22,1,0.36,1) both;
+}
+@keyframes authCardIn {
+  from { opacity: 0; transform: translateY(18px) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+ 
+/* Sacudida en error */
+@keyframes auth-shake-kf {
+  0%,100% { transform: translateX(0); }
+  20%      { transform: translateX(-8px); }
+  40%      { transform: translateX(8px); }
+  60%      { transform: translateX(-5px); }
+  80%      { transform: translateX(5px); }
+}
+.auth-shake {
+  animation: auth-shake-kf 0.5s ease;
+}
+ 
+ 
