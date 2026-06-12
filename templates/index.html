@@ -7,63 +7,459 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+ 
+    <style>
+        /* ── Canvas de fondo ── */
+        #bg-canvas {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+ 
+        /* ── Capas de contenido ── */
+        .layer {
+            position: relative;
+            z-index: 1;
+        }
+ 
+        /* ── Pantalla de Bienvenida ── */
+        #layer-bienvenida {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+ 
+        /* ── Pantalla del catálogo ── */
+        #layer-catalogo {
+            min-height: 100vh;
+            opacity: 0;
+            transform: translateY(40px);
+            pointer-events: none;
+            transition: opacity 0.55s cubic-bezier(0.22,1,0.36,1),
+                        transform 0.55s cubic-bezier(0.22,1,0.36,1);
+            display: none;
+        }
+ 
+        #layer-catalogo.visible {
+            opacity: 1;
+            transform: none;
+            pointer-events: all;
+            display: block;
+        }
+ 
+        /* ── Transición de salida para bienvenida ── */
+        #layer-bienvenida {
+            transition: opacity 0.4s ease, transform 0.4s ease;
+        }
+        #layer-bienvenida.oculto {
+            opacity: 0;
+            transform: translateY(-30px);
+            pointer-events: none;
+        }
+ 
+        /* ── Hero limpio ── */
+        .hero-clean {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 2.5rem;
+        }
+ 
+        .hero-center {
+            text-align: center;
+            max-width: 640px;
+        }
+ 
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 14px;
+            background: rgba(79,124,255,0.10);
+            border: 1px solid rgba(79,124,255,0.22);
+            border-radius: 40px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--accent);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            font-family: var(--font-mono);
+            margin-bottom: 1.6rem;
+            animation: fadeSlideUp 0.6s 0.1s both;
+        }
+ 
+        .hero-badge::before {
+            content: '';
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+            animation: blink 1.6s ease-in-out infinite;
+        }
+ 
+        @keyframes blink {
+            0%,100% { opacity: 1; }
+            50%      { opacity: 0.2; }
+        }
+ 
+        .hero-clean h1 {
+            font-family: var(--font-display);
+            font-size: clamp(2.8rem, 7vw, 5rem);
+            font-weight: 800;
+            line-height: 1.05;
+            letter-spacing: -0.03em;
+            color: var(--text);
+            animation: fadeSlideUp 0.6s 0.2s both;
+        }
+ 
+        .hero-clean h1 em {
+            font-style: normal;
+            color: var(--accent);
+        }
+ 
+        .hero-clean p {
+            margin-top: 1.25rem;
+            color: var(--text-2);
+            font-size: 1.05rem;
+            line-height: 1.7;
+            max-width: 480px;
+            margin-inline: auto;
+            animation: fadeSlideUp 0.6s 0.35s both;
+        }
+ 
+        .hero-cta-group {
+            margin-top: 2.5rem;
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+            animation: fadeSlideUp 0.6s 0.5s both;
+        }
+ 
+        .btn-ver-juegos {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 13px 28px;
+            background: var(--accent);
+            color: white;
+            font-weight: 700;
+            font-size: 0.95rem;
+            font-family: var(--font-body);
+            border: none;
+            border-radius: 40px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
+            box-shadow: 0 0 28px rgba(79,124,255,0.25);
+        }
+ 
+        .btn-ver-juegos:hover {
+            background: var(--accent-s);
+            box-shadow: 0 0 40px rgba(79,124,255,0.4);
+            transform: translateY(-1px);
+        }
+ 
+        .btn-ver-juegos .arrow {
+            font-size: 1rem;
+            transition: transform 0.2s;
+        }
+        .btn-ver-juegos:hover .arrow { transform: translateX(3px); }
+ 
+        .btn-ver-juegos-outline {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 13px 24px;
+            background: transparent;
+            color: var(--text-2);
+            font-weight: 500;
+            font-size: 0.95rem;
+            font-family: var(--font-body);
+            border: 1px solid var(--border-md);
+            border-radius: 40px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: border-color 0.2s, color 0.2s, background 0.2s;
+        }
+ 
+        .btn-ver-juegos-outline:hover {
+            border-color: var(--border-hi);
+            color: var(--text);
+            background: var(--bg-hover);
+        }
+ 
+        /* ── Stats decorativos ── */
+        .hero-stats {
+            margin-top: 3.5rem;
+            display: flex;
+            gap: 2.5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            animation: fadeSlideUp 0.6s 0.65s both;
+        }
+ 
+        .stat-item {
+            text-align: center;
+        }
+ 
+        .stat-value {
+            font-family: var(--font-mono);
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+ 
+        .stat-label {
+            font-size: 0.72rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-top: 2px;
+        }
+ 
+        /* ── Navbar botones separados de auth ── */
+        .nav-auth-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+ 
+        .btn-nav-login {
+            display: inline-flex;
+            align-items: center;
+            padding: 7px 18px;
+            background: transparent;
+            color: var(--text-2);
+            font-size: 0.875rem;
+            font-weight: 500;
+            font-family: var(--font-body);
+            text-decoration: none;
+            border: 1px solid var(--border-md);
+            border-radius: 40px;
+            transition: border-color 0.2s, color 0.2s, background 0.2s;
+        }
+        .btn-nav-login:hover {
+            border-color: var(--border-hi);
+            color: var(--text);
+            background: var(--bg-hover);
+        }
+ 
+        .btn-nav-registro {
+            display: inline-flex;
+            align-items: center;
+            padding: 7px 18px;
+            background: var(--accent);
+            color: white;
+            font-size: 0.875rem;
+            font-weight: 600;
+            font-family: var(--font-body);
+            text-decoration: none;
+            border: 1px solid var(--accent);
+            border-radius: 40px;
+            transition: background 0.2s, box-shadow 0.2s;
+        }
+        .btn-nav-registro:hover {
+            background: var(--accent-s);
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+ 
+        /* ── Separador decorativo ── */
+        .section-divider {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 2.5rem 2.5rem 0;
+            max-width: 1100px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        .section-divider hr {
+            flex: 1;
+            border: none;
+            border-top: 1px solid var(--border);
+        }
+        .section-divider span {
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            color: var(--muted);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+ 
+        /* ── Botón volver ── */
+        .btn-volver {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 16px;
+            background: transparent;
+            color: var(--text-2);
+            font-size: 0.82rem;
+            font-weight: 500;
+            font-family: var(--font-body);
+            border: 1px solid var(--border);
+            border-radius: 40px;
+            cursor: pointer;
+            margin: 2rem 2.5rem 0;
+            transition: border-color 0.2s, color 0.2s, background 0.2s;
+        }
+        .btn-volver:hover {
+            border-color: var(--border-hi);
+            color: var(--text);
+            background: var(--bg-hover);
+        }
+ 
+        /* ── CTA login en catálogo ── */
+        #cta-sesion {
+            text-align: center;
+            margin-top: 3rem;
+            padding: 2rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            max-width: 480px;
+            margin-inline: auto;
+        }
+        #cta-sesion p {
+            color: var(--text-2);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+ 
+        /* ── Entrada del catálogo ── */
+        .catalogo-header {
+            padding: 2rem 2.5rem 0;
+            max-width: 1100px;
+            margin: 0 auto;
+            width: 100%;
+        }
+ 
+        /* ── Animaciones de entrada ── */
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to   { opacity: 1; transform: none; }
+        }
+ 
+        /* ── Responsive navbar auth ── */
+        @media (max-width: 600px) {
+            .btn-nav-login { display: none; }
+            .hero-clean h1 { font-size: 2.4rem; }
+            .hero-stats { gap: 1.5rem; }
+        }
+    </style>
 </head>
 <body>
-
-    <!-- ── Navbar ─────────────────────────── -->
+ 
+<!-- ── Canvas animado de fondo ──────────────────── -->
+<canvas id="bg-canvas" aria-hidden="true"></canvas>
+ 
+<!-- ══════════════════════════════════════════════
+     CAPA 1: BIENVENIDA
+══════════════════════════════════════════════ -->
+<div id="layer-bienvenida" class="layer">
+ 
+    <!-- Navbar -->
     <nav class="navbar">
         <a href="/" class="logo">
             <img src="{{ url_for('static', filename='img/favicon.gif') }}" class="nav-gif" alt="">
             Arc<span>ade</span>
         </a>
-
+ 
         <ul class="nav-links">
-            <li><a href="#inicio">Inicio</a></li>
-            <li><a href="#juegos">Juegos</a></li>
+            <li><a href="#" id="nav-link-juegos">Catálogo</a></li>
             <li><a href="/ranking">Top Global</a></li>
         </ul>
-
-        <!-- Zona de sesión: JS lo rellena -->
+ 
+        <!-- Zona de sesión: JS rellena según estado -->
         <div id="nav-session"></div>
     </nav>
-
-    <!-- ── Hero ───────────────────────────── -->
-    <header id="inicio" class="hero-section">
-        <div class="hero-content">
-            <div class="hero-text">
-                <div class="hero-eyebrow">Proyecto Escolar 2026</div>
-                <h1>Bienvenido al <em>Arcade</em></h1>
-                <p>Demuestra que eres el mejor del curso en cada desafío. Precisión, rapidez y estrategia te llevarán al top.</p>
-                <a href="#juegos" class="hero-cta">Ver juegos</a>
+ 
+    <!-- Hero central -->
+    <main class="hero-clean">
+        <div class="hero-center">
+ 
+            <div class="hero-badge">Proyecto Escolar · 2026</div>
+ 
+            <h1>Bienvenido al<br><em>Arcade</em></h1>
+ 
+            <p>Demuestra que eres el mejor del curso en cada desafío. Precisión, rapidez y estrategia te llevarán al top.</p>
+ 
+            <div class="hero-cta-group">
+                <button class="btn-ver-juegos" id="btn-ver-juegos">
+                    Ver Juegos <span class="arrow">→</span>
+                </button>
+                <a href="/ranking" class="btn-ver-juegos-outline">Top Global</a>
             </div>
-            <div class="hero-image">
-                <img src="{{ url_for('static', filename='img/trofeo.gif') }}" alt="Copa Arcade" class="floating-cup">
+ 
+            <div class="hero-stats">
+                <div class="stat-item">
+                    <div class="stat-value">5</div>
+                    <div class="stat-label">Juegos</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">∞</div>
+                    <div class="stat-label">Rondas</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">1</div>
+                    <div class="stat-label">Ganador</div>
+                </div>
             </div>
+ 
         </div>
-    </header>
-
-    <hr class="separator">
-
-    <!-- ── Juegos ─────────────────────────── -->
+    </main>
+ 
+</div><!-- /#layer-bienvenida -->
+ 
+ 
+<!-- ══════════════════════════════════════════════
+     CAPA 2: CATÁLOGO DE JUEGOS
+══════════════════════════════════════════════ -->
+<div id="layer-catalogo" class="layer">
+ 
+    <!-- Navbar del catálogo (mismo estilo) -->
+    <nav class="navbar">
+        <a href="/" class="logo">
+            <img src="{{ url_for('static', filename='img/favicon.gif') }}" class="nav-gif" alt="">
+            Arc<span>ade</span>
+        </a>
+        <ul class="nav-links">
+            <li><a href="#" id="nav-link-back">← Inicio</a></li>
+            <li><a href="/ranking">Top Global</a></li>
+        </ul>
+        <div id="nav-session-cat"></div>
+    </nav>
+ 
+    <!-- Botón volver -->
+    <button class="btn-volver" id="btn-volver">← Volver al inicio</button>
+ 
+    <!-- Cabecera de sección -->
+    <div class="catalogo-header">
+        <div class="section-divider" style="padding:0; margin-bottom:0.5rem;">
+            <hr><span>Catálogo de juegos</span><hr>
+        </div>
+    </div>
+ 
+    <!-- Showcase de juegos (estructura idéntica al original) -->
     <section id="juegos" class="games-showcase">
-        <div class="section-header">
-            <span class="section-label">Catálogo</span>
-            <h2 class="section-title">Nuestros Juegos</h2>
-        </div>
-
+ 
         <!-- Snake -->
         <div class="game-entry">
             <div class="game-info">
                 <span class="game-tag">Clásico · Acción</span>
                 <h3>Snake Clásico</h3>
                 <p>Controla tu apetito, crece sin límites y ¡no choques! El clásico que nunca pasa de moda.</p>
-                <!-- Sin botón "Jugar ahora" — hay que iniciar sesión -->
             </div>
             <div class="game-preview">
                 <img src="{{ url_for('static', filename='img/snake-preview.gif') }}" alt="Snake Preview">
             </div>
         </div>
-
+ 
         <!-- Trivia -->
         <div class="game-entry reverse">
             <div class="game-info">
@@ -75,7 +471,7 @@
                 <img src="{{ url_for('static', filename='img/trivia-preview.gif') }}" alt="Trivia Preview">
             </div>
         </div>
-
+ 
         <!-- Clicker -->
         <div class="game-entry">
             <div class="game-info">
@@ -87,20 +483,19 @@
                 <img src="{{ url_for('static', filename='img/clicker-preview.gif') }}" alt="Clicker Preview">
             </div>
         </div>
-
-        <!-- Simón -->
+ 
+        <!-- Space Defender (antes Simón) -->
         <div class="game-entry reverse">
             <div class="game-info">
-                <span class="game-tag">Simón · Estrategia</span>
-                <h3>Simón Dice: Runner</h3>
-                <p>Muévete rápido al bloque correcto antes de que Simón pierda la paciencia. Preguntas de física y código.</p>
+                <span class="game-tag">Naves · Estrategia</span>
+                <h3>Retro Space Defender</h3>
+                <p>Defiende la galaxia de oleadas de asteroides y naves enemigas. Gana chatarra ⚙ para mejorar tu nave en la tienda.</p>
             </div>
             <div class="game-preview">
-                <img src="{{ url_for('static', filename='img/simon-preview.gif') }}" alt="Simon Preview">
+                <img src="{{ url_for('static', filename='img/simon-preview.gif') }}" alt="Space Defender Preview">
             </div>
         </div>
-
-
+ 
         <!-- Geo Dash -->
         <div class="game-entry">
             <div class="game-info">
@@ -112,107 +507,160 @@
                 <img src="{{ url_for('static', filename='img/geo-preview.gif') }}" alt="Geo Dash Preview">
             </div>
         </div>
-
-        <!-- CTA para iniciar sesión -->
-        <div id="cta-sesion" style="text-align:center; margin-top: 3rem; display:none;">
-            <p style="color:var(--text-2); margin-bottom:1rem; font-size:0.95rem;">Inicia sesión para acceder a todos los juegos y ver tu ranking</p>
-            <a href="/login" class="hero-cta">Entrar al arcade →</a>
+ 
+        <!-- CTA: iniciar sesión -->
+        <div id="cta-sesion" style="display:none;">
+            <p>Inicia sesión para acceder a todos los juegos y aparecer en el ranking</p>
+            <a href="/login" class="btn-ver-juegos" style="display:inline-flex;">Entrar al Arcade →</a>
         </div>
+ 
     </section>
-
-    <!-- ── Footer ─────────────────────────── -->
-    <footer class="footer">
-        &copy; 2026 ArcadeGames — Proyecto Escolar
-    </footer>
-
-    <!-- ── Script sesión + dropdown ─────── -->
-    <script>
-    (function() {
-        const zona = document.getElementById('nav-session');
-
+ 
+    <footer class="footer">&copy; 2026 ArcadeGames — Proyecto Escolar</footer>
+ 
+</div><!-- /#layer-catalogo -->
+ 
+ 
+<!-- ── Scripts ───────────────────────────────────── -->
+ 
+<!-- 1. Sesión: rellena ambas navbars -->
+<script>
+(function () {
+    function renderNavAuth(zonaId, showPanel) {
+        const zona = document.getElementById(zonaId);
+        if (!zona) return;
+ 
         fetch('/api/sesion')
             .then(r => r.json())
             .then(data => {
                 if (data.loggedin) {
-                    const inicial = data.username.charAt(0).toUpperCase();
+                    const inicial   = data.username.charAt(0).toUpperCase();
                     const avatarHTML = data.avatar
                         ? `<img src="${data.avatar}" alt="avatar">`
                         : inicial;
-
+ 
                     zona.innerHTML = `
-                        <div style="position:relative; display:flex; align-items:center; gap:10px;">
-                            <a href="/dashboard" class="btn-login-nav" style="font-size:0.82rem; padding:7px 16px;">
-                                 Ir al panel
-                            </a>
-                            <button class="nav-user-btn" id="nav-user-btn" aria-expanded="false" aria-haspopup="true">
+                        <div style="position:relative; display:flex; align-items:center; gap:8px;">
+                            ${showPanel ? `<a href="/dashboard" class="btn-login-nav" style="font-size:0.82rem; padding:7px 16px;">Ir al panel</a>` : ''}
+                            <button class="nav-user-btn" id="nav-user-btn-${zonaId}" aria-expanded="false" aria-haspopup="true">
                                 <div class="nav-avatar">${avatarHTML}</div>
                                 <span class="nav-username">${data.username}</span>
                                 <span class="nav-chevron">▼</span>
                             </button>
-
-                            <div class="nav-dropdown" id="nav-dropdown" role="menu">
+                            <div class="nav-dropdown" id="nav-dd-${zonaId}" role="menu">
                                 <div class="nav-dropdown-header">
                                     <span>Sesión activa</span>
                                     <strong>${data.username}</strong>
                                 </div>
-                                <a href="/dashboard" class="dropdown-item" role="menuitem">
-                                    <span class="dropdown-icon"></span>
-                                    Mi panel
-                                </a>
-                                <a href="/perfil" class="dropdown-item" role="menuitem">
-                                    <span class="dropdown-icon"></span>
-                                    Mi perfil
-                                </a>
-                                <a href="/ranking" class="dropdown-item" role="menuitem">
-                                    <span class="dropdown-icon"></span>
-                                    Top Global
-                                </a>
+                                <a href="/dashboard" class="dropdown-item" role="menuitem"><span class="dropdown-icon"></span>Mi panel</a>
+                                <a href="/perfil"    class="dropdown-item" role="menuitem"><span class="dropdown-icon"></span>Mi perfil</a>
+                                <a href="/ranking"   class="dropdown-item" role="menuitem"><span class="dropdown-icon"></span>Top Global</a>
                                 <div class="dropdown-divider"></div>
-                                <a href="/logout" class="dropdown-item danger" role="menuitem">
-                                    <span class="dropdown-icon">→</span>
-                                    Cerrar sesión
-                                </a>
+                                <a href="/logout" class="dropdown-item danger" role="menuitem"><span class="dropdown-icon">→</span>Cerrar sesión</a>
                             </div>
                         </div>`;
-
-                    const btn      = document.getElementById('nav-user-btn');
-                    const dropdown = document.getElementById('nav-dropdown');
-
-                    btn.addEventListener('click', (e) => {
+ 
+                    const btn = document.getElementById(`nav-user-btn-${zonaId}`);
+                    const dd  = document.getElementById(`nav-dd-${zonaId}`);
+                    btn.addEventListener('click', e => {
                         e.stopPropagation();
-                        const open = dropdown.classList.toggle('open');
+                        const open = dd.classList.toggle('open');
                         btn.classList.toggle('open', open);
                         btn.setAttribute('aria-expanded', open);
                     });
-
                     document.addEventListener('click', () => {
-                        dropdown.classList.remove('open');
+                        dd.classList.remove('open');
                         btn.classList.remove('open');
                         btn.setAttribute('aria-expanded', 'false');
                     });
-
-                    document.addEventListener('keydown', (e) => {
+                    document.addEventListener('keydown', e => {
                         if (e.key === 'Escape') {
-                            dropdown.classList.remove('open');
+                            dd.classList.remove('open');
                             btn.classList.remove('open');
-                            btn.setAttribute('aria-expanded', 'false');
                             btn.focus();
                         }
                     });
-
+ 
                 } else {
-                    zona.innerHTML = `<a href="/login" class="btn-login-nav">Iniciar sesión</a>`;
-                    // Mostrar CTA de login en sección juegos
+                    /* Dos botones separados: Login + Registro */
+                    zona.innerHTML = `
+                        <div class="nav-auth-group">
+                            <a href="/login"    class="btn-nav-login">Iniciar sesión</a>
+                            <a href="/registro" class="btn-nav-registro">Registrarse</a>
+                        </div>`;
+ 
+                    /* Mostrar CTA en el catálogo */
                     const cta = document.getElementById('cta-sesion');
                     if (cta) cta.style.display = 'block';
                 }
             })
             .catch(() => {
-                zona.innerHTML = `<a href="/login" class="btn-login-nav">Iniciar sesión</a>`;
-                const cta = document.getElementById('cta-sesion');
-                if (cta) cta.style.display = 'block';
+                zona.innerHTML = `
+                    <div class="nav-auth-group">
+                        <a href="/login"    class="btn-nav-login">Iniciar sesión</a>
+                        <a href="/registro" class="btn-nav-registro">Registrarse</a>
+                    </div>`;
             });
-    })();
-    </script>
+    }
+ 
+    renderNavAuth('nav-session',     true);
+    renderNavAuth('nav-session-cat', false);
+})();
+</script>
+ 
+<!-- 2. Transición de capas -->
+<script>
+(function () {
+    const layerBienvenida = document.getElementById('layer-bienvenida');
+    const layerCatalogo   = document.getElementById('layer-catalogo');
+ 
+    function mostrarCatalogo() {
+        // Ocultar bienvenida
+        layerBienvenida.classList.add('oculto');
+        // Después de la transición de salida, mostrar catálogo
+        setTimeout(() => {
+            layerBienvenida.style.display = 'none';
+            layerCatalogo.style.display   = 'block';
+            // Forzar reflow para que la transición CSS se active
+            layerCatalogo.offsetHeight;
+            layerCatalogo.classList.add('visible');
+            window.scrollTo({ top: 0, behavior: 'instant' });
+        }, 380);
+    }
+ 
+    function mostrarBienvenida() {
+        layerCatalogo.classList.remove('visible');
+        setTimeout(() => {
+            layerCatalogo.style.display   = 'none';
+            layerBienvenida.style.display = 'flex';
+            layerBienvenida.classList.remove('oculto');
+            window.scrollTo({ top: 0, behavior: 'instant' });
+        }, 500);
+    }
+ 
+    // Botón "Ver Juegos"
+    document.getElementById('btn-ver-juegos').addEventListener('click', mostrarCatalogo);
+ 
+    // Botón "← Volver"
+    document.getElementById('btn-volver').addEventListener('click', mostrarBienvenida);
+ 
+    // Link nav "Catálogo"
+    document.getElementById('nav-link-juegos')?.addEventListener('click', e => {
+        e.preventDefault();
+        mostrarCatalogo();
+    });
+ 
+    // Link nav "← Inicio"
+    document.getElementById('nav-link-back')?.addEventListener('click', e => {
+        e.preventDefault();
+        mostrarBienvenida();
+    });
+})();
+</script>
+ 
+<!-- 3. Canvas animado de fondo -->
+<script src="{{ url_for('static', filename='js/main-effects.js') }}"></script>
+ 
 </body>
 </html>
+ 
