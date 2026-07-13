@@ -338,20 +338,39 @@
 
     <script>
         // ── Cargar puntajes ──────────────────────────────────────
+        // ── Cargar puntajes corregido con normalización ─────────────────
         const username = "{{ username }}";
+
+        // Función de ayuda para normalizar texto (elimina tildes y mayúsculas)
+        function normalizarTexto(str) {
+            if (!str) return '';
+            return str.toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .trim();
+        }
+
         fetch('/obtener_ranking')
             .then(r => r.json())
             .then(data => {
-                const juegos = ['snake','trivia','clicker','simon'];
-                juegos.forEach(j => {
-                    const mis = data.ranking
-                        .filter(r => r.juego === j && r.nombre === username)
-                        .sort((a,b) => b.puntos - a.puntos);
-                    const el = document.getElementById('score-' + j);
-                    if (el) el.textContent = mis.length ? mis[0].puntos : '—';
-                });
-            });
+                const juegos = ['snake', 'trivia', 'clicker', 'simon'];
+                const rankingData = data.ranking || [];
 
+                juegos.forEach(j => {
+                    const mis = rankingData
+                        .filter(r => {
+                            // Comparamos el nombre normalizado del juego y el usuario exacto
+                            return normalizarTexto(r.juego) === normalizarTexto(j) && r.nombre === username;
+                        })
+                        .sort((a, b) => b.puntos - a.puntos);
+                    
+                    const el = document.getElementById('score-' + j);
+                    if (el) {
+                        el.textContent = mis.length ? mis[0].puntos : '—';
+                    }
+                });
+            })
+            .catch(err => console.error("Error al obtener el ranking del perfil:", err));
         // ── Modal avatar ─────────────────────────────────────────
         let nuevoAvatar = '';
 
@@ -369,13 +388,18 @@
             reader.onload = e => {
                 nuevoAvatar = e.target.result;
                 const prev = document.getElementById('modal-prev');
-                prev.style.backgroundImage = `url(${nuevoAvatar})`;
-                prev.style.backgroundSize = 'cover';
-                prev.style.backgroundPosition = 'center';
                 const ini = document.getElementById('modal-inicial');
-                const img = document.getElementById('modal-img');
-                if (ini) ini.style.display = 'none';
-                if (img) img.src = nuevoAvatar;
+                
+                // Si existe el texto de la inicial, lo borramos e insertamos una etiqueta img nueva
+                if (ini) ini.remove();
+                
+                let img = document.getElementById('modal-img');
+                if (!img) {
+                    img = document.createElement('img');
+                    img.id = 'modal-img';
+                    prev.appendChild(img);
+                }
+                img.src = nuevoAvatar;
             };
             reader.readAsDataURL(file);
         });
@@ -391,12 +415,11 @@
                 const data = await res.json();
                 if (data.status === 'success') {
                     document.getElementById('msg-modal').textContent = '¡Foto actualizada!';
-                    // Actualizar el avatar grande en pantalla
+                    
+                    // Actualizar el avatar de la cabecera principal de forma limpia
                     const big = document.getElementById('big-avatar');
-                    big.style.backgroundImage = `url(${nuevoAvatar})`;
-                    big.style.backgroundSize = 'cover';
-                    big.style.backgroundPosition = 'center';
-                    big.textContent = '';
+                    big.innerHTML = `<img src="${nuevoAvatar}" alt="avatar">`;
+                    
                     setTimeout(cerrarModal, 1000);
                 }
             } catch {
