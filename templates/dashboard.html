@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <a href="/logros">Mis logros</a>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Arcade | Panel</title>
@@ -371,6 +370,7 @@
 
         <nav class="sb-nav">
             <a href="/dashboard" class="sb-link active">Panel de Juegos</a>
+            <a href="/logros" class="sb-link">🏅 Mis Logros</a>
             <a href="/ranking" class="sb-link">Top Global</a>
             <a href="/" class="sb-link">Inicio público</a>
         </nav>
@@ -419,10 +419,10 @@
             </div>
 
             <div class="card-juego">
-                <div class="cj-meta"><span class="cj-badge">Memoria</span></div>
+                <div class="cj-meta"><span class="cj-badge">Shooter</span></div>
                 <div class="cj-body">
-                    <h3>Simón Arcade</h3>
-                    <p>Presta atención al patrón de luces y sonidos, y repítelo sin cometer ni un solo fallo.</p>
+                    <h3>Space Razer</h3>
+                    <p>Defiende la galaxia de oleadas de naves enemigas. Recoge chatarra para mejorar tu nave y derrota al jefe final.</p>
                 </div>
                 <a href="/juego/simon" class="btn-jugar-dash">Lanzar Juego</a>
             </div>
@@ -436,6 +436,43 @@
                 <a href="/juego/geo" class="btn-jugar-dash">Lanzar Juego</a>
             </div>
 
+        </div>
+
+
+        <!-- Sección Logros -->
+        <div style="
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.25rem 1.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        ">
+            <div style="display:flex;align-items:center;gap:14px;">
+                <span style="font-size:1.8rem;">🏅</span>
+                <div>
+                    <h3 style="font-size:0.95rem;font-weight:600;color:var(--text);margin-bottom:3px;">Mis Logros</h3>
+                    <p style="font-size:0.8rem;color:var(--text-2);">Desbloquea medallas jugando y superando tus récords</p>
+                </div>
+            </div>
+            <a href="/logros" style="
+                background: var(--bg-raised);
+                border: 1px solid var(--border-md);
+                color: var(--text);
+                text-decoration: none;
+                padding: 0.55rem 1.1rem;
+                border-radius: 8px;
+                font-size: 0.85rem;
+                font-weight: 500;
+                white-space: nowrap;
+                transition: all 0.2s;
+            " onmouseover="this.style.background='var(--accent)';this.style.color='#fff'"
+               onmouseout="this.style.background='var(--bg-raised)';this.style.color='var(--text)'">
+                Ver logros →
+            </a>
         </div>
 
         <div class="seccion-cuenta">
