@@ -1,4 +1,4 @@
-// static/js/simon.js — Retro Space Defender con Sistema de Tienda
+// static/js/simon.js — Space Razer (shooter espacial con tienda)
 
 (function () {
     'use strict';
@@ -132,8 +132,15 @@
         .rsd-hud-label { font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; color: #454560; }
         .rsd-canvas {
             display: block; width: 100%; height: auto;
+            max-width: 100%;
             border-radius: 10px; background: #04040e;
             image-rendering: pixelated;
+            touch-action: none;
+        }
+        @media (min-width: 769px) {
+            .rsd-wrapper { max-width: 600px; }
+            .rsd-canvas  { max-height: 75vh; width: auto; margin: 0 auto; }
+            .rsd-btn     { font-size: 0.9rem; padding: 11px 18px; }
         }
         .rsd-controls {
             display: flex; gap: 8px; width: 100%; justify-content: center;
@@ -1275,7 +1282,7 @@
         ctx.fillStyle = '#4f7cff';
         ctx.font = 'bold 28px "DM Mono", monospace';
         ctx.textAlign = 'center';
-        ctx.fillText('RETRO SPACE', ANCHO / 2, ALTO / 2 - 60);
+        ctx.fillText('SPACE RAZER', ANCHO / 2, ALTO / 2 - 60);
         ctx.fillStyle = '#e8445a';
         ctx.shadowColor = '#e8445a';
         ctx.fillText('DEFENDER', ANCHO / 2, ALTO / 2 - 28);
@@ -1284,7 +1291,7 @@
         ctx.fillStyle = '#454580';
         ctx.font = '12px "DM Mono", monospace';
         ctx.textAlign = 'center';
-        ctx.fillText('Destruye asteroides y naves enemigas', ANCHO / 2, ALTO / 2 + 10);
+        ctx.fillText('Destruye oleadas de naves enemigas', ANCHO / 2, ALTO / 2 + 10);
         ctx.fillText('Gana chatarra ⚙ para mejorar tu nave', ANCHO / 2, ALTO / 2 + 28);
 
         ctx.fillStyle = '#303058';
