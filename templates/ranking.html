@@ -431,7 +431,7 @@
             <button class="rtab active" onclick="cambiarTab('snake',   this)">🐍 Snake</button>
             <button class="rtab"        onclick="cambiarTab('trivia',  this)">🧠 Trivia</button>
             <button class="rtab"        onclick="cambiarTab('clicker', this)">⚡ Clicker</button>
-            <button class="rtab"        onclick="cambiarTab('simon',   this)">🔴 Simón</button>
+            <button class="rtab"        onclick="cambiarTab('simon',   this)">🚀 Space Razer</button>
             <button class="rtab"        onclick="cambiarTab('geo',     this)">📐 Geo Dash</button>
         </div>
 
@@ -574,21 +574,16 @@
     /* ── Cargar rankings ──────────────────────────────── */
     async function cargarRankings() {
         try {
-            // ✅ RUTA CORRECTA — coincide con app.py
-            const res  = await fetch('/obtener_ranking');
+            // /api/ranking devuelve avatares — /obtener_ranking NO los devuelve
+            const res  = await fetch('/api/ranking');
             const data = await res.json();
             const todo = data.ranking || [];
 
             const JUEGOS = ['snake', 'trivia', 'clicker', 'simon', 'geo'];
             JUEGOS.forEach(j => {
-                // Normalización robusta: elimina acentos y compara en minúsculas
                 const lista = todo
-                    .filter(r => {
-                        if (!r.juego) return false;
-                        return normalizar(r.juego) === normalizar(j);
-                    })
+                    .filter(r => r.juego && normalizar(r.juego) === normalizar(j))
                     .sort((a, b) => b.puntos - a.puntos);
-
                 renderPodio(j, lista);
                 renderTabla(j, lista);
             });
@@ -596,7 +591,7 @@
             console.error('Error cargando ranking:', e);
             ['snake','trivia','clicker','simon','geo'].forEach(j => {
                 const el = document.getElementById('pod-' + j);
-                if (el) el.innerHTML = `<div class="empty-state" style="width:100%;"><div class="empty-icon">⚠️</div><p>Error al cargar datos.<br>Recarga la página.</p></div>`;
+                if (el) el.innerHTML = '<div class="empty-state" style="width:100%;"><div class="empty-icon">⚠️</div><p>Error al cargar datos.<br>Recarga la página.</p></div>';
             });
         }
     }
