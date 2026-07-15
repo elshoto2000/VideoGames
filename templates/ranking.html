@@ -574,8 +574,10 @@
     /* ── Cargar rankings ──────────────────────────────── */
     async function cargarRankings() {
         try {
-            // /api/ranking devuelve avatares — /obtener_ranking NO los devuelve
-            const res  = await fetch('/api/ranking');
+            /* /obtener_ranking devuelve todos los puntajes rápido sin N+1 queries.
+               /api/ranking hace una query por usuario → puede hacer timeout con muchos jugadores.
+               Por eso usamos /obtener_ranking y construimos la lista aquí en el cliente. */
+            const res  = await fetch('/obtener_ranking');
             const data = await res.json();
             const todo = data.ranking || [];
 
@@ -584,9 +586,24 @@
                 const lista = todo
                     .filter(r => r.juego && normalizar(r.juego) === normalizar(j))
                     .sort((a, b) => b.puntos - a.puntos);
-                renderPodio(j, lista);
-                renderTabla(j, lista);
+
+                /* Mapear: /obtener_ranking devuelve {nombre, juego, puntos}
+                   renderPodio/renderTabla esperan también {avatar}.
+                   Lo dejamos vacío — se mostrará la inicial del nombre. */
+                const listaConAvatar = lista.map(r => ({
+                    nombre: r.nombre || r.name || 'Anon',
+                    juego:  r.juego,
+                    puntos: r.puntos,
+                    avatar: r.avatar || ''
+                }));
+
+                renderPodio(j, listaConAvatar);
+                renderTabla(j, listaConAvatar);
             });
+
+            /* Segunda pasada asíncrona: enriquecer con avatares reales sin bloquear la UI */
+            enriquecerAvatares(todo, JUEGOS);
+
         } catch (e) {
             console.error('Error cargando ranking:', e);
             ['snake','trivia','clicker','simon','geo'].forEach(j => {
@@ -594,6 +611,36 @@
                 if (el) el.innerHTML = '<div class="empty-state" style="width:100%;"><div class="empty-icon">⚠️</div><p>Error al cargar datos.<br>Recarga la página.</p></div>';
             });
         }
+    }
+
+    /* Carga avatares en segundo plano sin bloquear el render inicial */
+    async function enriquecerAvatares(todo, JUEGOS) {
+        try {
+            const res  = await fetch('/api/ranking');
+            if (!res.ok) return;
+            const data = await res.json();
+            const conAvatares = data.ranking || [];
+
+            /* Construir mapa nombre → avatar */
+            const avatarMap = {};
+            conAvatares.forEach(r => { if (r.avatar) avatarMap[r.nombre] = r.avatar; });
+            if (Object.keys(avatarMap).length === 0) return;
+
+            /* Re-renderizar solo si hay avatares nuevos */
+            JUEGOS.forEach(j => {
+                const lista = todo
+                    .filter(r => r.juego && normalizar(r.juego) === normalizar(j))
+                    .sort((a, b) => b.puntos - a.puntos)
+                    .map(r => ({
+                        nombre: r.nombre || 'Anon',
+                        juego:  r.juego,
+                        puntos: r.puntos,
+                        avatar: avatarMap[r.nombre] || ''
+                    }));
+                renderPodio(j, lista);
+                renderTabla(j, lista);
+            });
+        } catch (_) { /* silencioso — los avatares no son críticos */ }
     }
 
     /* ── Helpers ──────────────────────────────────────── */
