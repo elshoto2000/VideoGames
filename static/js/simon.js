@@ -1,4 +1,6 @@
 // static/js/simon.js — Retro Space Defender con Sistema de Tienda
+// v2: enemigos más variados/rápidos/resistentes + 5 jefes únicos + jefe final (6º) omnidireccional
+// que combina las habilidades de todos e invoca aliados.
 
 (function () {
     'use strict';
@@ -13,6 +15,7 @@
 
     /* ── Canvas ── */
     const ANCHO = 480, ALTO = 520;
+    const MAX_OLEADAS = 100;
 
     /* ── Audio ── */
     let audioCtx = null;
@@ -47,6 +50,13 @@
     }
     function bossLaserSound() { beep(1200, 0.12, 'sawtooth', 0.15); setTimeout(() => beep(400, 0.2, 'sawtooth', 0.1), 60); }
     function bossChatarraSound() { beep(300, 0.08, 'square', 0.08); }
+    function bossMinaSound() { beep(200, 0.15, 'square', 0.1); }
+    function bossSummonSound() {
+        beep(500, 0.1, 'sine', 0.1);
+        setTimeout(() => beep(700, 0.1, 'sine', 0.1), 90);
+        setTimeout(() => beep(900, 0.15, 'sine', 0.1), 180);
+    }
+    function bossTeleportSound() { beep(1500, 0.1, 'sine', 0.1); }
     function bossDeathSound() {
         beep(200, 0.3, 'sawtooth', 0.2); setTimeout(() => beep(150, 0.3, 'sawtooth', 0.2), 150);
         setTimeout(() => beep(100, 0.4, 'sawtooth', 0.25), 300); setTimeout(() => beep(60, 0.6, 'sawtooth', 0.3), 500);
@@ -59,16 +69,15 @@
     const ESTADOS = { MENU: 'menu', JUGANDO: 'jugando', TIENDA: 'tienda', GAMEOVER: 'gameover', VICTORIA: 'victoria' };
     let estado = ESTADOS.MENU;
     let puntuacion = 0;
-    let chatarra = 0;       // moneda del juego
+    let chatarra = 0;
     let oleada = 0;
     let animFrame = null;
     let bgPulse = 0;
 
-    /* ── Jefe final ── */
+    /* ── Jefe ── */
     let jefe = null;
-    let balasJefe = [];   // proyectiles del jefe hacia el jugador
-    let bossIntroTimer = 0;  // frames de animación de entrada del jefe
-    const MAX_OLEADAS = 100;
+    let balasJefe = [];
+    let bossIntroTimer = 0;
 
     /* ── Balas enemigas (naves normales) ── */
     let balasEnemigos = [];
@@ -78,21 +87,13 @@
 
     /* ── Mejoras del jugador ── */
     const mejoras = {
-        velocidadDisparo: 1,   // nivel 1-5
-        escudo: false,         // escudo temporal (un uso)
-        nivelRafaga: 0,        // 0 = simple, 1 = doble, 2 = triple
-        dañoBala: 1,           // nivel 1-3, daño por disparo
-        ayudante: false,       // nave aliada que dispara junto al jugador
+        velocidadDisparo: 1, escudo: false, nivelRafaga: 0, dañoBala: 1, ayudante: false,
     };
 
     /* ── Jugador ── */
     const jugador = {
-        x: ANCHO / 2, y: ALTO - 55,
-        ancho: 36, alto: 30,
-        velocidad: 4,
-        vidas: 3,
-        invulnerable: 0,   // frames de invulnerabilidad tras golpe
-        color: '#4f7cff',
+        x: ANCHO / 2, y: ALTO - 55, ancho: 36, alto: 30,
+        velocidad: 4.4, vidas: 3, invulnerable: 0, color: '#4f7cff',
     };
 
     /* ── Balas, enemigos, explosiones ── */
@@ -109,18 +110,27 @@
     });
     window.addEventListener('keyup', e => { teclas[e.key] = false; teclas[e.code] = false; });
 
-    /* ── Disparo automático con cooldown ── */
-    const COOLDOWN_BASE = [0, 18, 14, 10, 7, 5];  // frames entre disparos por nivel (1-5)
+    /* ── Disparo automático con cooldown (ligeramente más rápido que antes) ── */
+    const COOLDOWN_BASE = [0, 16, 12, 9, 6, 4];
     let cooldownActual = 0;
 
     /* ── Estrellas de fondo ── */
     const estrellas = Array.from({ length: 80 }, () => ({
-        x: Math.random() * ANCHO,
-        y: Math.random() * ALTO,
-        r: Math.random() * 1.5 + 0.3,
-        vel: Math.random() * 0.5 + 0.2,
-        br: Math.random()
+        x: Math.random() * ANCHO, y: Math.random() * ALTO,
+        r: Math.random() * 1.5 + 0.3, vel: Math.random() * 0.5 + 0.2, br: Math.random()
     }));
+
+    /* ══════════════════════════════════════════
+       DEFINICIONES DE JEFES (5 + 1 final)
+    ══════════════════════════════════════════ */
+    const BOSS_DEFS = [
+        { nombre: 'DEVORADOR',   color: '#ff4488', colorSecundario: '#ff88bb', ataques: ['laser', 'chatarra'],                                   hpBase: 140, hpPorTier: 70,  velBase: 1.4, ancho: 72,  alto: 56, omni: false },
+        { nombre: 'DESTRUCTOR',  color: '#ff2200', colorSecundario: '#ff7755', ataques: ['laser', 'rafaga', 'chatarra'],                          hpBase: 230, hpPorTier: 85,  velBase: 2.0, ancho: 78,  alto: 60, omni: false },
+        { nombre: 'APOCALIPSIS', color: '#aa00ff', colorSecundario: '#dd66ff', ataques: ['chatarra', 'mina', 'teleport'],                          hpBase: 320, hpPorTier: 100, velBase: 2.3, ancho: 84,  alto: 64, omni: false },
+        { nombre: 'NÉMESIS',     color: '#ff8800', colorSecundario: '#ffcc44', ataques: ['rafaga', 'spin', 'invocar'],                             hpBase: 430, hpPorTier: 120, velBase: 2.6, ancho: 88,  alto: 66, omni: false },
+        { nombre: 'ABISMO',      color: '#00ffcc', colorSecundario: '#66ffee', ataques: ['laser', 'chatarra', 'rafaga', 'mina', 'spin'],           hpBase: 560, hpPorTier: 145, velBase: 3.0, ancho: 94,  alto: 70, omni: false },
+        { nombre: 'OMEGA',       color: '#fff2cc', colorSecundario: '#ffd700', ataques: ['laser', 'chatarra', 'rafaga', 'mina', 'spin', 'teleport', 'invocar'], hpBase: 900, hpPorTier: 220, velBase: 2.6, ancho: 104, alto: 80, omni: true },
+    ];
 
     /* ── CSS ── */
     const style = document.createElement('style');
@@ -162,15 +172,10 @@
         .rsd-btn:hover { background: rgba(255,255,255,0.09); border-color: rgba(255,255,255,0.2); }
         .rsd-btn.primary { background: #4f7cff; border-color: #4f7cff; color: #fff; }
         .rsd-btn.primary:hover { background: #3a63e0; }
-        /* D-Pad móvil */
         .rsd-dpad {
             display: grid; grid-template-columns: repeat(3, 52px);
             grid-template-rows: repeat(2, 48px); gap: 5px;
             justify-content: center; width: 100%;
-        }
-        .rsd-dpad-fire {
-            display: grid; grid-template-columns: 52px;
-            grid-template-rows: 48px; justify-content: center;
         }
         .rsd-mobile-row { display: flex; gap: 16px; justify-content: center; width: 100%; }
         .dpad-btn {
@@ -304,7 +309,6 @@
         elOleada.textContent = oleada;
         balas = []; balasJefe = []; balasEnemigos = [];
         if (oleada % 5 === 0) {
-            // OLEADA DE JEFE
             enemigos = [];
             bossIntroTimer = 120;
             bossAppearSound();
@@ -316,40 +320,28 @@
         }
     }
 
-    /* ── CREAR JEFE ── */
+    /* ── CREAR JEFE (5 diseños únicos + 1 final que lo combina todo) ── */
     function crearJefe() {
-        const tier = Math.floor(oleada / 5);          // 1,2,3... sube cada 5 oleadas
-        const vidasBase = 45 + tier * 30;             // jefes mucho más resistentes
-        // Tipos de ataque que desbloquea por tier
-        const ataques = tier >= 4
-            ? ['laser', 'chatarra', 'rafaga', 'laser']
-            : tier >= 2
-                ? ['laser', 'chatarra', 'laser']
-                : ['laser', 'chatarra'];
+        const encuentro = oleada / 5;                      // 1,2,3... (cada aparición de jefe)
+        const bossIdx = Math.min(encuentro, 6) - 1;          // 0..5 (a partir de la 6ª aparición se queda en OMEGA)
+        const def = BOSS_DEFS[Math.min(bossIdx, 5)];
+        const tier = encuentro;                              // sigue subiendo siempre, escala la dificultad sin techo
+        const vidasBase = Math.round(def.hpBase + (tier - 1) * def.hpPorTier);
 
         jefe = {
-            x: ANCHO / 2,
-            y: -80,                 // empieza fuera de pantalla (entra desde arriba)
-            yTarget: 90,            // posición final
-            ancho: 70,
-            alto: 55,
-            vidasMax: vidasBase,
-            vidas: vidasBase,
-            velocidadX: 1.2 + tier * 0.3,
-            dir: 1,
-            tier,
-            ataques,
-            ataqueTimer: 110,       // frames hasta primer ataque (entra atacando antes)
-            ataqueFase: 0,
-            color: ['#ff4488','#ff2200','#aa00ff','#ff8800','#00ffcc'][Math.min(tier-1,4)],
-            colorSecundario: ['#ff88bb','#ff7755','#dd66ff','#ffcc44','#66ffee'][Math.min(tier-1,4)],
-            nombre: ['DEVORADOR','DESTRUCTOR','APOCALIPSIS','NÉMESIS','ABISMO','EXTERMINADOR',
-                     'CATACLISMO','ANIQUILADOR','OMEGA','INFINITO','CAOS','ARMAGEDÓN',
-                     'VOID','TITAN','BEHEMOTH','LEVIATAN','MOLOCH','BAALZEBUL',
-                     'MALPHAS','PURSON'][Math.min(tier-1, 19)],
-            chatarraVal: 200 + tier * 100,
-            rotorAng: 0,
-            entraAnimacion: true,
+            x: ANCHO / 2, y: -80, yTarget: 100,
+            ancho: def.ancho, alto: def.alto,
+            vidasMax: vidasBase, vidas: vidasBase,
+            velocidadX: def.velBase + tier * 0.12,
+            velocidadY: def.omni ? (1.1 + tier * 0.08) : 0,
+            dir: 1, dirY: 1,
+            tier, bossIdx: Math.min(bossIdx, 5), ataques: def.ataques,
+            ataqueTimer: 100, ataqueFase: 0,
+            color: def.color, colorSecundario: def.colorSecundario,
+            nombre: encuentro > 6 ? `${def.nombre} MK${Math.floor(encuentro - 5)}` : def.nombre,
+            chatarraVal: 260 + Math.round(tier * 90),
+            rotorAng: 0, entraAnimacion: true, omni: def.omni,
+            queue: [], invocarCooldown: 60,
         };
     }
 
@@ -358,40 +350,50 @@
         const cantidad = 5 + (oleada - 1) * 3;
         const filas = Math.ceil(cantidad / 8);
         let idx = 0;
+        // Vida creciente con la oleada: nadie muere de un solo disparo pasadas las primeras rondas
+        const hpGrowth = Math.floor(oleada / 3);
+
         for (let f = 0; f < filas && idx < cantidad; f++) {
             const en_fila = Math.min(8, cantidad - idx);
             for (let c = 0; c < en_fila; c++) {
                 const roll = Math.random();
                 let tipo;
-                if (oleada >= 4 && roll < 0.15) tipo = 'kamikaze';
-                else if (roll < 0.45) tipo = 'nave';
+                if (oleada >= 6 && roll < 0.12) tipo = 'tanque';
+                else if (oleada >= 4 && roll < 0.28) tipo = 'kamikaze';
+                else if (oleada >= 3 && roll < 0.42) tipo = 'scout';
+                else if (oleada >= 5 && roll < 0.55) tipo = 'dron';
+                else if (roll < 0.75) tipo = 'nave';
                 else tipo = 'asteroid';
 
-                const velocidadBase = 0.5 + oleada * 0.15;
+                // ~20% más rápidos que la versión anterior, y siguen acelerando con la oleada
+                const velocidadBase = (0.65 + oleada * 0.16) * 1.2;
+
+                const baseHp = { nave: 2, asteroid: 1, kamikaze: 1, tanque: 5, scout: 1, dron: 3 };
+                const vidas = baseHp[tipo] + (['asteroid', 'kamikaze', 'scout'].includes(tipo) ? Math.floor(hpGrowth / 2) : hpGrowth);
+                const tamaños = { nave: 28, kamikaze: 22, asteroid: 24, tanque: 38, scout: 18, dron: 26 };
+                const colores = { nave: '#e8445a', kamikaze: '#ff9900', asteroid: '#a07040', tanque: '#5a6b8c', scout: '#c04fff', dron: '#38d0d0' };
+
                 const enemigo = {
                     x: 40 + c * (ANCHO - 80) / Math.max(en_fila - 1, 1),
                     y: 40 + f * 50,
-                    ancho: tipo === 'nave' ? 28 : (tipo === 'kamikaze' ? 22 : 24),
-                    alto: tipo === 'nave' ? 22 : (tipo === 'kamikaze' ? 22 : 24),
-                    tipo,
-                    vidas: tipo === 'nave' ? 2 : 1,
+                    ancho: tamaños[tipo], alto: tamaños[tipo],
+                    tipo, vidas, vidasMax: vidas,
                     velocidadX: (Math.random() - 0.5) * velocidadBase * 2,
-                    velocidadY: velocidadBase * (0.3 + Math.random() * 0.4),
-                    velMax: velocidadBase * 1.8,
+                    velocidadY: velocidadBase * (0.3 + Math.random() * 0.4) * (tipo === 'tanque' ? 0.6 : tipo === 'scout' ? 1.4 : 1),
+                    velMax: velocidadBase * 1.9,
                     rotacion: 0,
                     rotVel: (Math.random() - 0.5) * 0.06,
-                    chatarraVal: tipo === 'nave' ? 15 : (tipo === 'kamikaze' ? 20 : 8),
-                    color: tipo === 'nave' ? '#e8445a' : (tipo === 'kamikaze' ? '#ff9900' : '#a07040'),
+                    chatarraVal: tipo === 'nave' ? 15 : tipo === 'kamikaze' ? 20 : tipo === 'tanque' ? 40 : tipo === 'dron' ? 22 : tipo === 'scout' ? 12 : 8,
+                    color: colores[tipo],
                     id: idx++
                 };
 
-                if (tipo === 'nave') {
-                    // A partir de oleada 2 las naves normales también disparan
+                if (tipo === 'nave' || tipo === 'dron') {
                     enemigo.puedeDisparar = oleada >= 2;
-                    enemigo.disparoCooldown = 80 + Math.random() * 100;
+                    enemigo.disparoCooldown = 70 + Math.random() * 90;
                 }
                 if (tipo === 'kamikaze') {
-                    enemigo.velKamikaze = 1.6 + oleada * 0.06;
+                    enemigo.velKamikaze = 2.0 + oleada * 0.08;
                 }
 
                 enemigos.push(enemigo);
@@ -423,7 +425,6 @@
         shootSound();
     }
 
-    /* ── Disparo del ayudante (nave aliada) ── */
     function dispararAyudante() {
         balas.push({
             x: jugador.x - 32, y: jugador.y + 4, vel: 8.5, ancho: 3, alto: 9,
@@ -439,21 +440,39 @@
             const vel = 1.5 + Math.random() * 3;
             particulas.push({
                 x, y,
-                vx: Math.cos(ang) * vel,
-                vy: Math.sin(ang) * vel,
-                r: 1.5 + Math.random() * 2,
-                alpha: 1,
-                color
+                vx: Math.cos(ang) * vel, vy: Math.sin(ang) * vel,
+                r: 1.5 + Math.random() * 2, alpha: 1, color
             });
         }
         explosionSound();
+    }
+
+    /* ── Invocar aliados (habilidad de jefe) ── */
+    function invocarAliados(cantidad) {
+        if (!jefe) return;
+        bossSummonSound();
+        for (let i = 0; i < cantidad; i++) {
+            const tipo = Math.random() < 0.5 ? 'dron' : 'scout';
+            const hp = tipo === 'dron' ? 3 : 1;
+            enemigos.push({
+                x: jefe.x + (i - (cantidad - 1) / 2) * 50,
+                y: jefe.y + jefe.alto / 2 + 20,
+                ancho: tipo === 'dron' ? 26 : 18, alto: tipo === 'dron' ? 26 : 18,
+                tipo, vidas: hp, vidasMax: hp,
+                velocidadX: (Math.random() - 0.5) * 3,
+                velocidadY: 1.2 + Math.random() * 0.8,
+                velMax: 3, rotacion: 0, rotVel: (Math.random() - 0.5) * 0.1,
+                chatarraVal: 10, color: tipo === 'dron' ? '#38d0d0' : '#c04fff', id: Math.random(),
+                puedeDisparar: tipo === 'dron', disparoCooldown: 60 + Math.random() * 40,
+                esMinion: true,
+            });
+        }
     }
 
     /* ── UPDATE ── */
     function update() {
         bgPulse += 0.02;
 
-        // Estrellas
         estrellas.forEach(s => {
             s.y += s.vel;
             if (s.y > ALTO) { s.y = 0; s.x = Math.random() * ANCHO; }
@@ -462,7 +481,6 @@
 
         if (estado !== ESTADOS.JUGANDO) return;
 
-        // Mover jugador
         if (teclas.ArrowLeft || teclas.a || teclas.KeyA) jugador.x -= jugador.velocidad;
         if (teclas.ArrowRight || teclas.d || teclas.KeyD) jugador.x += jugador.velocidad;
         if (teclas.ArrowUp || teclas.w || teclas.KeyW) jugador.y -= jugador.velocidad * 0.7;
@@ -472,7 +490,6 @@
 
         if (jugador.invulnerable > 0) jugador.invulnerable--;
 
-        // Disparo automático por tecla o botón
         cooldownActual--;
         const disparar_input = teclas[' '] || teclas.Space || teclas.z || teclas.KeyZ || disparandoMovil;
         if (disparar_input && cooldownActual <= 0) {
@@ -480,30 +497,32 @@
             cooldownActual = COOLDOWN_BASE[mejoras.velocidadDisparo];
         }
 
-        // Disparo del ayudante (independiente, algo más lento)
         if (mejoras.ayudante) {
             ayudanteCooldown--;
             if (disparar_input && ayudanteCooldown <= 0) {
                 dispararAyudante();
-                ayudanteCooldown = 24;
+                ayudanteCooldown = 22;
             }
         }
 
-        // Mover balas
         balas = balas.filter(b => b.y > -20);
         balas.forEach(b => b.y -= b.vel);
 
-        // Mover enemigos (con IA: naves persiguen al jugador y disparan, kamikazes se lanzan)
         enemigos.forEach(e => {
             if (e.tipo === 'kamikaze') {
-                // Se lanza directo hacia el jugador
                 const dx = jugador.x - e.x, dy = jugador.y - e.y;
                 const dist = Math.hypot(dx, dy) || 1;
                 e.x += (dx / dist) * e.velKamikaze;
                 e.y += (dy / dist) * e.velKamikaze;
+            } else if (e.tipo === 'scout') {
+                // Rápido y errático (zig-zag)
+                e.velocidadX += (Math.random() - 0.5) * 0.6;
+                e.velocidadX = Math.max(-e.velMax, Math.min(e.velMax, e.velocidadX));
+                e.x += e.velocidadX * 1.3;
+                e.y += e.velocidadY;
+                if (e.x < e.ancho / 2 || e.x > ANCHO - e.ancho / 2) e.velocidadX *= -1;
             } else {
-                if (e.tipo === 'nave') {
-                    // Dirige suavemente su movimiento horizontal hacia el jugador
+                if (e.tipo === 'nave' || e.tipo === 'dron') {
                     const dir = jugador.x > e.x ? 1 : -1;
                     e.velocidadX += dir * 0.02;
                     e.velocidadX = Math.max(-e.velMax, Math.min(e.velMax, e.velocidadX));
@@ -514,24 +533,29 @@
             }
             e.rotacion += e.rotVel;
 
-            // Naves disparan al jugador cuando están en pantalla
-            if (e.tipo === 'nave' && e.puedeDisparar) {
+            if ((e.tipo === 'nave' || e.tipo === 'dron') && e.puedeDisparar) {
                 e.disparoCooldown--;
                 if (e.disparoCooldown <= 0 && e.y > 0 && e.y < ALTO - 60) {
                     const dx = jugador.x - e.x, dy = jugador.y - e.y;
                     const dist = Math.hypot(dx, dy) || 1;
-                    const spd = 3 + oleada * 0.06;
-                    balasEnemigos.push({
-                        x: e.x, y: e.y + e.alto / 2,
-                        vx: (dx / dist) * spd, vy: (dy / dist) * spd,
-                        color: '#ff8899', eliminada: false
-                    });
-                    e.disparoCooldown = Math.max(55, 150 - oleada * 3) + Math.random() * 40;
+                    const spd = 3.2 + oleada * 0.07;
+                    if (e.tipo === 'dron') {
+                        [-0.25, 0, 0.25].forEach(off => {
+                            const ang = Math.atan2(dy, dx) + off;
+                            balasEnemigos.push({ x: e.x, y: e.y + e.alto / 2, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, color: '#38d0d0', eliminada: false });
+                        });
+                    } else {
+                        balasEnemigos.push({
+                            x: e.x, y: e.y + e.alto / 2,
+                            vx: (dx / dist) * spd, vy: (dy / dist) * spd,
+                            color: '#ff8899', eliminada: false
+                        });
+                    }
+                    e.disparoCooldown = Math.max(50, 145 - oleada * 3) + Math.random() * 40;
                 }
             }
         });
 
-        // Mover y limpiar balas enemigas, colisión contra el jugador
         balasEnemigos = balasEnemigos.filter(b => b.y < ALTO + 20 && b.y > -20 && b.x > -20 && b.x < ANCHO + 20);
         balasEnemigos.forEach(b => {
             b.x += b.vx; b.y += b.vy;
@@ -544,7 +568,6 @@
         });
         balasEnemigos = balasEnemigos.filter(b => !b.eliminada);
 
-        // Colisión balas-enemigos
         balas.forEach(b => {
             enemigos.forEach(e => {
                 if (!b.eliminada &&
@@ -567,14 +590,12 @@
         balas = balas.filter(b => !b.eliminada);
         enemigos = enemigos.filter(e => !e.eliminado);
 
-        // Enemigos llegan al fondo o colisionan con jugador
         enemigos.forEach(e => {
             if (e.y > ALTO - 40) {
                 crearExplosion(e.x, e.y, '#e8445a');
                 e.eliminado = true;
                 dañarJugador();
             }
-            // Colisión directa con nave
             if (jugador.invulnerable <= 0 &&
                 Math.abs(e.x - jugador.x) < (e.ancho / 2 + jugador.ancho / 2 - 4) &&
                 Math.abs(e.y - jugador.y) < (e.alto / 2 + jugador.alto / 2 - 4)) {
@@ -585,23 +606,17 @@
         });
         enemigos = enemigos.filter(e => !e.eliminado);
 
-        // Explosiones
         explosiones.forEach(ex => { ex.r += 2; ex.alpha -= 0.07; });
         explosiones = explosiones.filter(ex => ex.alpha > 0);
 
-        // Partículas
         particulas.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += 0.08; p.alpha -= 0.04; });
         particulas = particulas.filter(p => p.alpha > 0);
 
-        // ¿Oleada completa? (sin jefe)
         if (!jefe && enemigos.length === 0 && estado === ESTADOS.JUGANDO) {
             terminarOleada();
         }
 
-        // ── JEFE ──
-        if (jefe) {
-            updateJefe();
-        }
+        if (jefe) updateJefe();
     }
 
     function terminarOleada() {
@@ -616,44 +631,61 @@
     function updateJefe() {
         jefe.rotorAng += 0.03;
 
-        // Entrada animada
-        if (jefe.y < jefe.yTarget) {
-            jefe.y += 2.5;
-            return;  // no ataca mientras entra
-        }
+        if (jefe.y < jefe.yTarget) { jefe.y += 2.6; return; }
         jefe.entraAnimacion = false;
 
-        // Movimiento lateral
-        jefe.x += jefe.velocidadX * jefe.dir;
-        if (jefe.x > ANCHO - jefe.ancho / 2 - 10) jefe.dir = -1;
-        if (jefe.x < jefe.ancho / 2 + 10) jefe.dir = 1;
+        if (jefe.omni) {
+            // Jefe final: movimiento libre en X e Y, persigue/orbita al jugador
+            const dx = jugador.x - jefe.x, dy = (ALTO * 0.32) - jefe.y;
+            jefe.velocidadX = Math.max(-4.2, Math.min(4.2, jefe.velocidadX + Math.sign(dx) * 0.06 + Math.sin(bgPulse * 1.3) * 0.05));
+            jefe.velocidadY = Math.max(-2.4, Math.min(2.4, (jefe.velocidadY || 0) + Math.sign(dy) * 0.03));
+            jefe.x += jefe.velocidadX; jefe.y += jefe.velocidadY;
+            if (jefe.x < jefe.ancho / 2 + 10) { jefe.x = jefe.ancho / 2 + 10; jefe.velocidadX *= -0.6; }
+            if (jefe.x > ANCHO - jefe.ancho / 2 - 10) { jefe.x = ANCHO - jefe.ancho / 2 - 10; jefe.velocidadX *= -0.6; }
+            if (jefe.y < 70) { jefe.y = 70; jefe.velocidadY *= -0.6; }
+            if (jefe.y > ALTO * 0.55) { jefe.y = ALTO * 0.55; jefe.velocidadY *= -0.6; }
+        } else {
+            jefe.x += jefe.velocidadX * jefe.dir;
+            if (jefe.x > ANCHO - jefe.ancho / 2 - 10) jefe.dir = -1;
+            if (jefe.x < jefe.ancho / 2 + 10) jefe.dir = 1;
+            if (jefe.bossIdx >= 2) jefe.y = jefe.yTarget + Math.sin(bgPulse * 1.6) * 14;
+        }
 
-        // Timers de ataque
         jefe.ataqueTimer--;
         if (jefe.ataqueTimer <= 0) {
             const tipoAtaque = jefe.ataques[jefe.ataqueFase % jefe.ataques.length];
             ejecutarAtaqueJefe(tipoAtaque);
             jefe.ataqueFase++;
-            // Cooldown se reduce con el tier (más agresivo en niveles altos)
-            jefe.ataqueTimer = Math.max(35, 120 - jefe.tier * 12);
+            jefe.ataqueTimer = Math.max(30, 115 - jefe.tier * 9);
         }
 
-        // Mover balas del jefe
-        balasJefe = balasJefe.filter(b => b.y < ALTO + 20 && b.x > -20 && b.x < ANCHO + 20);
+        // Cola de sub-ataques con retardo (ráfagas, seguimiento tras teletransporte) sin usar setTimeout
+        if (jefe.queue.length) {
+            jefe.queue.forEach(q => q.frames -= 1);
+            jefe.queue.filter(q => q.frames <= 0).forEach(() => dispararUnLaser(jefe));
+            jefe.queue = jefe.queue.filter(q => q.frames > 0);
+        }
+
+        if (jefe.invocarCooldown > 0) jefe.invocarCooldown--;
+
+        balasJefe = balasJefe.filter(b => b.y < ALTO + 30 && b.x > -30 && b.x < ANCHO + 30);
         balasJefe.forEach(b => {
-            b.x += b.vx;
-            b.y += b.vy;
+            if (b.esMina) {
+                b.vida = (b.vida || 0) - 1;
+                if (b.vida <= 0 && !b.explota) { b.explota = true; explotarMina(b); }
+                return;
+            }
+            b.x += b.vx; b.y += b.vy;
             b.rotacion = (b.rotacion || 0) + (b.rotVel || 0);
         });
+        balasJefe = balasJefe.filter(b => !(b.esMina && b.explota));
 
-        // Colisión balas jugador → jefe
         balas.forEach(b => {
             if (!b.eliminada && jefe &&
                 Math.abs(b.x - jefe.x) < jefe.ancho / 2 + 4 &&
                 Math.abs(b.y - jefe.y) < jefe.alto / 2 + 6) {
                 b.eliminada = true;
                 jefe.vidas--;
-                // Flash de daño
                 jefe.dañoFlash = 8;
                 if (jefe.vidas <= 0) matarJefe();
             }
@@ -661,7 +693,6 @@
         balas = balas.filter(b => !b.eliminada);
         if (jefe) jefe.dañoFlash = Math.max(0, (jefe.dañoFlash || 0) - 1);
 
-        // Colisión balas jefe → jugador
         balasJefe.forEach(b => {
             if (!b.eliminada &&
                 Math.abs(b.x - jugador.x) < jugador.ancho / 2 + (b.radio || 6) &&
@@ -673,62 +704,80 @@
         balasJefe = balasJefe.filter(b => !b.eliminada);
     }
 
+    function dispararUnLaser(j) {
+        const dx = jugador.x - j.x, dy = jugador.y - j.y, dist = Math.hypot(dx, dy) || 1;
+        const spd = 8.8 + j.tier * 0.5;
+        balasJefe.push({ x: j.x, y: j.y + j.alto / 2, vx: (dx / dist) * spd, vy: (dy / dist) * spd, radio: 4, tipo: 'laser', color: j.colorSecundario, eliminada: false });
+        bossLaserSound();
+    }
+
+    function explotarMina(mina) {
+        const cant = 8;
+        for (let i = 0; i < cant; i++) {
+            const ang = (i / cant) * Math.PI * 2;
+            balasJefe.push({ x: mina.x, y: mina.y, vx: Math.cos(ang) * 3.2, vy: Math.sin(ang) * 3.2, radio: 5, tipo: 'chatarra', rotacion: 0, rotVel: 0.1, color: '#e8c97a', eliminada: false });
+        }
+        crearExplosion(mina.x, mina.y, '#e8c97a');
+    }
+
     function ejecutarAtaqueJefe(tipo) {
         if (!jefe) return;
         if (tipo === 'laser') {
-            // Láser apuntado al jugador, mucho más rápido con el tier
             const dx = jugador.x - jefe.x;
             const dy = jugador.y - jefe.y;
             const dist = Math.hypot(dx, dy) || 1;
-            const spd = 7.5 + jefe.tier * 0.9;
+            const spd = 7.8 + jefe.tier * 0.85;
             balasJefe.push({
                 x: jefe.x, y: jefe.y + jefe.alto / 2,
-                vx: (dx / dist) * spd,
-                vy: (dy / dist) * spd,
-                radio: 5, tipo: 'laser',
-                color: jefe.color, eliminada: false
+                vx: (dx / dist) * spd, vy: (dy / dist) * spd,
+                radio: 5, tipo: 'laser', color: jefe.color, eliminada: false
             });
             bossLaserSound();
         } else if (tipo === 'chatarra') {
-            // Abanico de chatarra centrado en la dirección del jugador (dirigido, no al azar)
-            const cantidad = 5 + jefe.tier;
+            const cantidad = 6 + jefe.tier;
             const dxJ = jugador.x - jefe.x;
             const dyJ = jugador.y - jefe.y;
-            const anguloBase = Math.atan2(dyJ, dxJ);       // ángulo hacia el jugador
-            const spread = Math.PI / 3.2;                   // abertura del abanico
+            const anguloBase = Math.atan2(dyJ, dxJ);
+            const spread = Math.PI / 3.0;
             for (let i = 0; i < cantidad; i++) {
                 const t = cantidad === 1 ? 0.5 : i / (cantidad - 1);
                 const ang = anguloBase - spread / 2 + spread * t;
-                const spd = 3.6 + jefe.tier * 0.3 + Math.random() * 1.2;
+                const spd = 3.8 + jefe.tier * 0.32 + Math.random() * 1.2;
                 balasJefe.push({
-                    x: jefe.x + (Math.random() - 0.5) * 30,
-                    y: jefe.y + jefe.alto / 2,
-                    vx: Math.cos(ang) * spd,
-                    vy: Math.sin(ang) * spd,
+                    x: jefe.x + (Math.random() - 0.5) * 30, y: jefe.y + jefe.alto / 2,
+                    vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd,
                     radio: 7, tipo: 'chatarra',
-                    rotacion: Math.random() * Math.PI * 2,
-                    rotVel: (Math.random() - 0.5) * 0.15,
+                    rotacion: Math.random() * Math.PI * 2, rotVel: (Math.random() - 0.5) * 0.15,
                     color: '#e8c97a', eliminada: false
                 });
-                bossChatarraSound();
             }
+            bossChatarraSound();
         } else if (tipo === 'rafaga') {
-            // Ráfaga rápida de 3 láseres seguidos, dirigidos y veloces
-            for (let i = 0; i < 3; i++) {
-                setTimeout(() => {
-                    if (!jefe) return;
-                    const dx = jugador.x - jefe.x + (i - 1) * 30;
-                    const dy = jugador.y - jefe.y;
-                    const dist = Math.hypot(dx, dy) || 1;
-                    const spd = 8.5 + jefe.tier * 0.5;
-                    balasJefe.push({
-                        x: jefe.x, y: jefe.y + jefe.alto / 2,
-                        vx: (dx / dist) * spd, vy: (dy / dist) * spd,
-                        radio: 4, tipo: 'laser',
-                        color: jefe.colorSecundario, eliminada: false
-                    });
-                    bossLaserSound();
-                }, i * 90);
+            for (let i = 0; i < 4; i++) jefe.queue.push({ tipo: 'laser', frames: i * 6 + 1 });
+        } else if (tipo === 'mina') {
+            const cant = 2 + Math.floor(jefe.tier / 2);
+            for (let i = 0; i < cant; i++) {
+                balasJefe.push({ x: jefe.x + (i - (cant - 1) / 2) * 40, y: jefe.y + jefe.alto / 2, vx: 0, vy: 1.4, radio: 8, tipo: 'mina', color: '#ff8800', eliminada: false, esMina: true, vida: 70 });
+            }
+            bossMinaSound();
+        } else if (tipo === 'spin') {
+            const cant = 14 + jefe.tier;
+            for (let i = 0; i < cant; i++) {
+                const ang = (i / cant) * Math.PI * 2;
+                const spd = 3.0 + jefe.tier * 0.2;
+                balasJefe.push({ x: jefe.x, y: jefe.y, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, radio: 5, tipo: 'laser', color: jefe.colorSecundario, eliminada: false });
+            }
+            bossLaserSound();
+        } else if (tipo === 'teleport') {
+            jefe.teleportFlash = 14;
+            bossTeleportSound();
+            jefe.x = 60 + Math.random() * (ANCHO - 120);
+            if (!jefe.omni) jefe.y = jefe.yTarget;
+            jefe.queue.push({ tipo: 'laser', frames: 8 });
+        } else if (tipo === 'invocar') {
+            if (jefe.invocarCooldown <= 0) {
+                invocarAliados(jefe.omni ? 3 : 2);
+                jefe.invocarCooldown = jefe.omni ? 260 : 340;
             }
         }
     }
@@ -745,7 +794,6 @@
         actualizarHUD();
         jefe = null;
         balasJefe = [];
-        // Comprobar victoria (oleada 100)
         if (oleada >= MAX_OLEADAS) {
             setTimeout(() => { estado = ESTADOS.VICTORIA; victorySound(); }, 800);
         } else {
@@ -802,11 +850,9 @@
     ══════════════════════════════════════════ */
 
     function draw() {
-        // Fondo
         ctx.fillStyle = '#04040e';
         ctx.fillRect(0, 0, ANCHO, ALTO);
 
-        // Estrellas
         estrellas.forEach(s => {
             ctx.beginPath();
             ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
@@ -819,7 +865,6 @@
         if (estado === ESTADOS.GAMEOVER) { drawGameOver(); return; }
         if (estado === ESTADOS.VICTORIA) { drawVictoria(); return; }
 
-        // Explosiones
         explosiones.forEach(ex => {
             ctx.save();
             ctx.globalAlpha = ex.alpha;
@@ -831,7 +876,6 @@
             ctx.restore();
         });
 
-        // Partículas
         particulas.forEach(p => {
             ctx.save();
             ctx.globalAlpha = p.alpha;
@@ -842,38 +886,39 @@
             ctx.restore();
         });
 
-        // Enemigos
         enemigos.forEach(e => {
             ctx.save();
             ctx.translate(e.x, e.y);
             ctx.rotate(e.rotacion);
-            if (e.tipo === 'nave') drawNaveEnemiga(e);
+            if (e.tipo === 'nave' || e.tipo === 'dron') drawNaveEnemiga(e);
             else if (e.tipo === 'kamikaze') drawKamikaze(e);
+            else if (e.tipo === 'scout') drawScout(e);
+            else if (e.tipo === 'tanque') drawTanque(e);
             else drawAsteroide(e);
             ctx.restore();
         });
 
-        // Jefe
         if (jefe) drawJefe();
 
-        // Balas del jefe
         balasJefe.forEach(b => {
             ctx.save();
             ctx.globalAlpha = 0.95;
             ctx.shadowBlur = 10;
             ctx.shadowColor = b.color;
-            if (b.tipo === 'laser') {
+            if (b.esMina) {
+                const parpadeo = Math.floor((b.vida || 0) / 6) % 2 === 0;
+                ctx.fillStyle = parpadeo ? '#fff' : b.color;
+                ctx.beginPath(); ctx.arc(b.x, b.y, b.radio, 0, Math.PI * 2); ctx.fill();
+            } else if (b.tipo === 'laser') {
                 ctx.beginPath();
                 ctx.arc(b.x, b.y, b.radio, 0, Math.PI * 2);
                 ctx.fillStyle = b.color;
                 ctx.fill();
-                // núcleo blanco
                 ctx.beginPath();
                 ctx.arc(b.x, b.y, b.radio * 0.4, 0, Math.PI * 2);
                 ctx.fillStyle = '#fff';
                 ctx.fill();
             } else {
-                // chatarra: pequeño hexágono rotado
                 ctx.translate(b.x, b.y);
                 ctx.rotate(b.rotacion || 0);
                 ctx.beginPath();
@@ -892,7 +937,6 @@
             ctx.restore();
         });
 
-        // Balas enemigas (naves normales)
         balasEnemigos.forEach(b => {
             ctx.save();
             ctx.shadowBlur = 8;
@@ -904,10 +948,8 @@
             ctx.restore();
         });
 
-        // Nave ayudante
         if (mejoras.ayudante) drawAyudante();
 
-        // Balas jugador
         balas.forEach(b => {
             ctx.save();
             ctx.shadowBlur = 8;
@@ -919,10 +961,8 @@
             ctx.restore();
         });
 
-        // Jugador
         drawJugador();
 
-        // Escudo visual
         if (mejoras.escudo) {
             ctx.save();
             ctx.globalAlpha = 0.4 + Math.sin(bgPulse * 4) * 0.15;
@@ -936,7 +976,6 @@
             ctx.restore();
         }
 
-        // HUD en canvas
         ctx.fillStyle = 'rgba(0,0,0,0.5)';
         ctx.fillRect(0, 0, ANCHO, jefe ? 58 : 28);
         ctx.fillStyle = '#454560';
@@ -950,7 +989,6 @@
         ctx.fillStyle = '#34c77b';
         ctx.fillText(`⚙ ${chatarra}`, ANCHO - 10, 18);
         ctx.textAlign = 'center';
-        // Barra de progreso hacia próximo jefe (solo si no hay jefe activo)
         if (!jefe) {
             const hasta = 5 - (oleada % 5);
             const pct = hasta === 5 ? 1 : (5 - hasta) / 5;
@@ -972,7 +1010,6 @@
         ctx.shadowBlur = 14;
         ctx.shadowColor = '#4f7cff';
 
-        // Cuerpo principal
         ctx.fillStyle = '#4f7cff';
         ctx.beginPath();
         ctx.moveTo(x, y - 15);
@@ -982,7 +1019,6 @@
         ctx.closePath();
         ctx.fill();
 
-        // Alas
         ctx.fillStyle = '#2a4fa8';
         ctx.beginPath();
         ctx.moveTo(x - 13, y + 12);
@@ -997,13 +1033,11 @@
         ctx.closePath();
         ctx.fill();
 
-        // Cabina
         ctx.fillStyle = '#a0c8ff';
         ctx.beginPath();
         ctx.ellipse(x, y - 2, 5, 7, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Motor (llama)
         if (Math.random() > 0.3) {
             ctx.fillStyle = `rgba(255,${120 + Math.random() * 80 | 0},0,0.8)`;
             ctx.beginPath();
@@ -1014,7 +1048,6 @@
             ctx.fill();
         }
 
-        // Si tiene ráfaga mejorada: indicador de cañones extra
         if (mejoras.nivelRafaga >= 1) {
             ctx.fillStyle = '#e8c97a';
             ctx.fillRect(x - 14, y - 4, 3, 10);
@@ -1048,7 +1081,7 @@
         ctx.restore();
     }
 
-    /* ── Dibujar nave enemiga ── */
+    /* ── Dibujar nave enemiga / dron ── */
     function drawNaveEnemiga(e) {
         ctx.save();
         ctx.shadowBlur = 8; ctx.shadowColor = e.color;
@@ -1060,7 +1093,7 @@
         ctx.lineTo(e.ancho / 2, -e.alto / 2);
         ctx.closePath();
         ctx.fill();
-        ctx.fillStyle = '#ff9999';
+        ctx.fillStyle = e.tipo === 'dron' ? '#bafff5' : '#ff9999';
         ctx.beginPath();
         ctx.ellipse(0, 0, 4, 3, 0, 0, Math.PI * 2);
         ctx.fill();
@@ -1083,6 +1116,45 @@
         ctx.beginPath();
         ctx.arc(0, 0, 3.5, 0, Math.PI * 2);
         ctx.fill();
+        ctx.restore();
+    }
+
+    /* ── Dibujar scout (nuevo, rápido) ── */
+    function drawScout(e) {
+        ctx.save();
+        ctx.shadowBlur = 9; ctx.shadowColor = e.color;
+        ctx.fillStyle = e.color;
+        ctx.beginPath();
+        ctx.moveTo(0, -e.alto / 2);
+        ctx.lineTo(e.ancho / 2, e.alto / 3);
+        ctx.lineTo(0, e.alto / 6);
+        ctx.lineTo(-e.ancho / 2, e.alto / 3);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#f0d0ff';
+        ctx.beginPath();
+        ctx.arc(0, 0, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    /* ── Dibujar tanque (nuevo, blindado, resistente) ── */
+    function drawTanque(e) {
+        ctx.save();
+        ctx.shadowBlur = 6; ctx.shadowColor = e.color;
+        ctx.fillStyle = e.color;
+        ctx.beginPath();
+        ctx.roundRect(-e.ancho / 2, -e.alto / 2, e.ancho, e.alto, 6);
+        ctx.fill();
+        ctx.fillStyle = '#8fa2c0';
+        ctx.fillRect(-e.ancho / 4, -e.alto / 2 - 5, e.ancho / 2, 6);
+        ctx.fillStyle = '#1c2436';
+        ctx.beginPath();
+        ctx.arc(0, 0, 6, 0, Math.PI * 2);
+        ctx.fill();
+        const pct = e.vidas / e.vidasMax;
+        ctx.fillStyle = pct > 0.5 ? '#34c77b' : pct > 0.25 ? '#e8c97a' : '#e8445a';
+        ctx.fillRect(-e.ancho / 2, e.alto / 2 + 3, e.ancho * pct, 3);
         ctx.restore();
     }
 
@@ -1113,13 +1185,13 @@
     function drawJefe() {
         if (!jefe) return;
         const x = jefe.x, y = jefe.y;
-        const flash = jefe.dañoFlash > 0;
+        const flash = jefe.dañoFlash > 0 || (jefe.teleportFlash || 0) > 0;
+        if (jefe.teleportFlash) jefe.teleportFlash--;
 
         ctx.save();
         ctx.shadowBlur = 20 + Math.sin(bgPulse * 3) * 8;
         ctx.shadowColor = jefe.color;
 
-        // Cuerpo central (hexágono)
         ctx.fillStyle = flash ? '#ffffff' : jefe.color;
         ctx.beginPath();
         for (let i = 0; i < 6; i++) {
@@ -1131,7 +1203,6 @@
         ctx.closePath();
         ctx.fill();
 
-        // Anillo exterior giratorio
         ctx.strokeStyle = flash ? '#ffffff' : jefe.colorSecundario;
         ctx.lineWidth = 2.5;
         ctx.beginPath();
@@ -1144,7 +1215,21 @@
         ctx.closePath();
         ctx.stroke();
 
-        // Núcleo brillante
+        // El jefe final (OMEGA) tiene un segundo anillo que gira al revés: simboliza que combina a todos
+        if (jefe.omni) {
+            ctx.strokeStyle = flash ? '#ffffff' : jefe.color;
+            ctx.lineWidth = 1.6;
+            ctx.beginPath();
+            for (let i = 0; i < 10; i++) {
+                const a = (i / 10) * Math.PI * 2 - jefe.rotorAng * 1.4;
+                const r = jefe.ancho / 2 + 24;
+                const px = x + Math.cos(a) * r, py = y + Math.sin(a) * r;
+                i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+            ctx.stroke();
+        }
+
         ctx.fillStyle = flash ? jefe.color : '#ffffff';
         ctx.shadowBlur = 15;
         ctx.shadowColor = '#ffffff';
@@ -1152,7 +1237,6 @@
         ctx.arc(x, y, 10 + Math.sin(bgPulse * 5) * 2, 0, Math.PI * 2);
         ctx.fill();
 
-        // Cañones laterales
         [-1, 1].forEach(lado => {
             ctx.fillStyle = flash ? '#fff' : jefe.colorSecundario;
             ctx.beginPath();
@@ -1162,7 +1246,6 @@
 
         ctx.restore();
 
-        // Nombre del jefe (encima)
         ctx.save();
         ctx.fillStyle = jefe.color;
         ctx.font = `bold 11px "DM Mono", monospace`;
@@ -1171,26 +1254,21 @@
         ctx.fillText(`⚠ ${jefe.nombre} ⚠`, x, y - jefe.alto / 2 - 20);
         ctx.restore();
 
-        // Barra de vida del jefe (en la parte superior del canvas)
         const bw = ANCHO - 60, bh = 10, bx = 30, by = 32;
         const pct = jefe.vidas / jefe.vidasMax;
-        // Fondo
         ctx.fillStyle = 'rgba(0,0,0,0.6)';
         ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 4); ctx.fill();
-        // Barra
         const barColor = pct > 0.5 ? jefe.color : pct > 0.25 ? '#e8c97a' : '#e8445a';
         ctx.save();
         ctx.shadowBlur = 8; ctx.shadowColor = barColor;
         ctx.fillStyle = barColor;
         ctx.beginPath(); ctx.roundRect(bx, by, bw * pct, bh, 4); ctx.fill();
         ctx.restore();
-        // Texto
         ctx.fillStyle = '#eeeef5';
         ctx.font = '9px "DM Mono", monospace';
         ctx.textAlign = 'center';
         ctx.fillText(`${jefe.nombre}  ${jefe.vidas}/${jefe.vidasMax}`, ANCHO / 2, by + bh + 12);
 
-        // Intro flash text
         if (jefe.entraAnimacion) {
             ctx.save();
             ctx.globalAlpha = Math.min(1, (120 - (jefe.yTarget - jefe.y) / 2) / 60);
@@ -1226,7 +1304,6 @@
         ctx.fillStyle = '#454580';
         ctx.font = '11px "DM Mono", monospace';
         ctx.fillText('Eres el Defensor Supremo del Espacio', ANCHO / 2, ALTO / 2 + 48);
-        // Estrellas celebración
         estrellas.forEach(s => {
             ctx.beginPath();
             ctx.arc(s.x, s.y, s.r + 0.5, 0, Math.PI * 2);
@@ -1237,16 +1314,31 @@
         });
     }
 
+    /* ── Game Over ── */
+    function drawGameOver() {
+        ctx.fillStyle = 'rgba(4,4,14,0.9)';
+        ctx.fillRect(0, 0, ANCHO, ALTO);
+        ctx.fillStyle = '#e8445a';
+        ctx.font = 'bold 26px "DM Mono", monospace';
+        ctx.textAlign = 'center';
+        ctx.shadowBlur = 20; ctx.shadowColor = '#e8445a';
+        ctx.fillText('GAME OVER', ANCHO / 2, ALTO / 2 - 30);
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#eeeef5';
+        ctx.font = '14px "DM Mono", monospace';
+        ctx.fillText(`${puntuacion} pts · Oleada ${oleada}`, ANCHO / 2, ALTO / 2 + 4);
+        ctx.fillStyle = '#454580';
+        ctx.font = '11px "DM Mono", monospace';
+        ctx.fillText('Usa la pantalla de fin de partida para reintentar', ANCHO / 2, ALTO / 2 + 32);
+    }
+
     /* ══════════════════════════════════════════
        TIENDA
     ══════════════════════════════════════════ */
 
-    /* Items de la tienda */
     const TIENDA_ITEMS = [
         {
-            id: 'vel',
-            icono: '⚡',
-            nombre: 'Velocidad Disparo',
+            id: 'vel', icono: '⚡', nombre: 'Velocidad Disparo',
             desc: () => mejoras.velocidadDisparo >= 5 ? 'MÁXIMO' : `Nivel ${mejoras.velocidadDisparo} → ${mejoras.velocidadDisparo + 1}`,
             costo: () => [0, 40, 80, 130, 190, 999][mejoras.velocidadDisparo],
             activo: () => mejoras.velocidadDisparo < 5,
@@ -1254,9 +1346,7 @@
             color: '#e8c97a'
         },
         {
-            id: 'daño',
-            icono: '💥',
-            nombre: 'Daño de Bala',
+            id: 'daño', icono: '💥', nombre: 'Daño de Bala',
             desc: () => mejoras.dañoBala >= 3 ? 'MÁXIMO' : `Nivel ${mejoras.dañoBala} → ${mejoras.dañoBala + 1}`,
             costo: () => [0, 90, 160, 999][mejoras.dañoBala],
             activo: () => mejoras.dañoBala < 3,
@@ -1264,9 +1354,7 @@
             color: '#ff8844'
         },
         {
-            id: 'rafaga',
-            icono: '🔫',
-            nombre: 'Ráfaga',
+            id: 'rafaga', icono: '🔫', nombre: 'Ráfaga',
             desc: () => mejoras.nivelRafaga >= 2 ? 'TRIPLE (MÁXIMO)' : mejoras.nivelRafaga === 1 ? 'Doble → Triple' : 'Simple → Doble',
             costo: () => [70, 130, 999][mejoras.nivelRafaga],
             activo: () => mejoras.nivelRafaga < 2,
@@ -1274,9 +1362,7 @@
             color: '#4f7cff'
         },
         {
-            id: 'ayudante',
-            icono: '🚀',
-            nombre: 'Nave Ayudante',
+            id: 'ayudante', icono: '🚀', nombre: 'Nave Ayudante',
             desc: () => mejoras.ayudante ? 'YA ACTIVA' : 'Dispara junto a ti',
             costo: () => 150,
             activo: () => !mejoras.ayudante,
@@ -1284,9 +1370,7 @@
             color: '#8affea'
         },
         {
-            id: 'escudo',
-            icono: '🛡',
-            nombre: 'Escudo Temporal',
+            id: 'escudo', icono: '🛡', nombre: 'Escudo Temporal',
             desc: () => mejoras.escudo ? 'YA ACTIVO' : 'Absorbe 1 impacto',
             costo: () => 60,
             activo: () => !mejoras.escudo,
@@ -1294,9 +1378,7 @@
             color: '#34c77b'
         },
         {
-            id: 'vida',
-            icono: '❤',
-            nombre: 'Vida Extra',
+            id: 'vida', icono: '❤', nombre: 'Vida Extra',
             desc: () => jugador.vidas >= 3 ? 'MÁXIMO' : `${jugador.vidas} → ${jugador.vidas + 1}`,
             costo: () => 100,
             activo: () => jugador.vidas < 3,
@@ -1305,10 +1387,8 @@
         }
     ];
 
-    // Selección del cursor en tienda
     let shopCursor = 0;
 
-    // Navegación teclado en tienda
     function handleTiendaKey(e) {
         if (estado !== ESTADOS.TIENDA) return;
         if (e.key === 'ArrowDown' || e.key === 's') shopCursor = (shopCursor + 1) % TIENDA_ITEMS.length;
@@ -1319,14 +1399,12 @@
     }
     window.addEventListener('keydown', handleTiendaKey);
 
-    // Enter/Space desde menú también arrancan el juego
     window.addEventListener('keydown', e => {
         if ((e.key === 'Enter') && estado === ESTADOS.MENU) {
             initAudio(); iniciarJuego();
         }
     });
 
-    // Click en canvas para tienda
     canvas.addEventListener('click', e => {
         if (estado === ESTADOS.VICTORIA) { iniciarJuego(); return; }
         if (estado === ESTADOS.MENU) { initAudio(); iniciarJuego(); return; }
@@ -1338,12 +1416,10 @@
         const mx = (e.clientX - rect.left) * scaleX;
         const my = (e.clientY - rect.top) * scaleY;
 
-        // Botón continuar
         if (mx > ANCHO / 2 - 80 && mx < ANCHO / 2 + 80 && my > ALTO - 46 && my < ALTO - 16) {
             continuarDestienda(); return;
         }
 
-        // Items
         TIENDA_ITEMS.forEach((item, i) => {
             const iy = 84 + i * 48;
             if (mx > 20 && mx < ANCHO - 20 && my > iy && my < iy + 44) {
@@ -1374,11 +1450,9 @@
     }
 
     function drawTienda() {
-        // Fondo semitransparente
         ctx.fillStyle = 'rgba(4,4,14,0.92)';
         ctx.fillRect(0, 0, ANCHO, ALTO);
 
-        // Título
         ctx.save();
         const proxBoss = (oleada + 1) % 5 === 0;
         ctx.shadowBlur = 20; ctx.shadowColor = proxBoss ? '#ff4488' : '#e8c97a';
@@ -1396,7 +1470,6 @@
         ctx.fillStyle = '#303050';
         ctx.fillRect(30, 76, ANCHO - 60, 1);
 
-        // Items (layout compacto para caber 6 mejoras)
         TIENDA_ITEMS.forEach((item, i) => {
             const iy = 84 + i * 48;
             const activo = item.activo();
@@ -1404,7 +1477,6 @@
             const puedePagar = chatarra >= costo && activo;
             const seleccionado = shopCursor === i;
 
-            // Fondo item
             ctx.save();
             ctx.globalAlpha = activo ? 1 : 0.45;
             ctx.fillStyle = seleccionado ? `${item.color}22` : 'rgba(255,255,255,0.03)';
@@ -1414,22 +1486,18 @@
             ctx.roundRect(20, iy, ANCHO - 40, 44, 7);
             ctx.fill(); ctx.stroke();
 
-            // Icono
             ctx.font = '18px serif';
             ctx.textAlign = 'left';
             ctx.fillText(item.icono, 32, iy + 21);
 
-            // Nombre
             ctx.fillStyle = item.color;
             ctx.font = 'bold 12px "DM Mono", monospace';
             ctx.fillText(item.nombre, 58, iy + 17);
 
-            // Descripción
             ctx.fillStyle = '#7070a0';
             ctx.font = '9.5px "DM Mono", monospace';
             ctx.fillText(item.desc(), 58, iy + 31);
 
-            // Precio
             ctx.textAlign = 'right';
             ctx.fillStyle = puedePagar ? '#34c77b' : (activo ? '#e8445a' : '#454560');
             ctx.font = 'bold 12px "DM Mono", monospace';
@@ -1438,7 +1506,6 @@
             ctx.restore();
         });
 
-        // Botón continuar
         const bx = ANCHO / 2 - 80, by = ALTO - 42;
         ctx.save();
         ctx.fillStyle = '#4f7cff';
@@ -1473,60 +1540,11 @@
         ctx.fillStyle = '#454580';
         ctx.font = '12px "DM Mono", monospace';
         ctx.textAlign = 'center';
-        ctx.fillText('Destruye asteroides y naves enemigas', ANCHO / 2, ALTO / 2 + 10);
-        ctx.fillText('Gana chatarra ⚙ para mejorar tu nave', ANCHO / 2, ALTO / 2 + 28);
-
-        ctx.fillStyle = '#303058';
-        ctx.font = '11px "DM Mono", monospace';
-        ctx.fillText('← → Mover · ESPACIO Disparar', ANCHO / 2, ALTO / 2 + 58);
-
-        // Texto pulsante "clic para comenzar"
-        ctx.save();
-        const pulsoAlpha = 0.5 + Math.sin(bgPulse * 3) * 0.5;
-        ctx.globalAlpha = pulsoAlpha;
-        ctx.fillStyle = '#4f7cff';
+        ctx.fillText('WASD/Flechas mover · Espacio/Z disparar', ANCHO / 2, ALTO / 2 + 10);
+        ctx.fillText('6 jefes únicos te esperan — el último los combina a todos', ANCHO / 2, ALTO / 2 + 30);
+        ctx.fillStyle = '#e8c97a';
         ctx.font = 'bold 13px "DM Mono", monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText('[ CLIC O ENTER PARA COMENZAR ]', ANCHO / 2, ALTO / 2 + 80);
-        ctx.restore();
-
-        // Nave decorativa animada
-        ctx.save();
-        ctx.translate(ANCHO / 2, ALTO / 2 + 120 + Math.sin(bgPulse * 2) * 6);
-        ctx.shadowBlur = 18; ctx.shadowColor = '#4f7cff';
-        ctx.fillStyle = '#4f7cff';
-        ctx.beginPath();
-        ctx.moveTo(0, -18);
-        ctx.lineTo(-14, 14);
-        ctx.lineTo(0, 7);
-        ctx.lineTo(14, 14);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = '#a0c8ff';
-        ctx.beginPath();
-        ctx.ellipse(0, -2, 5, 7, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-    }
-
-    /* ── GAME OVER en canvas ── */
-    function drawGameOver() {
-        ctx.fillStyle = 'rgba(4,4,14,0.85)';
-        ctx.fillRect(0, 0, ANCHO, ALTO);
-        ctx.save();
-        ctx.shadowBlur = 25; ctx.shadowColor = '#e8445a';
-        ctx.fillStyle = '#e8445a';
-        ctx.font = 'bold 32px "DM Mono", monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText('GAME OVER', ANCHO / 2, ALTO / 2 - 40);
-        ctx.restore();
-        ctx.fillStyle = '#eeeef5';
-        ctx.font = '16px "DM Mono", monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText(`${puntuacion} pts`, ANCHO / 2, ALTO / 2);
-        ctx.fillStyle = '#454580';
-        ctx.font = '12px "DM Mono", monospace';
-        ctx.fillText(`Oleada ${oleada}  ·  ⚙ ${chatarra} chatarra`, ANCHO / 2, ALTO / 2 + 24);
+        ctx.fillText('Click / Enter para iniciar', ANCHO / 2, ALTO / 2 + 64);
     }
 
     /* ── LOOP ── */
@@ -1535,10 +1553,6 @@
         draw();
         animFrame = requestAnimationFrame(loop);
     }
-
-    // Ocultar game-over del HTML al arrancar
-    const gos = document.getElementById('game-over-screen');
-    if (gos) gos.style.display = 'none';
-
     loop();
+
 })();
