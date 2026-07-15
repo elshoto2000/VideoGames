@@ -3,7 +3,7 @@
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta charset="UTF-8">
-    <title>Arcade | {{ juego|capitalize }}</title>
+    <title>Arcade | {% if juego == "lobby" %}Space Lobby{% else %}{{ juego|capitalize }}{% endif %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
@@ -211,7 +211,7 @@
 
             <!-- Ranking lateral -->
             <div class="ranking-side">
-                <h3>🏆 TOP 5 — {{ juego|upper }}</h3>
+                <h3>{% if juego == "lobby" %}🟢 SPACE LOBBY{% else %}🏆 TOP 5 — {{ juego|upper }}{% endif %}</h3>
                 <ul id="ranking-list">
                     {% set j = juego.lower() %}
                     {% if j == 'snake' %}
@@ -244,6 +244,10 @@
                         {% else %}
                             <li>Nadie ha jugado aún…</li>
                         {% endfor %}
+                    {% elif j == 'lobby' %}
+                        <li style="color:var(--text-2);font-size:0.85rem;text-align:center;padding:1rem 0;">
+                            🟢 Sala en línea — sin ranking
+                        </li>
                     {% else %}
                         <li>Nadie ha jugado aún…</li>
                     {% endif %}
@@ -274,6 +278,16 @@
             });
 
             const v = Date.now();
+
+            // El lobby no necesita preguntas.js — carga directo
+            if (window.JUEGO_ACTUAL === 'lobby') {
+                const sj = document.createElement('script');
+                sj.id  = 'script-del-juego';
+                sj.src = `/static/js/lobby.js?v=${v}`;
+                document.body.appendChild(sj);
+                return;
+            }
+
             const sp = document.createElement('script');
             sp.id  = 'script-de-preguntas';
             sp.src = `/static/js/preguntas.js?v=${v}`;
