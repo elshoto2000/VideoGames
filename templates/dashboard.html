@@ -196,6 +196,10 @@
             transition: all 0.2s;
             margin-top: auto;
         }
+        @keyframes pulse-dot {
+            0%,100% { opacity:1; transform:scale(1); }
+            50% { opacity:0.6; transform:scale(0.85); }
+        }
         .btn-jugar-dash:hover {
             background: var(--accent);
             border-color: var(--accent);
@@ -434,6 +438,23 @@
                     <p>Salta los obstáculos con tu cubo geométrico. 3 niveles de dificultad creciente. ¿Puedes completarlos todos?</p>
                 </div>
                 <a href="/juego/geo" class="btn-jugar-dash">Lanzar Juego</a>
+            </div>
+
+            <div class="card-juego" style="border-color:rgba(52,199,123,0.25);">
+                <div class="cj-meta">
+                    <span class="cj-badge" style="background:rgba(52,199,123,0.1);color:#34c77b;">Online</span>
+                    <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#34c77b;box-shadow:0 0 6px #34c77b;animation:pulse-dot 1.5s ease-in-out infinite;"></span>
+                </div>
+                <div class="cj-body">
+                    <h3>Space Lobby</h3>
+                    <p>Entra a la sala espacial y mueve tu personaje entre otros jugadores. El punto de encuentro del arcade.</p>
+                </div>
+                <a href="/juego/lobby" class="btn-jugar-dash"
+                   style="border-color:rgba(52,199,123,0.4);color:#34c77b;"
+                   onmouseover="this.style.background='#34c77b';this.style.color='#fff';this.style.borderColor='#34c77b'"
+                   onmouseout="this.style.background='var(--bg-raised)';this.style.color='#34c77b';this.style.borderColor='rgba(52,199,123,0.4)'">
+                    Entrar al Lobby
+                </a>
             </div>
 
         </div>
