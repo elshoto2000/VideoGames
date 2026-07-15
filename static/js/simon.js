@@ -1,4 +1,4 @@
-// static/js/simon.js — Space Razer (shooter espacial con tienda)
+// static/js/simon.js — Retro Space Defender con Sistema de Tienda
 
 (function () {
     'use strict';
@@ -132,15 +132,13 @@
         .rsd-hud-label { font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; color: #454560; }
         .rsd-canvas {
             display: block; width: 100%; height: auto;
-            max-width: 100%;
             border-radius: 10px; background: #04040e;
             image-rendering: pixelated;
             touch-action: none;
         }
         @media (min-width: 769px) {
-            .rsd-wrapper { max-width: 600px; }
-            .rsd-canvas  { max-height: 75vh; width: auto; margin: 0 auto; }
-            .rsd-btn     { font-size: 0.9rem; padding: 11px 18px; }
+            .rsd-wrapper { max-width: 560px; }
+            .rsd-canvas  { max-height: 72vh; width: auto; display: block; margin: 0 auto; }
         }
         .rsd-controls {
             display: flex; gap: 8px; width: 100%; justify-content: center;
@@ -1146,9 +1144,18 @@
     }
     window.addEventListener('keydown', handleTiendaKey);
 
+    // Enter/Space desde menú también arrancan el juego
+    window.addEventListener('keydown', e => {
+        if ((e.key === 'Enter') && estado === ESTADOS.MENU) {
+            initAudio(); iniciarJuego();
+        }
+    });
+
     // Click en canvas para tienda
     canvas.addEventListener('click', e => {
         if (estado === ESTADOS.VICTORIA) { iniciarJuego(); return; }
+        if (estado === ESTADOS.MENU) { initAudio(); iniciarJuego(); return; }
+        if (estado === ESTADOS.GAMEOVER) { iniciarJuego(); return; }
         if (estado !== ESTADOS.TIENDA) return;
         const rect = canvas.getBoundingClientRect();
         const scaleX = ANCHO / rect.width;
@@ -1291,12 +1298,22 @@
         ctx.fillStyle = '#454580';
         ctx.font = '12px "DM Mono", monospace';
         ctx.textAlign = 'center';
-        ctx.fillText('Destruye oleadas de naves enemigas', ANCHO / 2, ALTO / 2 + 10);
+        ctx.fillText('Destruye asteroides y naves enemigas', ANCHO / 2, ALTO / 2 + 10);
         ctx.fillText('Gana chatarra ⚙ para mejorar tu nave', ANCHO / 2, ALTO / 2 + 28);
 
         ctx.fillStyle = '#303058';
         ctx.font = '11px "DM Mono", monospace';
         ctx.fillText('← → Mover · ESPACIO Disparar', ANCHO / 2, ALTO / 2 + 58);
+
+        // Texto pulsante "clic para comenzar"
+        ctx.save();
+        const pulsoAlpha = 0.5 + Math.sin(bgPulse * 3) * 0.5;
+        ctx.globalAlpha = pulsoAlpha;
+        ctx.fillStyle = '#4f7cff';
+        ctx.font = 'bold 13px "DM Mono", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('[ CLIC O ENTER PARA COMENZAR ]', ANCHO / 2, ALTO / 2 + 80);
+        ctx.restore();
 
         // Nave decorativa animada
         ctx.save();
