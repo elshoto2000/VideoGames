@@ -70,11 +70,19 @@
     let bossIntroTimer = 0;  // frames de animación de entrada del jefe
     const MAX_OLEADAS = 100;
 
+    /* ── Balas enemigas (naves normales) ── */
+    let balasEnemigos = [];
+
+    /* ── Ayudante (nave aliada) ── */
+    let ayudanteCooldown = 0;
+
     /* ── Mejoras del jugador ── */
     const mejoras = {
-        velocidadDisparo: 1,   // nivel 1-3
+        velocidadDisparo: 1,   // nivel 1-5
         escudo: false,         // escudo temporal (un uso)
-        rafagaDoble: false,    // nivel booleano
+        nivelRafaga: 0,        // 0 = simple, 1 = doble, 2 = triple
+        dañoBala: 1,           // nivel 1-3, daño por disparo
+        ayudante: false,       // nave aliada que dispara junto al jugador
     };
 
     /* ── Jugador ── */
@@ -102,7 +110,7 @@
     window.addEventListener('keyup', e => { teclas[e.key] = false; teclas[e.code] = false; });
 
     /* ── Disparo automático con cooldown ── */
-    const COOLDOWN_BASE = [0, 18, 12, 7];  // frames entre disparos por nivel
+    const COOLDOWN_BASE = [0, 18, 14, 10, 7, 5];  // frames entre disparos por nivel (1-5)
     let cooldownActual = 0;
 
     /* ── Estrellas de fondo ── */
@@ -278,11 +286,12 @@
 
     function iniciarJuego() {
         puntuacion = 0; chatarra = 0; oleada = 0;
-        mejoras.velocidadDisparo = 1; mejoras.escudo = false; mejoras.rafagaDoble = false;
+        mejoras.velocidadDisparo = 1; mejoras.escudo = false;
+        mejoras.nivelRafaga = 0; mejoras.dañoBala = 1; mejoras.ayudante = false;
         jugador.x = ANCHO / 2; jugador.y = ALTO - 55;
         jugador.vidas = 3; jugador.invulnerable = 0;
-        balas = []; enemigos = []; explosiones = []; particulas = [];
-        jefe = null; balasJefe = []; bossIntroTimer = 0;
+        balas = []; enemigos = []; explosiones = []; particulas = []; balasEnemigos = [];
+        jefe = null; balasJefe = []; bossIntroTimer = 0; ayudanteCooldown = 0;
         actualizarHUD();
         iniciarOleada();
         estado = ESTADOS.JUGANDO;
@@ -293,7 +302,7 @@
     function iniciarOleada() {
         oleada++;
         elOleada.textContent = oleada;
-        balas = []; balasJefe = [];
+        balas = []; balasJefe = []; balasEnemigos = [];
         if (oleada % 5 === 0) {
             // OLEADA DE JEFE
             enemigos = [];
@@ -310,7 +319,7 @@
     /* ── CREAR JEFE ── */
     function crearJefe() {
         const tier = Math.floor(oleada / 5);          // 1,2,3... sube cada 5 oleadas
-        const vidasBase = 15 + tier * 10;             // más vida cada jefe
+        const vidasBase = 45 + tier * 30;             // jefes mucho más resistentes
         // Tipos de ataque que desbloquea por tier
         const ataques = tier >= 4
             ? ['laser', 'chatarra', 'rafaga', 'laser']
@@ -330,7 +339,7 @@
             dir: 1,
             tier,
             ataques,
-            ataqueTimer: 180,       // frames hasta primer ataque
+            ataqueTimer: 110,       // frames hasta primer ataque (entra atacando antes)
             ataqueFase: 0,
             color: ['#ff4488','#ff2200','#aa00ff','#ff8800','#00ffcc'][Math.min(tier-1,4)],
             colorSecundario: ['#ff88bb','#ff7755','#dd66ff','#ffcc44','#66ffee'][Math.min(tier-1,4)],
@@ -352,23 +361,40 @@
         for (let f = 0; f < filas && idx < cantidad; f++) {
             const en_fila = Math.min(8, cantidad - idx);
             for (let c = 0; c < en_fila; c++) {
-                const tipo = oleada >= 3 && Math.random() < 0.25 ? 'asteroid' : (Math.random() < 0.3 ? 'nave' : 'asteroid');
+                const roll = Math.random();
+                let tipo;
+                if (oleada >= 4 && roll < 0.15) tipo = 'kamikaze';
+                else if (roll < 0.45) tipo = 'nave';
+                else tipo = 'asteroid';
+
                 const velocidadBase = 0.5 + oleada * 0.15;
-                enemigos.push({
+                const enemigo = {
                     x: 40 + c * (ANCHO - 80) / Math.max(en_fila - 1, 1),
                     y: 40 + f * 50,
-                    ancho: tipo === 'nave' ? 28 : 24,
-                    alto: tipo === 'nave' ? 22 : 24,
+                    ancho: tipo === 'nave' ? 28 : (tipo === 'kamikaze' ? 22 : 24),
+                    alto: tipo === 'nave' ? 22 : (tipo === 'kamikaze' ? 22 : 24),
                     tipo,
                     vidas: tipo === 'nave' ? 2 : 1,
                     velocidadX: (Math.random() - 0.5) * velocidadBase * 2,
                     velocidadY: velocidadBase * (0.3 + Math.random() * 0.4),
+                    velMax: velocidadBase * 1.8,
                     rotacion: 0,
                     rotVel: (Math.random() - 0.5) * 0.06,
-                    chatarraVal: tipo === 'nave' ? 15 : 8,
-                    color: tipo === 'nave' ? '#e8445a' : '#a07040',
+                    chatarraVal: tipo === 'nave' ? 15 : (tipo === 'kamikaze' ? 20 : 8),
+                    color: tipo === 'nave' ? '#e8445a' : (tipo === 'kamikaze' ? '#ff9900' : '#a07040'),
                     id: idx++
-                });
+                };
+
+                if (tipo === 'nave') {
+                    // A partir de oleada 2 las naves normales también disparan
+                    enemigo.puedeDisparar = oleada >= 2;
+                    enemigo.disparoCooldown = 80 + Math.random() * 100;
+                }
+                if (tipo === 'kamikaze') {
+                    enemigo.velKamikaze = 1.6 + oleada * 0.06;
+                }
+
+                enemigos.push(enemigo);
             }
         }
     }
@@ -383,13 +409,26 @@
 
     /* ── DISPARO ── */
     function disparar() {
-        if (mejoras.rafagaDoble) {
-            balas.push({ x: jugador.x - 10, y: jugador.y - 10, vel: 9, ancho: 3, alto: 10, color: '#4f7cff' });
-            balas.push({ x: jugador.x + 10, y: jugador.y - 10, vel: 9, ancho: 3, alto: 10, color: '#4f7cff' });
+        const dmg = mejoras.dañoBala;
+        if (mejoras.nivelRafaga >= 2) {
+            balas.push({ x: jugador.x - 16, y: jugador.y - 8, vel: 9, ancho: 3, alto: 10, color: '#4f7cff', dmg });
+            balas.push({ x: jugador.x, y: jugador.y - 14, vel: 9.5, ancho: 3, alto: 10, color: '#80aaff', dmg });
+            balas.push({ x: jugador.x + 16, y: jugador.y - 8, vel: 9, ancho: 3, alto: 10, color: '#4f7cff', dmg });
+        } else if (mejoras.nivelRafaga === 1) {
+            balas.push({ x: jugador.x - 10, y: jugador.y - 10, vel: 9, ancho: 3, alto: 10, color: '#4f7cff', dmg });
+            balas.push({ x: jugador.x + 10, y: jugador.y - 10, vel: 9, ancho: 3, alto: 10, color: '#4f7cff', dmg });
         } else {
-            balas.push({ x: jugador.x, y: jugador.y - 14, vel: 9, ancho: 3, alto: 10, color: '#80aaff' });
+            balas.push({ x: jugador.x, y: jugador.y - 14, vel: 9, ancho: 3, alto: 10, color: '#80aaff', dmg });
         }
         shootSound();
+    }
+
+    /* ── Disparo del ayudante (nave aliada) ── */
+    function dispararAyudante() {
+        balas.push({
+            x: jugador.x - 32, y: jugador.y + 4, vel: 8.5, ancho: 3, alto: 9,
+            color: '#8affea', dmg: mejoras.dañoBala
+        });
     }
 
     /* ── EXPLOSIÓN ── */
@@ -441,17 +480,69 @@
             cooldownActual = COOLDOWN_BASE[mejoras.velocidadDisparo];
         }
 
+        // Disparo del ayudante (independiente, algo más lento)
+        if (mejoras.ayudante) {
+            ayudanteCooldown--;
+            if (disparar_input && ayudanteCooldown <= 0) {
+                dispararAyudante();
+                ayudanteCooldown = 24;
+            }
+        }
+
         // Mover balas
         balas = balas.filter(b => b.y > -20);
         balas.forEach(b => b.y -= b.vel);
 
-        // Mover enemigos
+        // Mover enemigos (con IA: naves persiguen al jugador y disparan, kamikazes se lanzan)
         enemigos.forEach(e => {
-            e.x += e.velocidadX;
-            e.y += e.velocidadY;
+            if (e.tipo === 'kamikaze') {
+                // Se lanza directo hacia el jugador
+                const dx = jugador.x - e.x, dy = jugador.y - e.y;
+                const dist = Math.hypot(dx, dy) || 1;
+                e.x += (dx / dist) * e.velKamikaze;
+                e.y += (dy / dist) * e.velKamikaze;
+            } else {
+                if (e.tipo === 'nave') {
+                    // Dirige suavemente su movimiento horizontal hacia el jugador
+                    const dir = jugador.x > e.x ? 1 : -1;
+                    e.velocidadX += dir * 0.02;
+                    e.velocidadX = Math.max(-e.velMax, Math.min(e.velMax, e.velocidadX));
+                }
+                e.x += e.velocidadX;
+                e.y += e.velocidadY;
+                if (e.x < e.ancho / 2 || e.x > ANCHO - e.ancho / 2) e.velocidadX *= -1;
+            }
             e.rotacion += e.rotVel;
-            if (e.x < e.ancho / 2 || e.x > ANCHO - e.ancho / 2) e.velocidadX *= -1;
+
+            // Naves disparan al jugador cuando están en pantalla
+            if (e.tipo === 'nave' && e.puedeDisparar) {
+                e.disparoCooldown--;
+                if (e.disparoCooldown <= 0 && e.y > 0 && e.y < ALTO - 60) {
+                    const dx = jugador.x - e.x, dy = jugador.y - e.y;
+                    const dist = Math.hypot(dx, dy) || 1;
+                    const spd = 3 + oleada * 0.06;
+                    balasEnemigos.push({
+                        x: e.x, y: e.y + e.alto / 2,
+                        vx: (dx / dist) * spd, vy: (dy / dist) * spd,
+                        color: '#ff8899', eliminada: false
+                    });
+                    e.disparoCooldown = Math.max(55, 150 - oleada * 3) + Math.random() * 40;
+                }
+            }
         });
+
+        // Mover y limpiar balas enemigas, colisión contra el jugador
+        balasEnemigos = balasEnemigos.filter(b => b.y < ALTO + 20 && b.y > -20 && b.x > -20 && b.x < ANCHO + 20);
+        balasEnemigos.forEach(b => {
+            b.x += b.vx; b.y += b.vy;
+            if (!b.eliminada && jugador.invulnerable <= 0 &&
+                Math.abs(b.x - jugador.x) < jugador.ancho / 2 + 4 &&
+                Math.abs(b.y - jugador.y) < jugador.alto / 2 + 4) {
+                b.eliminada = true;
+                dañarJugador();
+            }
+        });
+        balasEnemigos = balasEnemigos.filter(b => !b.eliminada);
 
         // Colisión balas-enemigos
         balas.forEach(b => {
@@ -460,7 +551,7 @@
                     Math.abs(b.x - e.x) < (e.ancho / 2 + 4) &&
                     Math.abs(b.y - e.y) < (e.alto / 2 + 6)) {
                     b.eliminada = true;
-                    e.vidas--;
+                    e.vidas -= (b.dmg || 1);
                     if (e.vidas <= 0) {
                         e.eliminado = true;
                         crearExplosion(e.x, e.y, e.color);
@@ -544,7 +635,7 @@
             ejecutarAtaqueJefe(tipoAtaque);
             jefe.ataqueFase++;
             // Cooldown se reduce con el tier (más agresivo en niveles altos)
-            jefe.ataqueTimer = Math.max(60, 160 - jefe.tier * 12);
+            jefe.ataqueTimer = Math.max(35, 120 - jefe.tier * 12);
         }
 
         // Mover balas del jefe
@@ -585,11 +676,11 @@
     function ejecutarAtaqueJefe(tipo) {
         if (!jefe) return;
         if (tipo === 'laser') {
-            // Láser apuntado al jugador
+            // Láser apuntado al jugador, mucho más rápido con el tier
             const dx = jugador.x - jefe.x;
             const dy = jugador.y - jefe.y;
-            const dist = Math.hypot(dx, dy);
-            const spd = 5 + jefe.tier * 0.5;
+            const dist = Math.hypot(dx, dy) || 1;
+            const spd = 7.5 + jefe.tier * 0.9;
             balasJefe.push({
                 x: jefe.x, y: jefe.y + jefe.alto / 2,
                 vx: (dx / dist) * spd,
@@ -599,15 +690,20 @@
             });
             bossLaserSound();
         } else if (tipo === 'chatarra') {
-            // Dispersión de chatarra en abanico
+            // Abanico de chatarra centrado en la dirección del jugador (dirigido, no al azar)
             const cantidad = 5 + jefe.tier;
+            const dxJ = jugador.x - jefe.x;
+            const dyJ = jugador.y - jefe.y;
+            const anguloBase = Math.atan2(dyJ, dxJ);       // ángulo hacia el jugador
+            const spread = Math.PI / 3.2;                   // abertura del abanico
             for (let i = 0; i < cantidad; i++) {
-                const ang = (Math.PI / (cantidad + 1)) * (i + 1);  // abanico hacia abajo
-                const spd = 2.5 + Math.random() * 1.5;
+                const t = cantidad === 1 ? 0.5 : i / (cantidad - 1);
+                const ang = anguloBase - spread / 2 + spread * t;
+                const spd = 3.6 + jefe.tier * 0.3 + Math.random() * 1.2;
                 balasJefe.push({
                     x: jefe.x + (Math.random() - 0.5) * 30,
                     y: jefe.y + jefe.alto / 2,
-                    vx: Math.cos(ang - Math.PI / 2) * spd + (Math.random() - 0.5),
+                    vx: Math.cos(ang) * spd,
                     vy: Math.sin(ang) * spd,
                     radio: 7, tipo: 'chatarra',
                     rotacion: Math.random() * Math.PI * 2,
@@ -617,14 +713,14 @@
                 bossChatarraSound();
             }
         } else if (tipo === 'rafaga') {
-            // Ráfaga rápida de 3 láseres seguidos
+            // Ráfaga rápida de 3 láseres seguidos, dirigidos y veloces
             for (let i = 0; i < 3; i++) {
                 setTimeout(() => {
                     if (!jefe) return;
                     const dx = jugador.x - jefe.x + (i - 1) * 30;
                     const dy = jugador.y - jefe.y;
                     const dist = Math.hypot(dx, dy) || 1;
-                    const spd = 6;
+                    const spd = 8.5 + jefe.tier * 0.5;
                     balasJefe.push({
                         x: jefe.x, y: jefe.y + jefe.alto / 2,
                         vx: (dx / dist) * spd, vy: (dy / dist) * spd,
@@ -632,7 +728,7 @@
                         color: jefe.colorSecundario, eliminada: false
                     });
                     bossLaserSound();
-                }, i * 120);
+                }, i * 90);
             }
         }
     }
@@ -752,6 +848,7 @@
             ctx.translate(e.x, e.y);
             ctx.rotate(e.rotacion);
             if (e.tipo === 'nave') drawNaveEnemiga(e);
+            else if (e.tipo === 'kamikaze') drawKamikaze(e);
             else drawAsteroide(e);
             ctx.restore();
         });
@@ -794,6 +891,21 @@
             }
             ctx.restore();
         });
+
+        // Balas enemigas (naves normales)
+        balasEnemigos.forEach(b => {
+            ctx.save();
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = b.color;
+            ctx.fillStyle = b.color;
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        });
+
+        // Nave ayudante
+        if (mejoras.ayudante) drawAyudante();
 
         // Balas jugador
         balas.forEach(b => {
@@ -902,13 +1014,37 @@
             ctx.fill();
         }
 
-        // Si tiene doble ráfaga: indicador
-        if (mejoras.rafagaDoble) {
+        // Si tiene ráfaga mejorada: indicador de cañones extra
+        if (mejoras.nivelRafaga >= 1) {
             ctx.fillStyle = '#e8c97a';
             ctx.fillRect(x - 14, y - 4, 3, 10);
             ctx.fillRect(x + 11, y - 4, 3, 10);
         }
+        if (mejoras.nivelRafaga >= 2) {
+            ctx.fillStyle = '#fff2cc';
+            ctx.fillRect(x - 2, y - 16, 3, 8);
+        }
 
+        ctx.restore();
+    }
+
+    /* ── Dibujar nave ayudante ── */
+    function drawAyudante() {
+        const x = jugador.x - 32, y = jugador.y + 8;
+        ctx.save();
+        ctx.shadowBlur = 10; ctx.shadowColor = '#8affea';
+        ctx.fillStyle = '#8affea';
+        ctx.beginPath();
+        ctx.moveTo(x, y - 9);
+        ctx.lineTo(x - 8, y + 7);
+        ctx.lineTo(x, y + 3);
+        ctx.lineTo(x + 8, y + 7);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#d0fff5';
+        ctx.beginPath();
+        ctx.ellipse(x, y - 1, 3, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
         ctx.restore();
     }
 
@@ -927,6 +1063,25 @@
         ctx.fillStyle = '#ff9999';
         ctx.beginPath();
         ctx.ellipse(0, 0, 4, 3, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    /* ── Dibujar enemigo kamikaze ── */
+    function drawKamikaze(e) {
+        ctx.save();
+        ctx.shadowBlur = 10; ctx.shadowColor = e.color;
+        ctx.fillStyle = e.color;
+        ctx.beginPath();
+        ctx.moveTo(0, -e.alto / 2 - 4);
+        ctx.lineTo(-e.ancho / 2, e.alto / 2);
+        ctx.lineTo(0, e.alto / 4);
+        ctx.lineTo(e.ancho / 2, e.alto / 2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#fff2cc';
+        ctx.beginPath();
+        ctx.arc(0, 0, 3.5, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
     }
@@ -1092,11 +1247,41 @@
             id: 'vel',
             icono: '⚡',
             nombre: 'Velocidad Disparo',
-            desc: () => mejoras.velocidadDisparo >= 3 ? 'MÁXIMO' : `Nivel ${mejoras.velocidadDisparo} → ${mejoras.velocidadDisparo + 1}`,
-            costo: () => [0, 40, 80, 999][mejoras.velocidadDisparo],
-            activo: () => mejoras.velocidadDisparo < 3,
+            desc: () => mejoras.velocidadDisparo >= 5 ? 'MÁXIMO' : `Nivel ${mejoras.velocidadDisparo} → ${mejoras.velocidadDisparo + 1}`,
+            costo: () => [0, 40, 80, 130, 190, 999][mejoras.velocidadDisparo],
+            activo: () => mejoras.velocidadDisparo < 5,
             accion: () => { mejoras.velocidadDisparo++; },
             color: '#e8c97a'
+        },
+        {
+            id: 'daño',
+            icono: '💥',
+            nombre: 'Daño de Bala',
+            desc: () => mejoras.dañoBala >= 3 ? 'MÁXIMO' : `Nivel ${mejoras.dañoBala} → ${mejoras.dañoBala + 1}`,
+            costo: () => [0, 90, 160, 999][mejoras.dañoBala],
+            activo: () => mejoras.dañoBala < 3,
+            accion: () => { mejoras.dañoBala++; },
+            color: '#ff8844'
+        },
+        {
+            id: 'rafaga',
+            icono: '🔫',
+            nombre: 'Ráfaga',
+            desc: () => mejoras.nivelRafaga >= 2 ? 'TRIPLE (MÁXIMO)' : mejoras.nivelRafaga === 1 ? 'Doble → Triple' : 'Simple → Doble',
+            costo: () => [70, 130, 999][mejoras.nivelRafaga],
+            activo: () => mejoras.nivelRafaga < 2,
+            accion: () => { mejoras.nivelRafaga++; },
+            color: '#4f7cff'
+        },
+        {
+            id: 'ayudante',
+            icono: '🚀',
+            nombre: 'Nave Ayudante',
+            desc: () => mejoras.ayudante ? 'YA ACTIVA' : 'Dispara junto a ti',
+            costo: () => 150,
+            activo: () => !mejoras.ayudante,
+            accion: () => { mejoras.ayudante = true; },
+            color: '#8affea'
         },
         {
             id: 'escudo',
@@ -1107,16 +1292,6 @@
             activo: () => !mejoras.escudo,
             accion: () => { mejoras.escudo = true; },
             color: '#34c77b'
-        },
-        {
-            id: 'doble',
-            icono: '🔫',
-            nombre: 'Ráfaga Doble',
-            desc: () => mejoras.rafagaDoble ? 'YA ACTIVA' : 'Dispara 2 balas',
-            costo: () => 70,
-            activo: () => !mejoras.rafagaDoble,
-            accion: () => { mejoras.rafagaDoble = true; },
-            color: '#4f7cff'
         },
         {
             id: 'vida',
@@ -1164,14 +1339,14 @@
         const my = (e.clientY - rect.top) * scaleY;
 
         // Botón continuar
-        if (mx > ANCHO / 2 - 80 && mx < ANCHO / 2 + 80 && my > ALTO - 72 && my < ALTO - 44) {
+        if (mx > ANCHO / 2 - 80 && mx < ANCHO / 2 + 80 && my > ALTO - 46 && my < ALTO - 16) {
             continuarDestienda(); return;
         }
 
         // Items
         TIENDA_ITEMS.forEach((item, i) => {
-            const iy = 130 + i * 78;
-            if (mx > 20 && mx < ANCHO - 20 && my > iy && my < iy + 65) {
+            const iy = 84 + i * 48;
+            if (mx > 20 && mx < ANCHO - 20 && my > iy && my < iy + 44) {
                 shopCursor = i;
                 comprarItem(i);
             }
@@ -1221,9 +1396,9 @@
         ctx.fillStyle = '#303050';
         ctx.fillRect(30, 76, ANCHO - 60, 1);
 
-        // Items
+        // Items (layout compacto para caber 6 mejoras)
         TIENDA_ITEMS.forEach((item, i) => {
-            const iy = 90 + i * 78;
+            const iy = 84 + i * 48;
             const activo = item.activo();
             const costo = item.costo();
             const puedePagar = chatarra >= costo && activo;
@@ -1236,50 +1411,50 @@
             ctx.strokeStyle = seleccionado ? item.color : 'rgba(255,255,255,0.08)';
             ctx.lineWidth = seleccionado ? 1.5 : 1;
             ctx.beginPath();
-            ctx.roundRect(20, iy, ANCHO - 40, 65, 8);
+            ctx.roundRect(20, iy, ANCHO - 40, 44, 7);
             ctx.fill(); ctx.stroke();
 
             // Icono
-            ctx.font = '22px serif';
+            ctx.font = '18px serif';
             ctx.textAlign = 'left';
-            ctx.fillText(item.icono, 36, iy + 26);
+            ctx.fillText(item.icono, 32, iy + 21);
 
             // Nombre
             ctx.fillStyle = item.color;
-            ctx.font = 'bold 13px "DM Mono", monospace';
-            ctx.fillText(item.nombre, 68, iy + 22);
+            ctx.font = 'bold 12px "DM Mono", monospace';
+            ctx.fillText(item.nombre, 58, iy + 17);
 
             // Descripción
             ctx.fillStyle = '#7070a0';
-            ctx.font = '11px "DM Mono", monospace';
-            ctx.fillText(item.desc(), 68, iy + 38);
+            ctx.font = '9.5px "DM Mono", monospace';
+            ctx.fillText(item.desc(), 58, iy + 31);
 
             // Precio
             ctx.textAlign = 'right';
             ctx.fillStyle = puedePagar ? '#34c77b' : (activo ? '#e8445a' : '#454560');
-            ctx.font = 'bold 13px "DM Mono", monospace';
-            ctx.fillText(activo ? `⚙ ${costo}` : '──', ANCHO - 32, iy + 30);
+            ctx.font = 'bold 12px "DM Mono", monospace';
+            ctx.fillText(activo ? `⚙ ${costo}` : '──', ANCHO - 32, iy + 24);
 
             ctx.restore();
         });
 
         // Botón continuar
-        const bx = ANCHO / 2 - 80, by = ALTO - 74;
+        const bx = ANCHO / 2 - 80, by = ALTO - 42;
         ctx.save();
         ctx.fillStyle = '#4f7cff';
         ctx.beginPath();
-        ctx.roundRect(bx, by, 160, 30, 8);
+        ctx.roundRect(bx, by, 160, 26, 8);
         ctx.fill();
         ctx.fillStyle = '#fff';
-        ctx.font = 'bold 13px "DM Mono", monospace';
+        ctx.font = 'bold 12px "DM Mono", monospace';
         ctx.textAlign = 'center';
-        ctx.fillText('▶  SIGUIENTE OLEADA', ANCHO / 2, by + 20);
+        ctx.fillText('▶  SIGUIENTE OLEADA', ANCHO / 2, by + 18);
         ctx.restore();
 
         ctx.fillStyle = '#303050';
-        ctx.font = '10px "DM Mono", monospace';
+        ctx.font = '9px "DM Mono", monospace';
         ctx.textAlign = 'center';
-        ctx.fillText('↑↓ Seleccionar · Z/Enter Comprar · ESC Continuar', ANCHO / 2, ALTO - 14);
+        ctx.fillText('↑↓ Seleccionar · Z/Enter Comprar · ESC Continuar', ANCHO / 2, ALTO - 4);
     }
 
     /* ── MENU ── */
