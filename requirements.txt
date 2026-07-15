@@ -3,3 +3,5 @@ gunicorn
 pymongo
 dnspython
 Werkzeug
+flask-socketio
+eventlet
