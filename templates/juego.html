@@ -7,6 +7,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% if juego == "lobby" %}
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    {% endif %}
     <style>
         /* ── Dropdown en juego.html ─────────────── */
         .game-nav-user { position: relative; }
@@ -116,6 +119,68 @@
             .canvas-placeholder { min-height: 280px; }
             #game-over-screen h1 { font-size: 1.3rem !important; }
         }
+
+        /* ── Chat del Space Lobby ─────────────── */
+        .lobby-chat {
+            display: flex;
+            flex-direction: column;
+            height: 380px;
+            max-height: 60vh;
+        }
+        .lobby-chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding: 4px 2px 8px;
+            font-family: var(--font-mono);
+        }
+        .lobby-chat-messages::-webkit-scrollbar { width: 5px; }
+        .lobby-chat-messages::-webkit-scrollbar-thumb { background: var(--border-md); border-radius: 4px; }
+        .lobby-chat-msg {
+            font-size: 0.78rem;
+            line-height: 1.35;
+            color: var(--text-2);
+            word-break: break-word;
+        }
+        .lobby-chat-msg b { color: var(--accent); font-weight: 600; }
+        .lobby-chat-msg.self b { color: #34c77b; }
+        .lobby-chat-msg.system {
+            color: var(--muted);
+            font-style: italic;
+            font-size: 0.72rem;
+            text-align: center;
+        }
+        .lobby-chat-form {
+            display: flex;
+            gap: 6px;
+            border-top: 1px solid var(--border);
+            padding-top: 8px;
+        }
+        .lobby-chat-form input {
+            flex: 1;
+            background: var(--bg-raised);
+            border: 1px solid var(--border-md);
+            border-radius: 8px;
+            padding: 8px 10px;
+            color: var(--text);
+            font-family: var(--font-body);
+            font-size: 0.82rem;
+            outline: none;
+        }
+        .lobby-chat-form input:focus { border-color: var(--accent); }
+        .lobby-chat-form button {
+            background: var(--accent);
+            color: #06060f;
+            border: none;
+            border-radius: 8px;
+            width: 36px;
+            font-size: 1rem;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .lobby-chat-form button:hover { opacity: 0.85; }
     </style>
 </head>
 <body>
@@ -209,9 +274,21 @@
                 </div>
             </div>
 
-            <!-- Ranking lateral -->
+            <!-- Ranking lateral / Chat del lobby -->
             <div class="ranking-side">
-                <h3>{% if juego == "lobby" %}🟢 SPACE LOBBY{% else %}🏆 TOP 5 — {{ juego|upper }}{% endif %}</h3>
+                <h3>{% if juego == "lobby" %}🟢 SPACE LOBBY — CHAT{% else %}🏆 TOP 5 — {{ juego|upper }}{% endif %}</h3>
+
+                {% if juego == "lobby" %}
+                <div class="lobby-chat" id="lobby-chat">
+                    <div class="lobby-chat-messages" id="lobby-chat-messages">
+                        <div class="lobby-chat-msg system">Conectando a la sala…</div>
+                    </div>
+                    <form class="lobby-chat-form" id="lobby-chat-form" autocomplete="off">
+                        <input id="lobby-chat-input" type="text" maxlength="140" placeholder="Escribe un mensaje…">
+                        <button type="submit" aria-label="Enviar">➤</button>
+                    </form>
+                </div>
+                {% else %}
                 <ul id="ranking-list">
                     {% set j = juego.lower() %}
                     {% if j == 'snake' %}
@@ -244,14 +321,11 @@
                         {% else %}
                             <li>Nadie ha jugado aún…</li>
                         {% endfor %}
-                    {% elif j == 'lobby' %}
-                        <li style="color:var(--text-2);font-size:0.85rem;text-align:center;padding:1rem 0;">
-                            🟢 Sala en línea — sin ranking
-                        </li>
                     {% else %}
                         <li>Nadie ha jugado aún…</li>
                     {% endif %}
                 </ul>
+                {% endif %}
             </div>
 
         </div>
