@@ -1,7 +1,9 @@
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from flask_socketio import SocketIO, emit, join_room, leave_room
 from pymongo import MongoClient
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
+import time
 
 app = Flask(__name__)
 # SECRET_KEY larga y estable — NUNCA guardes datos grandes en la sesión
@@ -9,6 +11,12 @@ app.secret_key = os.environ.get("SECRET_KEY", "arcade_secret_2026_XyZ9qR")
 # Limitar cookie a solo datos pequeños
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_HTTPONLY'] = True
+
+# ─── SOCKET.IO ─────────────────────────────────────────────────────
+# async_mode="eventlet" requiere el paquete `eventlet` (ver requirements.txt).
+# En Render, el comando de arranque debe usar el worker eventlet, p.ej.:
+#   gunicorn --worker-class eventlet -w 1 app:app
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
 
 MONGO_URI = "mongodb+srv://herreraleandro628:apu20082009@cluster0.q4tnkcc.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 client = MongoClient(MONGO_URI)
@@ -326,6 +334,100 @@ def ver_logros():
         return redirect(url_for('login'))
     return render_template('logros.html')
 
+
+# ─── SPACE LOBBY — multijugador en tiempo real (Socket.IO) ────────
+LOBBY_ROOM = "space_lobby"
+# sid -> {username, avatar, colorIdx, x, y, room, facing, moving, last_seen}
+lobby_players = {}
+
+
+def _color_idx_for(username):
+    """Color determinístico por usuario (0-5) para que sea estable entre reconexiones."""
+    return sum(ord(c) for c in username) % 6
+
+
+@socketio.on('connect')
+def on_lobby_connect():
+    # No hacemos nada hasta que el cliente mande 'lobby_join' con su posición inicial.
+    if 'username' not in session:
+        return False  # rechaza conexiones sin sesión
+
+
+@socketio.on('lobby_join')
+def on_lobby_join(data):
+    username = session.get('username')
+    if not username:
+        return
+    data = data or {}
+    u = usuarios_col.find_one({"username": username}) or {}
+    sid = request.sid
+
+    lobby_players[sid] = {
+        "username": username,
+        "avatar":   u.get('avatar', ''),
+        "colorIdx": _color_idx_for(username),
+        "x":        data.get('x', 240),
+        "y":        data.get('y', 190),
+        "room":     data.get('room', 'central'),
+        "facing":   data.get('facing', 1),
+        "moving":   False,
+        "last_seen": time.time(),
+    }
+
+    join_room(LOBBY_ROOM)
+
+    # Al que entra: le mandamos el estado actual de todos (menos él mismo)
+    otros = {s: p for s, p in lobby_players.items() if s != sid}
+    emit('lobby_state', {"players": otros, "you": sid})
+
+    # A los demás: avisamos que se unió un jugador nuevo
+    emit('lobby_player_joined', {"sid": sid, "player": lobby_players[sid]},
+         room=LOBBY_ROOM, include_self=False)
+
+
+@socketio.on('lobby_move')
+def on_lobby_move(data):
+    sid = request.sid
+    p = lobby_players.get(sid)
+    if not p:
+        return
+    data = data or {}
+    p['x']      = data.get('x', p['x'])
+    p['y']      = data.get('y', p['y'])
+    p['room']   = data.get('room', p['room'])
+    p['facing'] = data.get('facing', p['facing'])
+    p['moving'] = data.get('moving', p['moving'])
+    p['last_seen'] = time.time()
+
+    emit('lobby_player_moved', {
+        "sid": sid, "x": p['x'], "y": p['y'], "room": p['room'],
+        "facing": p['facing'], "moving": p['moving']
+    }, room=LOBBY_ROOM, include_self=False)
+
+
+@socketio.on('lobby_chat')
+def on_lobby_chat(data):
+    sid = request.sid
+    p = lobby_players.get(sid)
+    if not p:
+        return
+    texto = str((data or {}).get('text', '')).strip()[:140]
+    if not texto:
+        return
+    emit('lobby_chat', {
+        "sid": sid, "username": p['username'], "text": texto
+    }, room=LOBBY_ROOM)  # incluido el propio emisor, para confirmar entrega
+
+
+@socketio.on('disconnect')
+def on_lobby_disconnect():
+    sid = request.sid
+    if sid in lobby_players:
+        leave_room(LOBBY_ROOM)
+        del lobby_players[sid]
+        emit('lobby_player_left', {"sid": sid}, room=LOBBY_ROOM)
+
+
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+    socketio.run(app, host='0.0.0.0', port=port)
