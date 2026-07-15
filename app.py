@@ -143,6 +143,23 @@ def home():
     return render_template('index.html')
 
 
+@app.route('/juego/lobby')
+def cargar_lobby():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    u = get_usuario()
+    if not u:
+        return redirect(url_for('login'))
+    return render_template('juego.html',
+                           juego='lobby',
+                           username=u['username'],
+                           avatar=u.get('avatar', ''),
+                           ranking_snake=[],
+                           ranking_trivia=[],
+                           ranking_clicker=[],
+                           ranking_simon=[],
+                           ranking_geo=[])
+
 @app.route('/juego/<nombre_juego>')
 def cargar_juego(nombre_juego):
     if 'username' not in session:
