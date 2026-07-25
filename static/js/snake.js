@@ -36,6 +36,67 @@
         .snk-btn {
             display: flex; align-items: center; justify-content: center; gap: 8px;
             width: 100%; padding: 12px; margin-bottom: 10px;
+            backgro(function () {
+    'use strict';
+
+    const container = document.querySelector('.canvas-placeholder');
+    if (!container) return;
+    if (getComputedStyle(container).position === 'static') {
+        container.style.position = 'relative';
+    }
+
+    /* ── Estilos del menú (inyectados una sola vez) ───────── */
+    if (!document.getElementById('snk-styles')) {
+        const style = document.createElement('style');
+        style.id = 'snk-styles';
+        style.textContent = `
+        .snk-overlay {
+            position: absolute; inset: 0;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(6,6,14,0.82);
+            backdrop-filter: blur(3px);
+            z-index: 20;
+            font-family: "DM Mono", monospace;
+            overflow: auto;
+            padding: 12px;
+        }
+        .snk-overlay.snk-overlay-full {
+            position: fixed; inset: 0;
+            width: 100vw; height: 100vh;
+            z-index: 99999;
+            background: rgba(4,4,10,0.92);
+        }
+        .snk-panel {
+            width: min(92%, 340px);
+            background: #101018;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 14px;
+            padding: 18px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+            color: #eeeef5;
+        }
+        .snk-panel.snk-panel-lg {
+            width: min(94%, 720px);
+            max-height: 90vh;
+            overflow-y: auto;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+        @media (min-width: 640px) {
+            .snk-panel.snk-panel-lg { grid-template-columns: 220px 1fr; }
+        }
+        .snk-title {
+            font-size: 15px; letter-spacing: 1px; text-transform: uppercase;
+            color: #8888a8; margin: 0 0 14px; text-align: center;
+        }
+        .snk-subtitle {
+            font-size: 12px; letter-spacing: .5px; text-transform: uppercase;
+            color: #6a6a88; margin: 18px 0 8px;
+        }
+        .snk-btn {
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            width: 100%; padding: 12px; margin-bottom: 10px;
             background: #1b1b28; border: 1px solid rgba(255,255,255,0.08);
             border-radius: 10px; color: #eeeef5; font-family: inherit; font-size: 14px;
             cursor: pointer; transition: background .15s, transform .1s;
@@ -45,6 +106,9 @@
         .snk-btn.primary { background: #4f7cff; border-color: #4f7cff; font-weight: 700; }
         .snk-btn.primary:hover { background: #3f6ce8; }
         .snk-btn.selected { border-color: #4f7cff; box-shadow: inset 0 0 0 1.5px #4f7cff; }
+        .snk-btn.small { padding: 8px 10px; font-size: 12.5px; margin-bottom: 0; }
+        .snk-btn.danger { background: #2a1418; }
+        .snk-btn.danger:hover { background: #3a1a20; }
         .snk-row { display: flex; gap: 8px; margin-bottom: 10px; }
         .snk-row .snk-btn { margin-bottom: 0; }
         .snk-toggle {
@@ -84,6 +148,45 @@
         }
         .snk-back:hover { color: #eeeef5; }
         .snk-score-line { text-align: center; color: #8888a8; font-size: 13px; margin-bottom: 14px; }
+        .snk-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+        .snk-tab {
+            flex: 1; text-align: center; padding: 10px; border-radius: 10px; cursor: pointer;
+            background: #1b1b28; color: #8888a8; font-size: 13px; border: 1px solid rgba(255,255,255,0.08);
+        }
+        .snk-tab.active { background: #4f7cff; color: #fff; border-color: #4f7cff; }
+        .snk-preview-box {
+            background: #06060e; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);
+            padding: 10px; display: flex; align-items: center; justify-content: center;
+            margin-bottom: 14px;
+        }
+        .snk-preview-box canvas { display: block; max-width: 100%; }
+        .snk-slot-row { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+        .snk-slot {
+            width: 40px; height: 40px; border-radius: 10px; position: relative; cursor: pointer;
+            border: 2px solid rgba(255,255,255,0.15);
+        }
+        .snk-slot input[type=color] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+        .snk-count-row { display: flex; gap: 6px; margin-bottom: 14px; }
+        .snk-count-btn {
+            flex: 1; padding: 8px; text-align: center; border-radius: 8px; cursor: pointer;
+            background: #1b1b28; color: #8888a8; font-size: 13px; border: 1px solid rgba(255,255,255,0.08);
+        }
+        .snk-count-btn.active { background: #4f7cff; color: #fff; border-color: #4f7cff; }
+        .snk-acc-item {
+            display: flex; align-items: center; gap: 10px; padding: 10px;
+            background: #1b1b28; border-radius: 10px; margin-bottom: 8px;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .snk-acc-item.equipped { border-color: #4f7cff; box-shadow: inset 0 0 0 1.5px #4f7cff; }
+        .snk-acc-dot { width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0; }
+        .snk-acc-name { flex: 1; font-size: 13px; }
+        .snk-input-text {
+            width: 100%; padding: 10px; margin-bottom: 12px; border-radius: 10px;
+            background: #1b1b28; border: 1px solid rgba(255,255,255,0.08); color: #eeeef5;
+            font-family: inherit; font-size: 13px; box-sizing: border-box;
+        }
+        .snk-empty { color: #6a6a88; font-size: 12.5px; text-align: center; padding: 10px 0 4px; }
+        .snk-hint { color: #6a6a88; font-size: 11.5px; margin: -4px 0 12px; text-align: center; }
         `;
         document.head.appendChild(style);
     }
@@ -101,54 +204,103 @@
     const COLS = 20, ROWS = 20;
     let CELL = 20;
 
-    /* ── Paleta de colores por skin ─────────────────────── */
-    const SKINS = [
-        { head: '#4f7cff', body: 'rgba(79,124,255,0.45)', glow: '#4f7cff', name: 'Azul' },
-        { head: '#34c77b', body: 'rgba(52,199,123,0.45)', glow: '#34c77b', name: 'Verde' },
-        { head: '#ff6b6b', body: 'rgba(255,107,107,0.45)', glow: '#ff6b6b', name: 'Rojo' },
-        { head: '#ffd93d', body: 'rgba(255,217,61,0.45)',  glow: '#ffd93d', name: 'Oro' },
-        { head: '#c56aff', body: 'rgba(197,106,255,0.45)', glow: '#c56aff', name: 'Púrpura' },
+    /* ── Paleta / presets de patrones de color (hasta 5 colores) ── */
+    const PRESETS = [
+        { name: 'Azul',     colores: ['#4f7cff'] },
+        { name: 'Verde',    colores: ['#34c77b'] },
+        { name: 'Rojo',     colores: ['#ff6b6b'] },
+        { name: 'Oro',      colores: ['#ffd93d'] },
+        { name: 'Púrpura',  colores: ['#c56aff'] },
+        { name: 'Arcoíris', colores: ['#ff6b6b', '#ffd93d', '#34c77b', '#4f7cff', '#c56aff'] },
     ];
-    let skinIdx = 0;
+    const DEFAULT_COLORES = ['#4f7cff'];
 
     /* ── Ajustes / modalidades ──────────────────────────────
        speedMode:    normal | rapido | extremo
        movingFood:   la comida se desplaza sola por el tablero
-       customColor:  hex elegido por el usuario, o null (usa el ciclo automático de skins)
+       colores:      array de 1 a 5 colores hex, se repite el patrón por cubo
+       accesorios:   [{id, tipo:'sombrero', nombre, color}]
+       equipadoId:   id del accesorio actualmente puesto, o null
     ───────────────────────────────────────────────────────── */
-    const SPEED_PRESETS = {
-        normal:  { label: 'Normal',  start: 140, min: 60, dec: 2 },
-        rapido:  { label: 'Rápido',  start: 105, min: 45, dec: 3 },
-        extremo: { label: 'Extremo', start: 80,  min: 32, dec: 4 },
-    };
+    const DEFAULTS = { speedMode: 'normal', movingFood: false, colores: DEFAULT_COLORES.slice(), accesorios: [], equipadoId: null };
+    let settings = loadSettingsLocal();
+    let configReady = false;
 
-    const DEFAULTS = { speedMode: 'normal', movingFood: false, customColor: null };
-    let settings = loadSettings();
-
-    function loadSettings() {
+    function loadSettingsLocal() {
         try {
-            const raw = localStorage.getItem('snake_settings');
+            const raw = localStorage.getItem('snake_settings_v2');
             if (raw) return Object.assign({}, DEFAULTS, JSON.parse(raw));
         } catch (e) {}
         return Object.assign({}, DEFAULTS);
     }
-    function saveSettings() {
-        try { localStorage.setItem('snake_settings', JSON.stringify(settings)); } catch (e) {}
+    function saveSettingsLocal() {
+        try { localStorage.setItem('snake_settings_v2', JSON.stringify(settings)); } catch (e) {}
     }
-    function activeSkin() {
-        return settings.customColor ? skinFromHex(settings.customColor) : SKINS[skinIdx];
+
+    /* ── Sincronización con el backend (MongoDB) ─────────── */
+    function fetchConfig() {
+        fetch('/api/snake_config')
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (!data) return;
+                if (Array.isArray(data.colores) && data.colores.length) settings.colores = data.colores.slice(0, 5);
+                if (Array.isArray(data.accesorios)) settings.accesorios = data.accesorios;
+                settings.equipadoId = data.equipado || null;
+                configReady = true;
+                saveSettingsLocal();
+                if (gameState === 'menu' || gameState === 'customize') {
+                    if (gameState === 'customize') renderCustomize(customizeTab);
+                    else renderMenu();
+                }
+            })
+            .catch(() => {});
     }
-    function skinFromHex(hex) {
-        return { head: hex, body: hexToRgba(hex, 0.45), glow: hex, name: 'Personalizado' };
+
+    function guardarColoresRemoto(colores) {
+        return fetch('/api/snake_config/colores', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ colores })
+        }).then(r => r.json()).catch(() => ({ status: 'error' }));
     }
-    function hexToRgba(hex, a) {
-        return `rgba(${hexToRgb(hex)},${a})`;
+    function guardarAccesorioRemoto(nombre, color) {
+        return fetch('/api/snake_config/accesorio', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nombre, color })
+        }).then(r => r.json()).catch(() => ({ status: 'error' }));
+    }
+    function equiparRemoto(id) {
+        return fetch('/api/snake_config/equipar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id })
+        }).then(r => r.json()).catch(() => ({ status: 'error' }));
+    }
+    function eliminarAccesorioRemoto(id) {
+        return fetch('/api/snake_config/eliminar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id })
+        }).then(r => r.json()).catch(() => ({ status: 'error' }));
+    }
+
+    function colorAt(i) {
+        const c = settings.colores && settings.colores.length ? settings.colores : DEFAULT_COLORES;
+        return c[i % c.length];
+    }
+    function equippedAccessory() {
+        if (!settings.equipadoId) return null;
+        return (settings.accesorios || []).find(a => a.id === settings.equipadoId) || null;
     }
 
     /* ── Estado ─────────────────────────────────────────── */
     let snake, foods, dx, dy, score, highScore, speed, running, lockInput;
     let applesEaten, particles, flashTimer, speedPreset;
     let gameState = 'menu'; // menu | config | customize | playing | over
+    let customizeTab = 'colores'; // colores | accesorios
+    let draftColores = DEFAULT_COLORES.slice();
+    let draftCount = 1;
 
     highScore = +(localStorage.getItem('snake_hs') || 0);
 
@@ -202,7 +354,7 @@
         container.appendChild(overlayEl);
         overlayEl.querySelector('[data-act="play"]').onclick = () => startGame();
         overlayEl.querySelector('[data-act="config"]').onclick = () => renderConfig();
-        overlayEl.querySelector('[data-act="customize"]').onclick = () => renderCustomize();
+        overlayEl.querySelector('[data-act="customize"]').onclick = () => renderCustomize('colores');
     }
 
     function renderConfig() {
@@ -234,63 +386,280 @@
         overlayEl.querySelectorAll('[data-speed]').forEach(btn => {
             btn.onclick = () => {
                 settings.speedMode = btn.getAttribute('data-speed');
-                saveSettings();
+                saveSettingsLocal();
                 renderConfig();
             };
         });
         overlayEl.querySelector('[data-act="toggle-food"]').onclick = () => {
             settings.movingFood = !settings.movingFood;
-            saveSettings();
+            saveSettingsLocal();
             renderConfig();
         };
         overlayEl.querySelector('[data-act="back"]').onclick = () => renderMenu();
         overlayEl.querySelector('[data-act="play"]').onclick = () => startGame();
     }
 
-    function renderCustomize() {
+    /* ── Personalizar: pantalla grande (colores + accesorios) ── */
+    function renderCustomize(tab) {
         clearOverlay();
         gameState = 'customize';
+        customizeTab = tab || 'colores';
+        if (customizeTab === 'colores') {
+            draftColores = (settings.colores && settings.colores.length ? settings.colores : DEFAULT_COLORES).slice();
+            draftCount = draftColores.length;
+        }
+
         overlayEl = document.createElement('div');
-        overlayEl.className = 'snk-overlay';
-
-        const swatches = SKINS.map((s, i) => `
-            <div class="snk-swatch ${!settings.customColor && skinIdx === i ? 'selected' : ''}"
-                 data-skin="${i}" style="background:${s.head}"></div>
-        `).join('');
-
+        overlayEl.className = 'snk-overlay snk-overlay-full';
         overlayEl.innerHTML = `
-            <div class="snk-panel">
-                <div class="snk-back" data-act="back">← Volver</div>
-                <p class="snk-title">Color de la serpiente</p>
-                <div class="snk-swatches">
-                    ${swatches}
-                    <div class="snk-swatch snk-custom-swatch ${settings.customColor ? 'selected' : ''}"
-                         style="background:${settings.customColor || '#33334a'}">
-                        🎨
-                        <input type="color" id="snk-color-input" value="${settings.customColor || '#4f7cff'}">
+            <div class="snk-panel snk-panel-lg">
+                <div>
+                    <div class="snk-back" data-act="back">← Volver al menú</div>
+                    <p class="snk-title">Personalizar serpiente</p>
+                    <div class="snk-preview-box"><canvas id="snk-preview" width="220" height="100"></canvas></div>
+                    <div class="snk-tabs">
+                        <div class="snk-tab ${customizeTab === 'colores' ? 'active' : ''}" data-tab="colores">Colores</div>
+                        <div class="snk-tab ${customizeTab === 'accesorios' ? 'active' : ''}" data-tab="accesorios">Accesorios</div>
                     </div>
+                    <button class="snk-btn primary" data-act="play">▶ Jugar</button>
                 </div>
-                <button class="snk-btn primary" data-act="play">▶ Jugar</button>
+                <div id="snk-tab-content"></div>
             </div>
         `;
         container.appendChild(overlayEl);
 
-        overlayEl.querySelectorAll('[data-skin]').forEach(el => {
-            el.onclick = () => {
-                skinIdx = +el.getAttribute('data-skin');
-                settings.customColor = null;
-                saveSettings();
-                renderCustomize();
-            };
-        });
-        const colorInput = overlayEl.querySelector('#snk-color-input');
-        colorInput.oninput = () => {
-            settings.customColor = colorInput.value;
-            saveSettings();
-            renderCustomize();
-        };
         overlayEl.querySelector('[data-act="back"]').onclick = () => renderMenu();
         overlayEl.querySelector('[data-act="play"]').onclick = () => startGame();
+        overlayEl.querySelectorAll('[data-tab]').forEach(el => {
+            el.onclick = () => renderCustomize(el.getAttribute('data-tab'));
+        });
+
+        if (customizeTab === 'colores') renderTabColores();
+        else renderTabAccesorios();
+
+        drawPreview();
+    }
+
+    function renderTabColores() {
+        const host = overlayEl.querySelector('#snk-tab-content');
+
+        const presetBtns = PRESETS.map(p => `
+            <button class="snk-btn small" data-preset="${p.name}" style="flex:1; min-width:88px">${p.name}</button>
+        `).join('');
+
+        const countBtns = [1, 2, 3, 4, 5].map(n => `
+            <div class="snk-count-btn ${draftCount === n ? 'active' : ''}" data-count="${n}">${n}</div>
+        `).join('');
+
+        const slots = Array.from({ length: draftCount }).map((_, i) => `
+            <div class="snk-slot" style="background:${draftColores[i] || '#4f7cff'}">
+                <input type="color" data-slot="${i}" value="${draftColores[i] || '#4f7cff'}">
+            </div>
+        `).join('');
+
+        host.innerHTML = `
+            <p class="snk-subtitle">Presets rápidos</p>
+            <div class="snk-row" style="flex-wrap:wrap">${presetBtns}</div>
+            <p class="snk-subtitle">Cantidad de colores (máx. 5)</p>
+            <div class="snk-count-row">${countBtns}</div>
+            <p class="snk-subtitle">Colores del patrón</p>
+            <div class="snk-slot-row">${slots}</div>
+            <p class="snk-hint">El patrón se repite a lo largo de todo el cuerpo, cubo por cubo.</p>
+            <button class="snk-btn primary" data-act="save-colors">💾 Guardar colores</button>
+        `;
+
+        host.querySelectorAll('[data-preset]').forEach(btn => {
+            btn.onclick = () => {
+                const p = PRESETS.find(x => x.name === btn.getAttribute('data-preset'));
+                draftColores = p.colores.slice();
+                draftCount = draftColores.length;
+                renderTabColores();
+                drawPreview();
+            };
+        });
+        host.querySelectorAll('[data-count]').forEach(el => {
+            el.onclick = () => {
+                draftCount = +el.getAttribute('data-count');
+                while (draftColores.length < draftCount) draftColores.push('#4f7cff');
+                draftColores = draftColores.slice(0, draftCount);
+                renderTabColores();
+                drawPreview();
+            };
+        });
+        host.querySelectorAll('[data-slot]').forEach(input => {
+            input.oninput = () => {
+                draftColores[+input.getAttribute('data-slot')] = input.value;
+                input.closest('.snk-slot').style.background = input.value;
+                drawPreview();
+            };
+        });
+        host.querySelector('[data-act="save-colors"]').onclick = () => {
+            settings.colores = draftColores.slice(0, draftCount);
+            saveSettingsLocal();
+            const btn = host.querySelector('[data-act="save-colors"]');
+            btn.textContent = 'Guardando...';
+            guardarColoresRemoto(settings.colores).then(res => {
+                btn.textContent = res && res.status === 'success' ? '✅ Guardado' : '⚠ Error, reintenta';
+                setTimeout(() => { btn.textContent = '💾 Guardar colores'; }, 1600);
+            });
+        };
+    }
+
+    function renderTabAccesorios() {
+        const host = overlayEl.querySelector('#snk-tab-content');
+        const accesorios = settings.accesorios || [];
+
+        const items = accesorios.length ? accesorios.map(a => `
+            <div class="snk-acc-item ${settings.equipadoId === a.id ? 'equipped' : ''}" data-acc="${a.id}">
+                <div class="snk-acc-dot" style="background:${a.color}"></div>
+                <div class="snk-acc-name">${escapeHtml(a.nombre)}</div>
+                <button class="snk-btn small" data-equip="${a.id}" style="width:auto; margin:0">
+                    ${settings.equipadoId === a.id ? 'Puesto ✓' : 'Poner'}
+                </button>
+                <button class="snk-btn small danger" data-del="${a.id}" style="width:auto; margin:0">🗑</button>
+            </div>
+        `).join('') : `<div class="snk-empty">Todavía no tienes gorros guardados.</div>`;
+
+        host.innerHTML = `
+            <p class="snk-subtitle">Tus gorros guardados</p>
+            <button class="snk-btn small" data-equip="none" style="margin-bottom:10px">
+                ${settings.equipadoId ? 'Quitar accesorio' : 'Sin accesorio (actual) ✓'}
+            </button>
+            ${items}
+            <p class="snk-subtitle">Crear nuevo gorro</p>
+            <div class="snk-slot-row">
+                <div class="snk-slot" id="snk-new-acc-swatch" style="background:${newAccColor}">
+                    <input type="color" id="snk-new-acc-color" value="${newAccColor}">
+                </div>
+            </div>
+            <input type="text" id="snk-new-acc-name" class="snk-input-text" maxlength="24" placeholder="Nombre del gorro" value="${escapeHtml(newAccName)}">
+            <button class="snk-btn primary" data-act="save-acc">💾 Guardar nuevo gorro</button>
+        `;
+
+        host.querySelectorAll('[data-equip]').forEach(btn => {
+            btn.onclick = () => {
+                const id = btn.getAttribute('data-equip') === 'none' ? null : btn.getAttribute('data-equip');
+                settings.equipadoId = id;
+                saveSettingsLocal();
+                equiparRemoto(id);
+                renderTabAccesorios();
+                drawPreview();
+            };
+        });
+        host.querySelectorAll('[data-del]').forEach(btn => {
+            btn.onclick = () => {
+                const id = btn.getAttribute('data-del');
+                settings.accesorios = (settings.accesorios || []).filter(a => a.id !== id);
+                if (settings.equipadoId === id) settings.equipadoId = null;
+                saveSettingsLocal();
+                eliminarAccesorioRemoto(id);
+                renderTabAccesorios();
+                drawPreview();
+            };
+        });
+        const colorInput = host.querySelector('#snk-new-acc-color');
+        colorInput.oninput = () => {
+            newAccColor = colorInput.value;
+            host.querySelector('#snk-new-acc-swatch').style.background = newAccColor;
+            drawPreview(true);
+        };
+        const nameInput = host.querySelector('#snk-new-acc-name');
+        nameInput.oninput = () => { newAccName = nameInput.value; };
+
+        host.querySelector('[data-act="save-acc"]').onclick = () => {
+            const nombre = (nameInput.value || 'Gorro').trim() || 'Gorro';
+            const btn = host.querySelector('[data-act="save-acc"]');
+            btn.textContent = 'Guardando...';
+            guardarAccesorioRemoto(nombre, newAccColor).then(res => {
+                if (res && res.status === 'success' && res.accesorio) {
+                    settings.accesorios = settings.accesorios || [];
+                    settings.accesorios.push(res.accesorio);
+                    saveSettingsLocal();
+                    newAccName = '';
+                    newAccColor = '#222222';
+                    renderTabAccesorios();
+                    drawPreview();
+                } else {
+                    btn.textContent = '⚠ Error, reintenta';
+                    setTimeout(() => { btn.textContent = '💾 Guardar nuevo gorro'; }, 1600);
+                }
+            });
+        };
+    }
+    let newAccColor = '#222222';
+    let newAccName = '';
+
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+    }
+
+    /* ── Vista previa en vivo de la serpiente ─────────────── */
+    function drawPreview(useDraftAcc) {
+        if (!overlayEl) return;
+        const pc = overlayEl.querySelector('#snk-preview');
+        if (!pc) return;
+        const pctx = pc.getContext('2d');
+        const W = pc.width, H = pc.height;
+        pctx.clearRect(0, 0, W, H);
+        pctx.fillStyle = '#06060e';
+        pctx.fillRect(0, 0, W, H);
+
+        const segs = 6;
+        const cell = 30;
+        const startX = 12, y = H / 2 - cell / 2;
+        const colores = customizeTab === 'colores' ? draftColores : (settings.colores || DEFAULT_COLORES);
+
+        for (let i = segs - 1; i >= 0; i--) {
+            const px = startX + (segs - 1 - i) * (cell + 4);
+            const color = colores[i % colores.length] || '#4f7cff';
+            pctx.save();
+            if (i === 0) {
+                pctx.shadowBlur = 12;
+                pctx.shadowColor = color;
+                pctx.fillStyle = color;
+            } else {
+                pctx.globalAlpha = Math.max(0.35, 1 - i * 0.13);
+                pctx.fillStyle = color;
+            }
+            pctx.beginPath();
+            pctx.roundRect(px, y, cell, cell, 6);
+            pctx.fill();
+            pctx.restore();
+        }
+
+        // ojos en la cabeza (última dibujada = i=0, situada al final a la derecha)
+        const headPx = startX + (segs - 1) * (cell + 4);
+        pctx.fillStyle = 'rgba(0,0,0,0.8)';
+        pctx.beginPath(); pctx.arc(headPx + cell * 0.72, y + cell * 0.28, 2.6, 0, Math.PI * 2); pctx.fill();
+        pctx.beginPath(); pctx.arc(headPx + cell * 0.72, y + cell * 0.72, 2.6, 0, Math.PI * 2); pctx.fill();
+
+        // accesorio (gorro) sobre la cabeza
+        let acc = null;
+        if (customizeTab === 'accesorios') {
+            acc = useDraftAcc ? { color: newAccColor } : equippedAccessory();
+        } else {
+            acc = equippedAccessory();
+        }
+        if (acc) drawHat(pctx, headPx, y, cell, acc.color);
+    }
+
+    function drawHat(c, px, py, sz, color) {
+        c.save();
+        const cx = px + sz / 2;
+        const brimY = py - sz * 0.06;
+        // brim
+        c.fillStyle = color;
+        c.beginPath();
+        c.ellipse(cx, brimY, sz * 0.62, sz * 0.16, 0, 0, Math.PI * 2);
+        c.fill();
+        // cap
+        c.beginPath();
+        c.roundRect(cx - sz * 0.3, py - sz * 0.62, sz * 0.6, sz * 0.58, 4);
+        c.fill();
+        // band
+        c.fillStyle = 'rgba(0,0,0,0.35)';
+        c.fillRect(cx - sz * 0.3, py - sz * 0.22, sz * 0.6, sz * 0.1);
+        c.restore();
     }
 
     function renderGameOver() {
@@ -324,6 +693,12 @@
     /* ═══════════════════════════════════════════════════════
        CICLO DEL JUEGO
     ═══════════════════════════════════════════════════════ */
+    const SPEED_PRESETS = {
+        normal:  { label: 'Normal',  start: 140, min: 60, dec: 2 },
+        rapido:  { label: 'Rápido',  start: 105, min: 45, dec: 3 },
+        extremo: { label: 'Extremo', start: 80,  min: 32, dec: 4 },
+    };
+
     function startGame() {
         clearOverlay();
         const gos = document.getElementById('game-over-screen');
@@ -346,7 +721,6 @@
         applesEaten = 0;
         particles = [];
         flashTimer = 0;
-        if (!settings.customColor) skinIdx = 0;
         gameState = 'playing';
 
         for (let i = 0; i < 4; i++) spawnFood();
@@ -419,13 +793,10 @@
             applesEaten++;
             speed = Math.max(speedPreset.min, speed - speedPreset.dec);
             flashTimer = 6;
-            if (!settings.customColor && applesEaten % 5 === 0) {
-                skinIdx = (skinIdx + 1) % SKINS.length;
-            }
 
             const px = (head.x + 0.5) * CELL;
             const py = (head.y + 0.5) * CELL;
-            spawnParticles(px, py, activeSkin().glow, 10);
+            spawnParticles(px, py, colorAt(0), 10);
 
             foods.splice(fi, 1);
             spawnFood();
@@ -465,7 +836,6 @@
     /* ── Draw ─────────────────────────────────────────────── */
     function draw(ts) {
         const W = canvas.width, H = canvas.height;
-        const skin = activeSkin();
 
         ctx.fillStyle = '#080810';
         ctx.fillRect(0, 0, W, H);
@@ -485,7 +855,7 @@
         }
 
         if (flashTimer > 0) {
-            ctx.fillStyle = `rgba(${hexToRgb(skin.glow)},${flashTimer / 30})`;
+            ctx.fillStyle = `rgba(${hexToRgb(colorAt(0))},${flashTimer / 30})`;
             ctx.fillRect(0, 0, W, H);
             flashTimer--;
         }
@@ -525,16 +895,19 @@
             ctx.restore();
         });
 
+        const acc = equippedAccessory();
+
         snake.forEach((seg, i) => {
             const px = seg.x * CELL + 1;
             const py = seg.y * CELL + 1;
             const sz = CELL - 2;
+            const segColor = colorAt(i);
 
             if (i === 0) {
                 ctx.save();
                 ctx.shadowBlur = 18;
-                ctx.shadowColor = skin.glow;
-                ctx.fillStyle = skin.head;
+                ctx.shadowColor = segColor;
+                ctx.fillStyle = segColor;
                 ctx.beginPath();
                 ctx.roundRect(px, py, sz, sz, 4);
                 ctx.fill();
@@ -547,11 +920,13 @@
                 if (dx === -1) { ctx.beginPath(); ctx.arc(px+eyeOff,    py+eyeOff, eyeSize, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(px+eyeOff,    py+sz-eyeOff, eyeSize, 0, Math.PI*2); ctx.fill(); }
                 if (dy === 1)  { ctx.beginPath(); ctx.arc(px+eyeOff,    py+sz-eyeOff, eyeSize, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(px+sz-eyeOff, py+sz-eyeOff, eyeSize, 0, Math.PI*2); ctx.fill(); }
                 if (dy === -1) { ctx.beginPath(); ctx.arc(px+eyeOff,    py+eyeOff, eyeSize, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(px+sz-eyeOff, py+eyeOff, eyeSize, 0, Math.PI*2); ctx.fill(); }
+
+                if (acc) drawHat(ctx, px, py, sz, acc.color);
                 ctx.restore();
             } else {
-                const alpha = Math.max(0.12, 1 - (i / snake.length) * 0.85);
+                const alpha = Math.max(0.35, 1 - (i / snake.length) * 0.6);
                 ctx.globalAlpha = alpha;
-                ctx.fillStyle = skin.body;
+                ctx.fillStyle = segColor;
                 ctx.beginPath();
                 ctx.roundRect(px + 1, py + 1, sz - 2, sz - 2, 3);
                 ctx.fill();
@@ -629,4 +1004,5 @@
     /* ── Arrancar ────────────────────────────────────────── */
     resize();
     renderMenu();
+    fetchConfig();
 })();
