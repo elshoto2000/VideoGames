@@ -149,6 +149,18 @@
         }
         .snk-empty { color: #6a6a88; font-size: 12.5px; text-align: center; padding: 10px 0 4px; }
         .snk-hint { color: #6a6a88; font-size: 11.5px; margin: -4px 0 12px; text-align: center; }
+        .snk-gear {
+            position: fixed; top: 14px; right: 14px; z-index: 100000;
+            width: 40px; height: 40px; border-radius: 50%;
+            background: rgba(16,16,24,0.85); border: 1px solid rgba(255,255,255,0.12);
+            color: #eeeef5; font-size: 18px; cursor: pointer;
+            display: none; align-items: center; justify-content: center;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+            font-family: "DM Mono", monospace;
+            transition: transform .12s, background .15s;
+        }
+        .snk-gear:hover { background: rgba(30,30,44,0.95); transform: rotate(25deg); }
+        .snk-gear:active { transform: scale(0.92) rotate(25deg); }
         `;
         document.head.appendChild(style);
     }
@@ -157,6 +169,31 @@
     let canvas = container.querySelector('canvas');
     if (!canvas) { canvas = document.createElement('canvas'); container.prepend(canvas); }
     const ctx = canvas.getContext('2d');
+
+    /* ── Ícono ⚙ flotante: acceso rápido a Personalizar ───
+       Visible mientras juegas y en la pantalla de derrota.
+       Al tocarlo durante la partida, esta termina (como si
+       hubieras perdido) y se abre directo el panel de
+       personalización para preparar la siguiente partida.  */
+    let gearBtn = document.getElementById('snk-gear-btn');
+    if (!gearBtn) {
+        gearBtn = document.createElement('button');
+        gearBtn.id = 'snk-gear-btn';
+        gearBtn.className = 'snk-gear';
+        gearBtn.type = 'button';
+        gearBtn.title = 'Personalizar serpiente';
+        gearBtn.innerHTML = '⚙';
+        document.body.appendChild(gearBtn);
+    }
+    function showGear() { gearBtn.style.display = 'flex'; }
+    function hideGear() { gearBtn.style.display = 'none'; }
+    gearBtn.onclick = () => {
+        if (gameState === 'playing') {
+            die(true); // termina la partida actual y va directo a personalizar
+        } else if (gameState === 'over') {
+            renderCustomize('colores');
+        }
+    };
 
     /* ── Usuario ────────────────────────────────────────── */
     const userEl = document.getElementById('display-user');
@@ -301,6 +338,7 @@
     function renderMenu() {
         clearOverlay();
         gameState = 'menu';
+        hideGear();
         draw(0);
         overlayEl = document.createElement('div');
         overlayEl.className = 'snk-overlay';
@@ -322,6 +360,7 @@
     function renderConfig() {
         clearOverlay();
         gameState = 'config';
+        hideGear();
         overlayEl = document.createElement('div');
         overlayEl.className = 'snk-overlay';
 
@@ -365,6 +404,7 @@
     function renderCustomize(tab) {
         clearOverlay();
         gameState = 'customize';
+        hideGear();
         customizeTab = tab || 'colores';
         if (customizeTab === 'colores') {
             draftColores = (settings.colores && settings.colores.length ? settings.colores : DEFAULT_COLORES).slice();
@@ -684,6 +724,7 @@
         particles = [];
         flashTimer = 0;
         gameState = 'playing';
+        showGear();
 
         for (let i = 0; i < 4; i++) spawnFood();
         lastTick = 0;
@@ -771,7 +812,7 @@
     }
 
     /* ── Die ─────────────────────────────────────────────── */
-    function die() {
+    function die(gotoCustomize) {
         running = false;
         gameState = 'over';
 
@@ -792,7 +833,11 @@
             if (typeof window.cargarRanking === 'function') window.cargarRanking();
         }).catch(() => {});
 
-        setTimeout(renderGameOver, 300);
+        if (gotoCustomize) {
+            renderCustomize('colores'); // el usuario tocó el ⚙ para editar antes de la próxima partida
+        } else {
+            setTimeout(renderGameOver, 300);
+        }
     }
 
     /* ── Draw ─────────────────────────────────────────────── */
