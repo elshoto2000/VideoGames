@@ -19,44 +19,6 @@
             backdrop-filter: blur(3px);
             z-index: 20;
             font-family: "DM Mono", monospace;
-        }
-        .snk-panel {
-            width: min(92%, 340px);
-            background: #101018;
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 14px;
-            padding: 18px;
-            box-shadow: 0 12px 40px rgba(0,0,0,0.5);
-            color: #eeeef5;
-        }
-        .snk-title {
-            font-size: 15px; letter-spacing: 1px; text-transform: uppercase;
-            color: #8888a8; margin: 0 0 14px; text-align: center;
-        }
-        .snk-btn {
-            display: flex; align-items: center; justify-content: center; gap: 8px;
-            width: 100%; padding: 12px; margin-bottom: 10px;
-            backgro(function () {
-    'use strict';
-
-    const container = document.querySelector('.canvas-placeholder');
-    if (!container) return;
-    if (getComputedStyle(container).position === 'static') {
-        container.style.position = 'relative';
-    }
-
-    /* ── Estilos del menú (inyectados una sola vez) ───────── */
-    if (!document.getElementById('snk-styles')) {
-        const style = document.createElement('style');
-        style.id = 'snk-styles';
-        style.textContent = `
-        .snk-overlay {
-            position: absolute; inset: 0;
-            display: flex; align-items: center; justify-content: center;
-            background: rgba(6,6,14,0.82);
-            backdrop-filter: blur(3px);
-            z-index: 20;
-            font-family: "DM Mono", monospace;
             overflow: auto;
             padding: 12px;
         }
