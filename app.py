@@ -2,6 +2,8 @@ from flask import Flask, render_template, request, jsonify, session, redirect, u
 from pymongo import MongoClient
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
+import re
+import time
 
 app = Flask(__name__)
 # SECRET_KEY larga y estable — NUNCA guardes datos grandes en la sesión
@@ -147,13 +149,13 @@ def home():
 def cargar_juego(nombre_juego):
     if 'username' not in session:
         return redirect(url_for('login'))
-    
+
     u = get_usuario()
     if not u:
         return redirect(url_for('login'))
-        
+
     nombre_juego = nombre_juego.lower()
-    
+
     r_snake   = list(puntajes_col.find({"juego": "snake"  }).sort("puntos", -1).limit(5))
     r_trivia  = list(puntajes_col.find({"juego": "trivia" }).sort("puntos", -1).limit(5))
     r_clicker = list(puntajes_col.find({"juego": "clicker"}).sort("puntos", -1).limit(5))
@@ -204,7 +206,7 @@ def api_ranking():
         nombre = d.get('nombre', 'Anónimo')
         user_db = usuarios_col.find_one({"username": nombre}, {"avatar": 1})
         avatar_url = user_db.get('avatar', '') if user_db else ''
-        
+
         resultado.append({
             "nombre": nombre,
             "juego":  d.get('juego', 'unknown'),
@@ -233,6 +235,115 @@ def obtener_ranking_juego(juego):
 @app.route('/ranking')
 def ver_ranking():
     return render_template('ranking.html')
+
+
+# ─── PERSONALIZACIÓN DE SNAKE (colores + accesorios) ──────────────
+# Guardado en MongoDB, dentro del propio documento del usuario,
+# en el campo "snake_config": { colores: [...], accesorios: [...], equipado: id|None }
+
+HEX_RE = re.compile(r'^#[0-9a-fA-F]{6}$')
+DEFAULT_COLORES_SNAKE = ['#4f7cff']
+
+
+@app.route('/api/snake_config', methods=['GET'])
+def api_snake_config():
+    """Devuelve la config guardada de la serpiente del usuario logueado."""
+    if 'username' not in session:
+        return jsonify({"status": "error", "message": "No autenticado"}), 401
+
+    u = get_usuario()
+    cfg = (u or {}).get('snake_config', {})
+    return jsonify({
+        "colores":    cfg.get('colores', DEFAULT_COLORES_SNAKE),
+        "accesorios": cfg.get('accesorios', []),
+        "equipado":   cfg.get('equipado')
+    })
+
+
+@app.route('/api/snake_config/colores', methods=['POST'])
+def guardar_colores_snake():
+    """Guarda el patrón de colores (1 a 5 colores hex) de la serpiente."""
+    if 'username' not in session:
+        return jsonify({"status": "error", "message": "No autenticado"}), 401
+
+    datos   = request.json or {}
+    colores = datos.get('colores', [])
+    if not isinstance(colores, list):
+        return jsonify({"status": "error", "message": "Formato inválido"}), 400
+
+    colores = [c for c in colores if isinstance(c, str) and HEX_RE.match(c)][:5]
+    if not colores:
+        return jsonify({"status": "error", "message": "Se necesita al menos un color válido"}), 400
+
+    usuarios_col.update_one(
+        {"username": session['username']},
+        {"$set": {"snake_config.colores": colores}}
+    )
+    return jsonify({"status": "success", "colores": colores})
+
+
+@app.route('/api/snake_config/accesorio', methods=['POST'])
+def guardar_accesorio_snake():
+    """Crea y guarda un nuevo gorro (accesorio) para la serpiente."""
+    if 'username' not in session:
+        return jsonify({"status": "error", "message": "No autenticado"}), 401
+
+    datos  = request.json or {}
+    nombre = (datos.get('nombre') or '').strip()[:24] or 'Gorro'
+    color  = datos.get('color', '#222222')
+    if not (isinstance(color, str) and HEX_RE.match(color)):
+        color = '#222222'
+
+    nuevo = {
+        "id":     f"acc_{int(time.time() * 1000)}",
+        "tipo":   "sombrero",
+        "nombre": nombre,
+        "color":  color
+    }
+
+    usuarios_col.update_one(
+        {"username": session['username']},
+        {"$push": {"snake_config.accesorios": nuevo}}
+    )
+    return jsonify({"status": "success", "accesorio": nuevo})
+
+
+@app.route('/api/snake_config/equipar', methods=['POST'])
+def equipar_accesorio_snake():
+    """Marca un accesorio como puesto (o lo quita si id es null)."""
+    if 'username' not in session:
+        return jsonify({"status": "error", "message": "No autenticado"}), 401
+
+    datos  = request.json or {}
+    acc_id = datos.get('id')  # puede ser None para quitar el accesorio
+
+    usuarios_col.update_one(
+        {"username": session['username']},
+        {"$set": {"snake_config.equipado": acc_id}}
+    )
+    return jsonify({"status": "success"})
+
+
+@app.route('/api/snake_config/eliminar', methods=['POST'])
+def eliminar_accesorio_snake():
+    """Elimina un gorro guardado y lo desequipa si estaba puesto."""
+    if 'username' not in session:
+        return jsonify({"status": "error", "message": "No autenticado"}), 401
+
+    datos  = request.json or {}
+    acc_id = datos.get('id')
+    if not acc_id:
+        return jsonify({"status": "error", "message": "Falta id"}), 400
+
+    usuarios_col.update_one(
+        {"username": session['username']},
+        {"$pull": {"snake_config.accesorios": {"id": acc_id}}}
+    )
+    usuarios_col.update_one(
+        {"username": session['username'], "snake_config.equipado": acc_id},
+        {"$set": {"snake_config.equipado": None}}
+    )
+    return jsonify({"status": "success"})
 
 
 # ─── LOGROS ───────────────────────────────────────────────────────
