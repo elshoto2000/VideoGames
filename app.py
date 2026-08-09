@@ -12,7 +12,11 @@ app.secret_key = os.environ.get("SECRET_KEY", "arcade_secret_2026_XyZ9qR")
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 
-MONGO_URI = "mongodb+srv://herreraleandro628:apu20082009@cluster0.q4tnkcc.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+# ⚠️ NUNCA dejes la contraseña en el código: el repo es público.
+# Configura MONGO_URI en Render → Environment.
+MONGO_URI = os.environ.get("MONGO_URI")
+if not MONGO_URI:
+    raise RuntimeError("Falta la variable de entorno MONGO_URI")
 client = MongoClient(MONGO_URI)
 db = client.arcade_db
 puntajes_col = db.puntajes
@@ -161,6 +165,7 @@ def cargar_juego(nombre_juego):
     r_clicker = list(puntajes_col.find({"juego": "clicker"}).sort("puntos", -1).limit(5))
     r_simon   = list(puntajes_col.find({"juego": "simon"  }).sort("puntos", -1).limit(5))
     r_geo     = list(puntajes_col.find({"juego": "geo"    }).sort("puntos", -1).limit(5))
+    r_tama    = list(puntajes_col.find({"juego": "tamagochi"}).sort("puntos", -1).limit(5))
 
     return render_template('juego.html',
                            juego=nombre_juego,
@@ -170,7 +175,8 @@ def cargar_juego(nombre_juego):
                            ranking_trivia=r_trivia,
                            ranking_clicker=r_clicker,
                            ranking_simon=r_simon,
-                           ranking_geo=r_geo)
+                           ranking_geo=r_geo,
+                           ranking_tamagochi=r_tama)
 
 
 # ─── PUNTAJES Y RANKING ───────────────────────────────────────────
@@ -346,6 +352,482 @@ def eliminar_accesorio_snake():
     return jsonify({"status": "success"})
 
 
+# ══════════════════════════════════════════════════════════════════
+# ─── TAMAGOTCHI ───────────────────────────────────────────────────
+# El estado vive en Mongo con timestamps. Nada corre en memoria:
+# al leer el estado se recalcula todo el tiempo transcurrido
+# ("lazy tick"), así la mascota sigue viviendo aunque Render free
+# duerma el servicio tras 15 min de inactividad.
+# ══════════════════════════════════════════════════════════════════
+
+tama_col = db.tamagotchis
+
+# ── Ritmo del juego (ajusta estos números para acelerar/frenar) ──
+TAMA_ECLOSION_SEG = 90            # el huevo eclosiona a los 90 s
+TAMA_ETAPAS = [                   # (etapa, segundos de vida necesarios)
+    ("bebe",   0),
+    ("nino",   2 * 3600),         # niño a las 2 h
+    ("adulto", 8 * 3600),         # adulto a las 8 h
+]
+
+# Desgaste por hora (despierto / dormido)
+# Con estos valores una mascota totalmente abandonada muere a las ~30 h.
+# Sube los números (en negativo) si quieres que sea más exigente.
+TAMA_TASAS_DESPIERTO = {"hambre": -4.5, "energia": -4.0, "felicidad": -3.5, "limpieza": -4.0}
+TAMA_TASAS_DORMIDO   = {"hambre": -2.5, "energia": 22.0, "felicidad": -0.8, "limpieza": -2.0}
+
+TAMA_SALUD_REGEN     = 5.0        # +salud/h si todo va bien
+TAMA_SALUD_BASE      = -1.0       # desgaste natural/h
+TAMA_SALUD_POR_CRISIS = -4.5      # extra/h por cada barra en crisis
+TAMA_SALUD_ENFERMO   = -4.0       # extra/h si está enfermo
+TAMA_ENFERMA_BAJO    = 38         # salud por debajo de esto → enferma
+TAMA_MONEDAS_HORA    = 6.0        # propina/h si el bienestar es bueno
+
+TAMA_MAX_DT = 30 * 86400          # tope de seguridad: 30 días por tick
+
+TIENDA = {
+    "manzana":  {"nombre": "Manzana",  "precio": 5,  "tipo": "comida",    "hambre": 25, "felicidad": 2},
+    "pan":      {"nombre": "Pan",      "precio": 9,  "tipo": "comida",    "hambre": 40, "felicidad": 3},
+    "pizza":    {"nombre": "Pizza",    "precio": 16, "tipo": "comida",    "hambre": 60, "felicidad": 8},
+    "pastel":   {"nombre": "Pastel",   "precio": 24, "tipo": "comida",    "hambre": 45, "felicidad": 22},
+    "medicina": {"nombre": "Medicina", "precio": 30, "tipo": "medicina"},
+    "pelota":   {"nombre": "Pelota",   "precio": 40, "tipo": "juguete"},
+    "peluche":  {"nombre": "Peluche",  "precio": 70, "tipo": "juguete"},
+    "gorro":    {"nombre": "Gorro",    "precio": 55, "tipo": "cosmetico"},
+    "lazo":     {"nombre": "Lazo",     "precio": 55, "tipo": "cosmetico"},
+    "lampara":  {"nombre": "Lampara",  "precio": 90, "tipo": "cosmetico"},
+}
+
+TAMA_COOLDOWNS = {"jugar": 45, "limpiar": 30, "acariciar": 8, "comer": 10}
+
+
+def _clamp(v, lo=0.0, hi=100.0):
+    return max(lo, min(hi, v))
+
+
+def _tama_nuevo_doc(username, nombre, anterior=None):
+    """Crea el documento de una mascota nueva. Hereda monedas y cosméticos."""
+    ahora = time.time()
+    return {
+        "username":       username,
+        "nombre":         nombre,
+        "creado_en":      ahora,
+        "ultimo_tick":    ahora,
+        "nacido":         False,
+        "edad_seg":       0.0,
+        "toques_huevo":   0,
+        "hambre":         100.0,
+        "energia":        100.0,
+        "felicidad":      100.0,
+        "limpieza":       100.0,
+        "salud":          100.0,
+        "durmiendo":      False,
+        "enfermo":        False,
+        "muerto":         False,
+        "monedas":        (anterior or {}).get("monedas", 25),
+        "inventario":     (anterior or {}).get("inventario", {"manzana": 3}),
+        "cosmeticos":     (anterior or {}).get("cosmeticos", []),
+        "equipado":       (anterior or {}).get("equipado", {"accesorio": None}),
+        "mejor_edad_seg": (anterior or {}).get("mejor_edad_seg", 0.0),
+        "muertes":        (anterior or {}).get("muertes", 0),
+        "curas":          (anterior or {}).get("curas", 0),
+        "cooldowns":      {},
+    }
+
+
+def _tama_etapa(edad_seg, nacido):
+    if not nacido:
+        return "huevo"
+    etapa = "bebe"
+    for nombre, umbral in TAMA_ETAPAS:
+        if edad_seg >= umbral:
+            etapa = nombre
+    return etapa
+
+
+def _tama_tick(t):
+    """Avanza la simulación hasta ahora. Devuelve (doc, cambio)."""
+    ahora = time.time()
+    dt = min(max(0.0, ahora - t.get("ultimo_tick", ahora)), TAMA_MAX_DT)
+    t["ultimo_tick"] = ahora
+
+    if t.get("muerto"):
+        return t, dt > 0
+
+    # ── Etapa huevo: no hay desgaste, solo incubación ──
+    if not t.get("nacido"):
+        t["edad_seg"] = t.get("edad_seg", 0.0) + dt
+        # cada toque del jugador acelera 6 s
+        avance = t["edad_seg"] + t.get("toques_huevo", 0) * 6
+        if avance >= TAMA_ECLOSION_SEG:
+            t["nacido"] = True
+            t["edad_seg"] = 0.0
+        return t, True
+
+    horas = dt / 3600.0
+    t["edad_seg"] = t.get("edad_seg", 0.0) + dt
+
+    tasas = TAMA_TASAS_DORMIDO if t.get("durmiendo") else TAMA_TASAS_DESPIERTO
+    # El peluche frena la pérdida de felicidad
+    mult_fel = 0.6 if "peluche" in t.get("cosmeticos", []) else 1.0
+
+    for k, r in tasas.items():
+        r_ef = r * (mult_fel if k == "felicidad" and r < 0 else 1.0)
+        t[k] = _clamp(t.get(k, 100.0) + r_ef * horas)
+
+    # Se despierta sola con la energía llena
+    if t.get("durmiendo") and t["energia"] >= 100.0:
+        t["durmiendo"] = False
+
+    # ── Salud ──
+    crisis = sum(1 for k in ("hambre", "energia", "limpieza") if t.get(k, 100.0) <= 5.0)
+    if crisis == 0 and not t.get("enfermo") and min(t["hambre"], t["felicidad"], t["limpieza"]) >= 50:
+        delta = TAMA_SALUD_REGEN
+    else:
+        delta = TAMA_SALUD_BASE + TAMA_SALUD_POR_CRISIS * crisis
+        if t.get("enfermo"):
+            delta += TAMA_SALUD_ENFERMO
+    t["salud"] = _clamp(t.get("salud", 100.0) + delta * horas)
+
+    if t["salud"] <= TAMA_ENFERMA_BAJO:
+        t["enfermo"] = True
+
+    # ── Propina por buen cuidado ──
+    bienestar = (t["hambre"] + t["felicidad"] + t["limpieza"] + t["salud"]) / 4.0
+    if bienestar >= 60 and not t.get("enfermo"):
+        t["monedas"] = int(t.get("monedas", 0) + TAMA_MONEDAS_HORA * horas)
+
+    # ── Muerte ──
+    if t["salud"] <= 0.0:
+        t["muerto"] = True
+        t["muerto_en"] = ahora
+        t["muertes"] = t.get("muertes", 0) + 1
+
+    if t["edad_seg"] > t.get("mejor_edad_seg", 0.0):
+        t["mejor_edad_seg"] = t["edad_seg"]
+
+    return t, True
+
+
+def _tama_puntos(t):
+    """Puntuación para el ranking global: 10 pts por hora de vida récord."""
+    return int(t.get("mejor_edad_seg", 0.0) / 360.0)
+
+
+def _tama_cooldowns_restantes(t):
+    ahora = time.time()
+    out = {}
+    for acc, seg in TAMA_COOLDOWNS.items():
+        fin = t.get("cooldowns", {}).get(acc, 0)
+        rest = fin - ahora
+        if rest > 0:
+            out[acc] = round(rest, 1)
+    return out
+
+
+def _tama_publico(t):
+    """Serializa el estado para el cliente."""
+    tasas = dict(TAMA_TASAS_DORMIDO if t.get("durmiendo") else TAMA_TASAS_DESPIERTO)
+    if "peluche" in t.get("cosmeticos", []):
+        tasas["felicidad"] *= 0.6
+    crisis = sum(1 for k in ("hambre", "energia", "limpieza") if t.get(k, 100.0) <= 5.0)
+    if crisis == 0 and not t.get("enfermo") and min(t.get("hambre", 0), t.get("felicidad", 0), t.get("limpieza", 0)) >= 50:
+        tasas["salud"] = TAMA_SALUD_REGEN
+    else:
+        tasas["salud"] = TAMA_SALUD_BASE + TAMA_SALUD_POR_CRISIS * crisis + (TAMA_SALUD_ENFERMO if t.get("enfermo") else 0)
+
+    avance = t.get("edad_seg", 0.0) + t.get("toques_huevo", 0) * 6
+    return {
+        "existe":         True,
+        "nombre":         t.get("nombre", "Mascota"),
+        "etapa":          _tama_etapa(t.get("edad_seg", 0.0), t.get("nacido", False)),
+        "nacido":         bool(t.get("nacido")),
+        "edad_seg":       round(t.get("edad_seg", 0.0), 1),
+        "mejor_edad_seg": round(t.get("mejor_edad_seg", 0.0), 1),
+        "progreso_huevo": round(min(1.0, avance / TAMA_ECLOSION_SEG), 3),
+        "eclosiona_en":   max(0, round(TAMA_ECLOSION_SEG - avance, 1)),
+        "hambre":         round(t.get("hambre", 0), 1),
+        "energia":        round(t.get("energia", 0), 1),
+        "felicidad":      round(t.get("felicidad", 0), 1),
+        "limpieza":       round(t.get("limpieza", 0), 1),
+        "salud":          round(t.get("salud", 0), 1),
+        "durmiendo":      bool(t.get("durmiendo")),
+        "enfermo":        bool(t.get("enfermo")),
+        "muerto":         bool(t.get("muerto")),
+        "monedas":        int(t.get("monedas", 0)),
+        "inventario":     t.get("inventario", {}),
+        "cosmeticos":     t.get("cosmeticos", []),
+        "equipado":       t.get("equipado", {"accesorio": None}),
+        "muertes":        t.get("muertes", 0),
+        "puntos":         _tama_puntos(t),
+        "tasas":          {k: round(v, 2) for k, v in tasas.items()},
+        "cooldowns":      _tama_cooldowns_restantes(t),
+    }
+
+
+def _tama_guardar(t):
+    tama_col.update_one({"username": t["username"]}, {"$set": t}, upsert=True)
+
+
+def _tama_cargar():
+    """Devuelve el doc del usuario en sesión ya actualizado, o None."""
+    username = session.get("username")
+    if not username:
+        return None
+    t = tama_col.find_one({"username": username})
+    if not t:
+        return None
+    t.pop("_id", None)
+    t, _ = _tama_tick(t)
+    _tama_guardar(t)
+    return t
+
+
+def _tama_respuesta(t, mensaje=None):
+    """Respuesta estándar: estado + logros nuevos + puntaje sincronizado."""
+    nuevos = _tama_logros(session["username"], t)
+    return jsonify({
+        "status":  "success",
+        "estado":  _tama_publico(t),
+        "logros":  nuevos,
+        "mensaje": mensaje,
+    })
+
+
+@app.route("/api/tama/estado")
+def api_tama_estado():
+    if "username" not in session:
+        return jsonify({"status": "error", "message": "No autenticado"}), 401
+    t = _tama_cargar()
+    if not t:
+        return jsonify({"status": "success", "estado": {"existe": False}})
+    return _tama_respuesta(t)
+
+
+@app.route("/api/tama/nuevo", methods=["POST"])
+def api_tama_nuevo():
+    if "username" not in session:
+        return jsonify({"status": "error", "message": "No autenticado"}), 401
+
+    datos  = request.json or {}
+    nombre = (datos.get("nombre") or "").strip()[:16]
+    if len(nombre) < 2:
+        return jsonify({"status": "error", "message": "El nombre necesita al menos 2 letras"}), 400
+
+    anterior = tama_col.find_one({"username": session["username"]})
+    # Solo se puede crear si no hay mascota o si la anterior murió
+    if anterior and not anterior.get("muerto"):
+        anterior.pop("_id", None)
+        anterior, _ = _tama_tick(anterior)
+        _tama_guardar(anterior)
+        if not anterior.get("muerto"):
+            return jsonify({"status": "error", "message": "Ya tienes una mascota viva"}), 409
+
+    t = _tama_nuevo_doc(session["username"], nombre, anterior)
+    _tama_guardar(t)
+    return _tama_respuesta(t, f"¡{nombre} está incubando! 🥚")
+
+
+@app.route("/api/tama/accion", methods=["POST"])
+def api_tama_accion():
+    if "username" not in session:
+        return jsonify({"status": "error", "message": "No autenticado"}), 401
+
+    t = _tama_cargar()
+    if not t:
+        return jsonify({"status": "error", "message": "No tienes mascota"}), 404
+    if t.get("muerto"):
+        return jsonify({"status": "error", "message": "Tu mascota ha muerto"}), 409
+
+    accion = (request.json or {}).get("accion", "")
+    ahora  = time.time()
+    msg    = None
+
+    # Toques al huevo (acelera la eclosión)
+    if accion == "tocar_huevo":
+        if t.get("nacido"):
+            return jsonify({"status": "error", "message": "Ya nació"}), 409
+        t["toques_huevo"] = min(t.get("toques_huevo", 0) + 1, 200)
+        t, _ = _tama_tick(t)
+        _tama_guardar(t)
+        return _tama_respuesta(t, "¡Ha nacido! 🐣" if t.get("nacido") else None)
+
+    if not t.get("nacido"):
+        return jsonify({"status": "error", "message": "Todavía es un huevo"}), 409
+
+    # Dormir / despertar
+    if accion == "dormir":
+        t["durmiendo"] = not t.get("durmiendo")
+        msg = "Buenas noches 💤" if t["durmiendo"] else "¡Buenos días! ☀️"
+        _tama_guardar(t)
+        return _tama_respuesta(t, msg)
+
+    if t.get("durmiendo"):
+        return jsonify({"status": "error", "message": "Está durmiendo, despiértala primero"}), 409
+
+    # Cooldown
+    if accion in TAMA_COOLDOWNS:
+        fin = t.get("cooldowns", {}).get(accion, 0)
+        if fin > ahora:
+            return jsonify({"status": "error", "message": f"Espera {int(fin - ahora) + 1}s"}), 429
+
+    if accion == "jugar":
+        bono = 1.5 if "pelota" in t.get("cosmeticos", []) else 1.0
+        t["felicidad"] = _clamp(t["felicidad"] + 18 * bono)
+        t["energia"]   = _clamp(t["energia"] - 12)
+        t["hambre"]    = _clamp(t["hambre"] - 6)
+        t["limpieza"]  = _clamp(t["limpieza"] - 5)
+        t["monedas"]   = int(t.get("monedas", 0) + 3)
+        msg = "¡Qué divertido! +3 ◎"
+
+    elif accion == "limpiar":
+        t["limpieza"]  = 100.0
+        t["felicidad"] = _clamp(t["felicidad"] + 5)
+        msg = "Limpia y reluciente ✨"
+
+    elif accion == "acariciar":
+        t["felicidad"] = _clamp(t["felicidad"] + 6)
+        msg = None
+
+    else:
+        return jsonify({"status": "error", "message": "Acción desconocida"}), 400
+
+    t.setdefault("cooldowns", {})[accion] = ahora + TAMA_COOLDOWNS.get(accion, 0)
+    _tama_guardar(t)
+    return _tama_respuesta(t, msg)
+
+
+@app.route("/api/tama/usar", methods=["POST"])
+def api_tama_usar():
+    if "username" not in session:
+        return jsonify({"status": "error", "message": "No autenticado"}), 401
+
+    t = _tama_cargar()
+    if not t:
+        return jsonify({"status": "error", "message": "No tienes mascota"}), 404
+    if t.get("muerto"):
+        return jsonify({"status": "error", "message": "Tu mascota ha muerto"}), 409
+    if not t.get("nacido"):
+        return jsonify({"status": "error", "message": "Todavía es un huevo"}), 409
+
+    item = (request.json or {}).get("item", "")
+    it   = TIENDA.get(item)
+    if not it or it["tipo"] not in ("comida", "medicina"):
+        return jsonify({"status": "error", "message": "Objeto no usable"}), 400
+    if t.get("inventario", {}).get(item, 0) <= 0:
+        return jsonify({"status": "error", "message": f"No tienes {it['nombre']}"}), 409
+    if t.get("durmiendo"):
+        return jsonify({"status": "error", "message": "Está durmiendo"}), 409
+
+    ahora = time.time()
+    if it["tipo"] == "comida":
+        fin = t.get("cooldowns", {}).get("comer", 0)
+        if fin > ahora:
+            return jsonify({"status": "error", "message": f"Está masticando, espera {int(fin - ahora) + 1}s"}), 429
+        if t["hambre"] >= 99:
+            return jsonify({"status": "error", "message": "Está llena 🤤"}), 409
+        t["hambre"]    = _clamp(t["hambre"] + it["hambre"])
+        t["felicidad"] = _clamp(t["felicidad"] + it.get("felicidad", 0))
+        t["limpieza"]  = _clamp(t["limpieza"] - 3)
+        t.setdefault("cooldowns", {})["comer"] = ahora + TAMA_COOLDOWNS["comer"]
+        msg = f"Ñam, {it['nombre'].lower()} 😋"
+    else:
+        if not t.get("enfermo"):
+            return jsonify({"status": "error", "message": "No está enferma"}), 409
+        t["enfermo"] = False
+        t["salud"]   = _clamp(t["salud"] + 35)
+        t["curas"]   = t.get("curas", 0) + 1
+        msg = "¡Curada! 💚"
+
+    t["inventario"][item] = t["inventario"][item] - 1
+    if t["inventario"][item] <= 0:
+        t["inventario"].pop(item, None)
+
+    _tama_guardar(t)
+    return _tama_respuesta(t, msg)
+
+
+@app.route("/api/tama/comprar", methods=["POST"])
+def api_tama_comprar():
+    if "username" not in session:
+        return jsonify({"status": "error", "message": "No autenticado"}), 401
+
+    t = _tama_cargar()
+    if not t:
+        return jsonify({"status": "error", "message": "No tienes mascota"}), 404
+
+    item = (request.json or {}).get("item", "")
+    it   = TIENDA.get(item)
+    if not it:
+        return jsonify({"status": "error", "message": "Objeto inexistente"}), 400
+    if it["tipo"] == "cosmetico" and item in t.get("cosmeticos", []):
+        return jsonify({"status": "error", "message": "Ya lo tienes"}), 409
+    if t.get("monedas", 0) < it["precio"]:
+        return jsonify({"status": "error", "message": "Monedas insuficientes ◎"}), 409
+
+    t["monedas"] = int(t["monedas"] - it["precio"])
+    if it["tipo"] == "cosmetico":
+        t.setdefault("cosmeticos", []).append(item)
+    else:
+        inv = t.setdefault("inventario", {})
+        inv[item] = inv.get(item, 0) + 1
+
+    _tama_guardar(t)
+    return _tama_respuesta(t, f"Compraste {it['nombre']} 🛍️")
+
+
+@app.route("/api/tama/equipar", methods=["POST"])
+def api_tama_equipar():
+    if "username" not in session:
+        return jsonify({"status": "error", "message": "No autenticado"}), 401
+
+    t = _tama_cargar()
+    if not t:
+        return jsonify({"status": "error", "message": "No tienes mascota"}), 404
+
+    item = (request.json or {}).get("item")  # None = quitar
+    if item is not None:
+        if item not in t.get("cosmeticos", []):
+            return jsonify({"status": "error", "message": "No tienes ese objeto"}), 409
+        if TIENDA.get(item, {}).get("tipo") != "cosmetico":
+            return jsonify({"status": "error", "message": "No es equipable"}), 400
+
+    t.setdefault("equipado", {})["accesorio"] = item
+    _tama_guardar(t)
+    return _tama_respuesta(t)
+
+
+# ── Logros propios del Tamagotchi (los de puntos se resuelven en
+#    _verificar_logros vía /guardar_puntaje; estos son por condición) ──
+def _tama_logros(username, t):
+    u = usuarios_col.find_one({"username": username}, {"logros": 1})
+    if not u:
+        return []
+    ya = set(u.get("logros", []))
+    nuevos = []
+
+    def marcar(lid, cond):
+        if cond and lid not in ya:
+            nuevos.append(lid)
+
+    marcar("tama_nace",   t.get("nacido"))
+    marcar("tama_nino",   _tama_etapa(t.get("mejor_edad_seg", 0), t.get("nacido")) in ("nino", "adulto"))
+    marcar("tama_adulto", t.get("mejor_edad_seg", 0) >= TAMA_ETAPAS[-1][1])
+    marcar("tama_doctor", t.get("curas", 0) >= 1)
+    marcar("tama_rico",   t.get("monedas", 0) >= 150)
+    marcar("tama_fashion", len(t.get("cosmeticos", [])) >= 3)
+    marcar("tama_luto",   t.get("muertes", 0) >= 1)
+
+    if nuevos:
+        usuarios_col.update_one(
+            {"username": username},
+            {"$addToSet": {"logros": {"$each": nuevos}}}
+        )
+        titulos = {l["id"]: l["titulo"] for l in LOGROS}
+        return [titulos.get(n, n) for n in nuevos]
+    return []
+
+
 # ─── LOGROS ───────────────────────────────────────────────────────
 
 LOGROS = [
@@ -367,6 +849,17 @@ LOGROS = [
     {"id": "geo_first",     "juego": "geo",     "titulo": "Geometría",           "desc": "Completa el Nivel 1 de Geo Dash",      "icono": "🟦", "umbral": 1},
     {"id": "geo_nivel2",    "juego": "geo",     "titulo": "Desafiante",          "desc": "Completa el Nivel 2 de Geo Dash",      "icono": "🔶", "umbral": 2},
     {"id": "geo_nivel3",    "juego": "geo",     "titulo": "Maestro del Cubo",    "desc": "Completa el Nivel 3 de Geo Dash",      "icono": "🏆", "umbral": 3},
+    # Tamagotchi (por tiempo de vida — 10 pts por hora)
+    {"id": "tama_dia",     "juego": "tamagochi", "titulo": "Un día juntos",     "desc": "Mantén viva a tu mascota 24 horas",     "icono": "📅", "umbral": 240},
+    {"id": "tama_semana",  "juego": "tamagochi", "titulo": "Inseparables",      "desc": "Mantén viva a tu mascota 7 días",       "icono": "🏅", "umbral": 1680},
+    # Tamagotchi (por condición — se desbloquean desde _tama_logros)
+    {"id": "tama_nace",    "juego": "tamagochi", "titulo": "Nace un amigo",     "desc": "Haz eclosionar tu primer huevo",        "icono": "🐣", "umbral": None},
+    {"id": "tama_nino",    "juego": "tamagochi", "titulo": "Está creciendo",    "desc": "Tu mascota llega a la etapa Niño",      "icono": "🧒", "umbral": None},
+    {"id": "tama_adulto",  "juego": "tamagochi", "titulo": "Ya es adulta",      "desc": "Tu mascota llega a la etapa Adulto",    "icono": "🎂", "umbral": None},
+    {"id": "tama_doctor",  "juego": "tamagochi", "titulo": "Doctor Mascota",    "desc": "Cura a tu mascota de una enfermedad",   "icono": "💉", "umbral": None},
+    {"id": "tama_rico",    "juego": "tamagochi", "titulo": "Buen cuidador",     "desc": "Acumula 150 monedas cuidando bien",     "icono": "💰", "umbral": None},
+    {"id": "tama_fashion", "juego": "tamagochi", "titulo": "A la moda",         "desc": "Consigue 3 objetos cosméticos",         "icono": "🎩", "umbral": None},
+    {"id": "tama_luto",    "juego": "tamagochi", "titulo": "Se aprende",        "desc": "Perdiste una mascota… inténtalo de nuevo", "icono": "🕯️", "umbral": None},
     # Global
     {"id": "all_games",     "juego": None,      "titulo": "Polivalente",         "desc": "Juega todos los juegos al menos una vez", "icono": "🌟", "umbral": None},
 ]
@@ -388,7 +881,7 @@ def _verificar_logros(nombre, juego, puntos):
             )
             if {'snake','clicker','trivia','simon','geo'}.issubset(juegos_jugados):
                 nuevos.append(logro['id'])
-        elif logro['juego'] == juego and puntos >= logro['umbral']:
+        elif logro['juego'] == juego and logro['umbral'] is not None and puntos >= logro['umbral']:
             nuevos.append(logro['id'])
 
     if nuevos:
@@ -423,3 +916,4 @@ def ver_logros():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
