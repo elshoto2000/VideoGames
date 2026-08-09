@@ -387,7 +387,7 @@
  
             <h1>Bienvenido al<br><em>Arcade</em></h1>
  
-            <p>Demuestra que eres el mejor del mundo en cada desafío. Precisión, rapidez y estrategia te llevarán al top.</p>
+            <p>Demuestra que eres el mejor del curso en cada desafío. Precisión, rapidez y estrategia te llevarán al top.</p>
  
             <div class="hero-cta-group">
                 <button class="btn-ver-juegos" id="btn-ver-juegos">
@@ -507,18 +507,29 @@
                 <img src="{{ url_for('static', filename='img/geo-preview.gif') }}" alt="Geo Dash Preview">
             </div>
         </div>
-
+ 
+        <!-- Tamagotchi -->
         <div class="game-entry reverse">
             <div class="game-info">
-                <span class="game-tag">Criar · Amar</span>
-                <h3>Tamagochi</h3>
-                <p>Cria y protege a tu mascota virtual, mirala crecer y se feliz con ella:3.</p>
+                <span class="game-tag">Mascota Virtual · Cuidado</span>
+                <h3>Tamagotchi</h3>
+                <p>Adopta un huevo, ponle nombre y críalo de bebé a adulto. Aliméntalo, báñalo, juega con él y cúralo cuando enferme. Vive en tiempo real: sigue creciendo (y pasando hambre) aunque cierres la página.</p>
             </div>
             <div class="game-preview">
-                <img src="{{ url_for('static', filename='img/simon-preview.gif') }}" alt="Space Defender Preview">
+                <div style="width:100%;aspect-ratio:16/10;border-radius:14px;display:flex;
+                            align-items:center;justify-content:center;gap:14px;font-size:2.6rem;
+                            background:linear-gradient(160deg,#232344,#14142a);
+                            border:1px solid rgba(255,255,255,.10);">
+                    <span style="animation:tamaFloat 2.4s ease-in-out infinite;">🥚</span>
+                    <span style="opacity:.45;font-size:1.4rem;">→</span>
+                    <span style="animation:tamaFloat 2.4s ease-in-out infinite .3s;">🐣</span>
+                    <span style="opacity:.45;font-size:1.4rem;">→</span>
+                    <span style="animation:tamaFloat 2.4s ease-in-out infinite .6s;">🐥</span>
+                </div>
+                <style>@keyframes tamaFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}</style>
             </div>
         </div>
- 
+
         <!-- CTA: iniciar sesión -->
         <div id="cta-sesion" style="display:none;">
             <p>Inicia sesión para acceder a todos los juegos y aparecer en el ranking</p>
