@@ -16,13 +16,25 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True
 # Configura MONGO_URI en Render → Environment.
 MONGO_URI = os.environ.get("MONGO_URI")
 if not MONGO_URI:
-    raise RuntimeError("Falta la variable de entorno MONGO_URI")
-client = MongoClient(MONGO_URI)
+    raise RuntimeError(
+        "Falta la variable de entorno MONGO_URI. "
+        "En Render: tu servicio -> Environment -> Add Environment Variable, "
+        "key = MONGO_URI, value = mongodb+srv://usuario:password@cluster.xxxxx.mongodb.net/"
+    )
+
+# serverSelectionTimeoutMS evita que el arranque se cuelgue si Atlas no responde
+client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=8000)
 db = client.arcade_db
 puntajes_col = db.puntajes
 usuarios_col = db.usuarios
 
-print("✅ Conectado exitosamente a MongoDB Atlas")
+try:
+    client.admin.command("ping")
+    print("✅ Conectado exitosamente a MongoDB Atlas")
+except Exception as _e:
+    print(f"⚠️  No se pudo conectar a MongoDB Atlas: {_e}")
+    print("   Revisa: (1) usuario/password en MONGO_URI, "
+          "(2) Atlas -> Network Access debe permitir 0.0.0.0/0 para Render.")
 
 # ─── HELPER: obtener usuario actual desde DB ──────────────────────
 def get_usuario():
