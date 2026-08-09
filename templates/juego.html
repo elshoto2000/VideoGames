@@ -244,6 +244,12 @@
                         {% else %}
                             <li>Nadie ha jugado aún…</li>
                         {% endfor %}
+                    {% elif j == 'tamagochi' %}
+                        {% for fila in ranking_tamagochi %}
+                            <li><span>{{ loop.index }}. {{ fila.nombre }}</span><b>{{ fila.puntos }}</b></li>
+                        {% else %}
+                            <li>Nadie ha jugado aún…</li>
+                        {% endfor %}
                     {% else %}
                         <li>Nadie ha jugado aún…</li>
                     {% endif %}
