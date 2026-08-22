@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, Response
 from pymongo import MongoClient
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
@@ -35,6 +35,97 @@ except Exception as _e:
     print(f"⚠️  No se pudo conectar a MongoDB Atlas: {_e}")
     print("   Revisa: (1) usuario/password en MONGO_URI, "
           "(2) Atlas -> Network Access debe permitir 0.0.0.0/0 para Render.")
+
+# ─── SEO: nombre del sitio y URL base ─────────────────────────────
+# Configúralas en Render -> Environment (recomendado):
+#   SITE_NAME = El nombre único de tu arcade (ej. "PixelHub Arcade")
+#   SITE_URL  = https://tu-servicio.onrender.com   (sin / al final)
+SITE_NAME = os.environ.get("SITE_NAME", "PixelHub Arcade")
+SITE_URL  = os.environ.get("SITE_URL", "").rstrip("/")
+
+# Código de verificación de Google Search Console (método "etiqueta HTML").
+GOOGLE_SITE_VERIFICATION = os.environ.get("GOOGLE_SITE_VERIFICATION", "")
+
+
+def base_url():
+    """URL pública del sitio. Usa SITE_URL si existe; si no, la deduce del request."""
+    if SITE_URL:
+        return SITE_URL
+    return request.url_root.rstrip("/").replace("http://", "https://", 1)
+
+
+@app.context_processor
+def inject_seo():
+    """Deja SITE_NAME, BASE_URL y CANONICAL disponibles en todas las plantillas."""
+    return {
+        "SITE_NAME": SITE_NAME,
+        "BASE_URL": base_url(),
+        "CANONICAL": base_url() + request.path,
+        "GOOGLE_SITE_VERIFICATION": GOOGLE_SITE_VERIFICATION,
+    }
+
+
+@app.after_request
+def seo_headers(resp):
+    """Cachea estáticos (velocidad = mejor posicionamiento) y evita indexar la API."""
+    if request.path.startswith("/static/"):
+        resp.headers["Cache-Control"] = "public, max-age=604800"
+    if request.path.startswith(("/api/", "/obtener_ranking")):
+        resp.headers["X-Robots-Tag"] = "noindex"
+    return resp
+
+
+@app.route("/robots.txt")
+def robots_txt():
+    """Le dice a Google qué puede rastrear y dónde está el mapa del sitio."""
+    lineas = [
+        "User-agent: *",
+        "Allow: /",
+        "Disallow: /api/",
+        "Disallow: /obtener_ranking",
+        "Disallow: /dashboard",
+        "Disallow: /perfil",
+        "Disallow: /logros",
+        "Disallow: /juego/",
+        "Disallow: /logout",
+        "Disallow: /actualizar_avatar",
+        "",
+        f"Sitemap: {base_url()}/sitemap.xml",
+    ]
+    return Response("\n".join(lineas) + "\n", mimetype="text/plain")
+
+
+@app.route("/sitemap.xml")
+def sitemap_xml():
+    """Mapa del sitio con las páginas públicas: es lo que Google lee para indexar."""
+    hoy = time.strftime("%Y-%m-%d")
+    paginas = [
+        ("/",         "1.0", "daily"),
+        ("/ranking",  "0.8", "hourly"),
+        ("/registro", "0.6", "monthly"),
+        ("/login",    "0.4", "monthly"),
+    ]
+    urls = "".join(
+        f"<url><loc>{base_url()}{ruta}</loc><lastmod>{hoy}</lastmod>"
+        f"<changefreq>{freq}</changefreq><priority>{prio}</priority></url>"
+        for ruta, prio, freq in paginas
+    )
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        f"{urls}</urlset>"
+    )
+    return Response(xml, mimetype="application/xml")
+
+
+@app.route("/googleverify.html")
+def google_verify_fallback():
+    """Verificación alternativa por archivo HTML si prefieres ese método."""
+    return Response(
+        f"google-site-verification: {GOOGLE_SITE_VERIFICATION}",
+        mimetype="text/html",
+    )
+
 
 # ─── HELPER: obtener usuario actual desde DB ──────────────────────
 def get_usuario():
