@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arcade | Iniciar sesión</title>
+    {% set page_title %}Iniciar sesión | {{ SITE_NAME }}{% endset %}
+    {% set page_desc %}Entra a tu cuenta de {{ SITE_NAME }} para seguir jugando y conservar tus puntajes y logros.{% endset %}
+    <title>{{ page_title }}</title>
+    {% include '_seo.html' %}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
