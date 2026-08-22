@@ -3,7 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Arcade | Mis Logros</title>
+    {% set page_title %}Mis logros | {{ SITE_NAME }}{% endset %}
+    {% set page_desc %}Logros desbloqueados del jugador.{% endset %}
+    {% set page_noindex = true %}
+    <title>{{ page_title }}</title>
+    {% include '_seo.html' %}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=Syne+Mono&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
