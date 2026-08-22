@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arcade | Menú</title>
+    {% set page_title %}{{ SITE_NAME }} — Arcade online gratis: Snake, Trivia, Simon y más{% endset %}
+    {% set page_desc %}Juega gratis en {{ SITE_NAME }}: Snake, Trivia, Simon, Clicker, Geo y Tamagochi directamente en el navegador. Crea tu cuenta, guarda tus puntajes y sube al ranking global.{% endset %}
+    <title>{{ page_title }}</title>
+    {% include '_seo.html' %}
+    {% include '_jsonld_home.html' %}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
