@@ -1,0 +1,32 @@
+{# Datos estructurados: ayudan a que Google entienda el sitio y muestre el buscador interno #}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "{{ SITE_NAME }}",
+  "alternateName": "{{ SITE_NAME }} Arcade",
+  "url": "{{ BASE_URL }}/",
+  "description": "{{ page_desc }}",
+  "inLanguage": "es",
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": "{{ BASE_URL }}/ranking?q={search_term_string}",
+    "query-input": "required name=search_term_string"
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  "name": "Juegos disponibles en {{ SITE_NAME }}",
+  "itemListElement": [
+    {"@type":"ListItem","position":1,"item":{"@type":"VideoGame","name":"Snake","applicationCategory":"Game","operatingSystem":"Web","url":"{{ BASE_URL }}/"}},
+    {"@type":"ListItem","position":2,"item":{"@type":"VideoGame","name":"Trivia","applicationCategory":"Game","operatingSystem":"Web","url":"{{ BASE_URL }}/"}},
+    {"@type":"ListItem","position":3,"item":{"@type":"VideoGame","name":"Simon","applicationCategory":"Game","operatingSystem":"Web","url":"{{ BASE_URL }}/"}},
+    {"@type":"ListItem","position":4,"item":{"@type":"VideoGame","name":"Clicker","applicationCategory":"Game","operatingSystem":"Web","url":"{{ BASE_URL }}/"}},
+    {"@type":"ListItem","position":5,"item":{"@type":"VideoGame","name":"Geo","applicationCategory":"Game","operatingSystem":"Web","url":"{{ BASE_URL }}/"}},
+    {"@type":"ListItem","position":6,"item":{"@type":"VideoGame","name":"Tamagochi","applicationCategory":"Game","operatingSystem":"Web","url":"{{ BASE_URL }}/"}}
+  ]
+}
+</script>

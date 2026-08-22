@@ -1,0 +1,28 @@
+{# ================= SEO GLOBAL =================
+   Se incluye dentro de <head>. Antes del include define:
+   {% set page_title %}, {% set page_desc %}, {% set page_noindex = true %} (opcional)
+   ============================================= #}
+{% if GOOGLE_SITE_VERIFICATION %}<meta name="google-site-verification" content="{{ GOOGLE_SITE_VERIFICATION }}">{% endif %}
+<meta name="description" content="{{ page_desc | default('Arcade online gratis con Snake, Trivia, Simon, Clicker, Geo y Tamagochi. Juega en el navegador, guarda tu puntaje y compite en el ranking global.') }}">
+<link rel="canonical" href="{{ CANONICAL }}">
+{% if page_noindex %}
+<meta name="robots" content="noindex, nofollow">
+{% else %}
+<meta name="robots" content="index, follow, max-image-preview:large">
+{% endif %}
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="{{ SITE_NAME }}">
+<meta property="og:title" content="{{ page_title | default(SITE_NAME) }}">
+<meta property="og:description" content="{{ page_desc | default('Arcade online gratis: Snake, Trivia, Simon, Clicker, Geo y Tamagochi. Juega en el navegador y compite en el ranking global.') }}">
+<meta property="og:url" content="{{ CANONICAL }}">
+<meta property="og:image" content="{{ BASE_URL }}{{ url_for('static', filename='img/og-cover.png') }}">
+<meta property="og:locale" content="es_ES">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ page_title | default(SITE_NAME) }}">
+<meta name="twitter:description" content="{{ page_desc | default('Arcade online gratis con 6 juegos y ranking global.') }}">
+<meta name="twitter:image" content="{{ BASE_URL }}{{ url_for('static', filename='img/og-cover.png') }}">
+
+<meta name="theme-color" content="#0b0b12">
+<link rel="icon" type="image/gif" href="{{ url_for('static', filename='img/favicon.gif') }}">
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='img/favicon.gif') }}">
