@@ -161,6 +161,9 @@
                 <a href="/perfil" class="dropdown-item" role="menuitem">
                     <span class="dropdown-icon">👤</span> Mi perfil
                 </a>
+                <a href="{{ url_for('mario') }}" class="dropdown-item" role="menuitem">
+                    <span class="dropdown-icon">🍄</span> Bigote Bros
+                </a>
                 <a href="/ranking" class="dropdown-item" role="menuitem">
                     <span class="dropdown-icon">🏆</span> Top Global
                 </a>
@@ -250,6 +253,12 @@
                         {% endfor %}
                     {% elif j == 'tamagochi' %}
                         {% for fila in ranking_tamagochi %}
+                            <li><span>{{ loop.index }}. {{ fila.nombre }}</span><b>{{ fila.puntos }}</b></li>
+                        {% else %}
+                            <li>Nadie ha jugado aún…</li>
+                        {% endfor %}
+                    {% elif j == 'mario' %}
+                        {% for fila in ranking_mario %}
                             <li><span>{{ loop.index }}. {{ fila.nombre }}</span><b>{{ fila.puntos }}</b></li>
                         {% else %}
                             <li>Nadie ha jugado aún…</li>
