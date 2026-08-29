@@ -87,6 +87,7 @@ def robots_txt():
         "Disallow: /perfil",
         "Disallow: /logros",
         "Disallow: /juego/",
+        "Disallow: /mario",
         "Disallow: /logout",
         "Disallow: /actualizar_avatar",
         "",
@@ -269,6 +270,7 @@ def cargar_juego(nombre_juego):
     r_simon   = list(puntajes_col.find({"juego": "simon"  }).sort("puntos", -1).limit(5))
     r_geo     = list(puntajes_col.find({"juego": "geo"    }).sort("puntos", -1).limit(5))
     r_tama    = list(puntajes_col.find({"juego": "tamagochi"}).sort("puntos", -1).limit(5))
+    r_mario   = list(puntajes_col.find({"juego": "mario"  }).sort("puntos", -1).limit(5))
 
     return render_template('juego.html',
                            juego=nombre_juego,
@@ -279,7 +281,24 @@ def cargar_juego(nombre_juego):
                            ranking_clicker=r_clicker,
                            ranking_simon=r_simon,
                            ranking_geo=r_geo,
-                           ranking_tamagochi=r_tama)
+                           ranking_tamagochi=r_tama,
+                           ranking_mario=r_mario)
+
+
+@app.route('/mario')
+def mario():
+    """Bigote Bros: plataformero de 3 mundos, 7 niveles y jefe final."""
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    u = get_usuario()
+    if not u:
+        session.clear()
+        return redirect(url_for('login'))
+    r_mario = list(puntajes_col.find({"juego": "mario"}).sort("puntos", -1).limit(5))
+    return render_template('mario.html',
+                           username=u['username'],
+                           avatar=u.get('avatar', ''),
+                           ranking_mario=r_mario)
 
 
 # ─── PUNTAJES Y RANKING ───────────────────────────────────────────
@@ -963,6 +982,11 @@ LOGROS = [
     {"id": "tama_rico",    "juego": "tamagochi", "titulo": "Buen cuidador",     "desc": "Acumula 150 monedas cuidando bien",     "icono": "💰", "umbral": None},
     {"id": "tama_fashion", "juego": "tamagochi", "titulo": "A la moda",         "desc": "Consigue 3 objetos cosméticos",         "icono": "🎩", "umbral": None},
     {"id": "tama_luto",    "juego": "tamagochi", "titulo": "Se aprende",        "desc": "Perdiste una mascota… inténtalo de nuevo", "icono": "🕯️", "umbral": None},
+    # Bigote Bros (mario)
+    {"id": "mario_first",   "juego": "mario",   "titulo": "Primer salto",       "desc": "Juega Bigote Bros por primera vez",       "icono": "🍄", "umbral": 1},
+    {"id": "mario_1000",    "juego": "mario",   "titulo": "Fontanero novato",   "desc": "Consigue 1.000 puntos en Bigote Bros",    "icono": "🪙", "umbral": 1000},
+    {"id": "mario_10000",   "juego": "mario",   "titulo": "Fontanero pro",      "desc": "Consigue 10.000 puntos en Bigote Bros",   "icono": "⭐", "umbral": 10000},
+    {"id": "mario_30000",   "juego": "mario",   "titulo": "Rey Espina KO",      "desc": "Consigue 30.000 puntos (jefe vencido)",   "icono": "👑", "umbral": 30000},
     # Global
     {"id": "all_games",     "juego": None,      "titulo": "Polivalente",         "desc": "Juega todos los juegos al menos una vez", "icono": "🌟", "umbral": None},
 ]
