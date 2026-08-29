@@ -1148,4 +1148,3 @@ var LEVELS = [
     document.addEventListener('DOMContentLoaded', function () { init('marioCanvas'); });
   } else { init('marioCanvas'); }
 })();
-
