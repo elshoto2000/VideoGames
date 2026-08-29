@@ -1,12 +1,9 @@
-{# ============================================================
-   templates/mario.html — BIGOTE BROS (plataformero 1-2 jugadores)
-   Requiere: static/js/mario.js  ·  ruta /mario en app.py
-   ============================================================ #}
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% set page_noindex = true %}
     {% set page_title %}Bigote Bros — plataformero 1 y 2 jugadores | {{ SITE_NAME }}{% endset %}
     {% set page_desc %}Plataformero retro de 3 mundos, 7 niveles y jefe final. Juega solo o con un amigo en el mismo teclado, gratis y sin descargas.{% endset %}
     <title>{{ page_title }}</title>
@@ -87,6 +84,9 @@
             -webkit-tap-highlight-color: transparent;
         }
         .touch button:active { background: #ffd43b; color: #111; }
+        .touch.touch-p2 { border-top: 1px dashed rgba(255,255,255,.10); }
+        .touch.touch-p2 button { border-color: rgba(140,233,154,.35); }
+        body:not(.two-players) .touch-p2 { display: none !important; }
         @media (max-width: 820px) { .touch { display: flex; } }
     </style>
 </head>
@@ -94,7 +94,14 @@
     <div class="mario-wrap">
         <div class="mario-head">
             <h1 class="mario-title">Bigote Bros</h1>
-            <a class="mario-back" href="{{ url_for('dashboard') }}">← Volver al arcade</a>
+            <div style="display:flex;align-items:center;gap:10px;">
+                {% if username %}
+                <span class="mario-back" style="cursor:default;">
+                    {% if avatar %}<img src="{{ avatar }}" alt="" style="width:18px;height:18px;border-radius:50%;vertical-align:-4px;margin-right:6px;">{% endif %}{{ username }}
+                </span>
+                {% endif %}
+                <a class="mario-back" href="{{ url_for('dashboard') }}">← Volver al arcade</a>
+            </div>
         </div>
 
         <div class="stage">
@@ -102,21 +109,33 @@
 
             <div class="touch" aria-label="Controles táctiles jugador 1">
                 <div class="pad">
-                    <button data-key="a">◀</button>
-                    <button data-key="d">▶</button>
+                    <button type="button" data-key="a" aria-label="Izquierda J1">◀</button>
+                    <button type="button" data-key="d" aria-label="Derecha J1">▶</button>
                 </div>
                 <div class="pad">
-                    <button data-key="s">🔥</button>
-                    <button data-key="w">▲</button>
+                    <button type="button" data-key="enter" aria-label="Confirmar">⏎</button>
+                    <button type="button" data-key="s" aria-label="Disparar J1">🔥</button>
+                    <button type="button" data-key="w" aria-label="Saltar J1">▲</button>
+                </div>
+            </div>
+
+            <div class="touch touch-p2" aria-label="Controles táctiles jugador 2">
+                <div class="pad">
+                    <button type="button" data-key="arrowleft" aria-label="Izquierda J2">◀</button>
+                    <button type="button" data-key="arrowright" aria-label="Derecha J2">▶</button>
+                </div>
+                <div class="pad">
+                    <button type="button" data-key="arrowdown" aria-label="Disparar J2">🔥</button>
+                    <button type="button" data-key="arrowup" aria-label="Saltar J2">▲</button>
                 </div>
             </div>
 
             <div class="stage-bar">
-                <button class="mbtn" onclick="BigoteBros.start1P()">▶ 1 jugador</button>
-                <button class="mbtn" onclick="BigoteBros.start2P()">👥 2 jugadores</button>
-                <button class="mbtn" onclick="BigoteBros.toMenu()">☰ Menú</button>
-                <button class="mbtn" id="btnMute">🔊 Sonido</button>
-                <button class="mbtn" onclick="document.querySelector('.stage').requestFullscreen()">⛶ Pantalla completa</button>
+                <button class="mbtn" type="button" id="btn1P">▶ 1 jugador</button>
+                <button class="mbtn" type="button" id="btn2P">👥 2 jugadores</button>
+                <button class="mbtn" type="button" id="btnMenu">☰ Menú</button>
+                <button class="mbtn" type="button" id="btnMute">🔊 Sonido</button>
+                <button class="mbtn" type="button" id="btnFull">⛶ Pantalla completa</button>
             </div>
         </div>
 
@@ -156,21 +175,76 @@
 
     <script src="{{ url_for('static', filename='js/mario.js') }}"></script>
     <script>
-        // Botones táctiles → teclas virtuales del motor
-        document.querySelectorAll('.touch button').forEach(function (b) {
-            var k = b.dataset.key;
-            var down = function (e) { e.preventDefault(); BigoteBros.key(k, true); };
-            var up = function (e) { e.preventDefault(); BigoteBros.key(k, false); };
-            b.addEventListener('touchstart', down); b.addEventListener('touchend', up);
-            b.addEventListener('mousedown', down); b.addEventListener('mouseup', up);
-            b.addEventListener('mouseleave', up);
-        });
-        var m = false;
-        document.getElementById('btnMute').onclick = function () {
-            m = !m; BigoteBros.mute(m);
-            this.textContent = m ? '🔇 Silencio' : '🔊 Sonido';
-        };
-        document.getElementById('marioCanvas').focus();
+        (function () {
+            'use strict';
+            var canvas = document.getElementById('marioCanvas');
+            var stage = document.querySelector('.stage');
+
+            function api() { return window.BigoteBros; }
+            function on(id, fn) {
+                var el = document.getElementById(id);
+                if (el) el.addEventListener('click', fn);
+            }
+
+            // Botones táctiles -> teclas virtuales del motor
+            document.querySelectorAll('.touch button').forEach(function (b) {
+                var k = b.dataset.key;
+                function down(e) { e.preventDefault(); if (api()) api().key(k, true); }
+                function up(e) { e.preventDefault(); if (api()) api().key(k, false); }
+                b.addEventListener('touchstart', down, { passive: false });
+                b.addEventListener('touchend', up, { passive: false });
+                b.addEventListener('touchcancel', up, { passive: false });
+                b.addEventListener('mousedown', down);
+                b.addEventListener('mouseup', up);
+                b.addEventListener('mouseleave', up);
+                b.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+            });
+
+            on('btn1P', function () {
+                document.body.classList.remove('two-players');
+                if (api()) api().start1P();
+                if (canvas) canvas.focus();
+            });
+            on('btn2P', function () {
+                document.body.classList.add('two-players');
+                if (api()) api().start2P();
+                if (canvas) canvas.focus();
+            });
+            on('btnMenu', function () {
+                document.body.classList.remove('two-players');
+                if (api()) api().toMenu();
+                if (canvas) canvas.focus();
+            });
+
+            var muted = false;
+            on('btnMute', function () {
+                muted = !muted;
+                if (api()) api().mute(muted);
+                this.textContent = muted ? '🔇 Silencio' : '🔊 Sonido';
+            });
+
+            on('btnFull', function () {
+                if (!stage) return;
+                if (document.fullscreenElement) {
+                    (document.exitFullscreen || document.webkitExitFullscreen || function () {}).call(document);
+                    return;
+                }
+                var req = stage.requestFullscreen || stage.webkitRequestFullscreen || stage.msRequestFullscreen;
+                if (req) {
+                    var r = req.call(stage);
+                    if (r && r.catch) r.catch(function () {});
+                }
+            });
+
+            // Evitar que la pagina haga scroll con flechas/espacio mientras se juega
+            window.addEventListener('keydown', function (e) {
+                var k = (e.key || '').toLowerCase();
+                if (k === ' ' || k.indexOf('arrow') === 0) e.preventDefault();
+            }, { passive: false });
+
+            if (canvas) canvas.focus();
+        })();
     </script>
 </body>
 </html>
+
