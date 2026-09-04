@@ -295,10 +295,15 @@ def mario():
         session.clear()
         return redirect(url_for('login'))
     r_mario = list(puntajes_col.find({"juego": "mario"}).sort("puntos", -1).limit(5))
+    skins = u.get('mario_skins', {}) or {}
     return render_template('mario.html',
                            username=u['username'],
                            avatar=u.get('avatar', ''),
-                           ranking_mario=r_mario)
+                           ranking_mario=r_mario,
+                           mario_skins={
+                               "p1": skins.get('p1'),
+                               "p2": skins.get('p2')
+                           })
 
 
 # ─── PUNTAJES Y RANKING ───────────────────────────────────────────
@@ -472,6 +477,101 @@ def eliminar_accesorio_snake():
         {"$set": {"snake_config.equipado": None}}
     )
     return jsonify({"status": "success"})
+
+
+# ─── PERSONAJES DE BIGOTE BROS (editor 16x16) ─────────────────────
+# Se guardan dentro del documento del usuario, en el campo
+# "mario_skins": { "p1": {...}, "p2": {...} }
+# Cada skin: { name, pal: {9 colores hex}, rows: [16 strings de 16] }
+
+MARIO_SKIN_SYMS = set('.coshebwyk')
+MARIO_PAL_KEYS  = ['c', 'o', 's', 'h', 'e', 'b', 'w', 'y', 'k']
+
+
+def _validar_skin_mario(raw):
+    """Devuelve la skin saneada o None si el formato no sirve."""
+    if not isinstance(raw, dict):
+        return None
+
+    filas_in = raw.get('rows')
+    if not isinstance(filas_in, list) or len(filas_in) != 16:
+        return None
+
+    filas = []
+    for fila in filas_in:
+        if not isinstance(fila, str) or len(fila) != 16:
+            return None
+        if any(ch not in MARIO_SKIN_SYMS for ch in fila):
+            return None
+        filas.append(fila)
+
+    pal_in = raw.get('pal')
+    if not isinstance(pal_in, dict):
+        return None
+
+    pal = {}
+    for k in MARIO_PAL_KEYS:
+        color = pal_in.get(k)
+        if not (isinstance(color, str) and HEX_RE.match(color)):
+            return None
+        pal[k] = color.lower()
+
+    nombre = raw.get('name')
+    if not isinstance(nombre, str) or not nombre.strip():
+        nombre = 'Personaje'
+
+    return {"name": nombre.strip()[:24], "pal": pal, "rows": filas}
+
+
+@app.route('/api/mario_skin', methods=['GET'])
+def api_mario_skin():
+    """Devuelve las skins guardadas del usuario logueado."""
+    if 'username' not in session:
+        return jsonify({"ok": False, "error": "No autenticado"}), 401
+
+    u = get_usuario()
+    if not u:
+        session.clear()
+        return jsonify({"ok": False, "error": "No autenticado"}), 401
+
+    skins = u.get('mario_skins', {}) or {}
+    return jsonify({
+        "ok": True,
+        "p1": skins.get('p1'),
+        "p2": skins.get('p2')
+    })
+
+
+@app.route('/api/mario_skin', methods=['POST'])
+def guardar_mario_skin():
+    """Guarda la skin de p1 y/o p2 tras validarla en el servidor."""
+    if 'username' not in session:
+        return jsonify({"ok": False, "error": "Inicia sesión para guardar en tu cuenta"}), 401
+
+    u = get_usuario()
+    if not u:
+        session.clear()
+        return jsonify({"ok": False, "error": "No autenticado"}), 401
+
+    datos = request.json or {}
+    cambios = {}
+    for clave in ('p1', 'p2'):
+        if clave not in datos:
+            continue
+        skin = _validar_skin_mario(datos.get(clave))
+        if skin is None:
+            return jsonify({"ok": False, "error": "Personaje inválido (" + clave + ")"}), 400
+        cambios["mario_skins." + clave] = skin
+
+    if not cambios:
+        return jsonify({"ok": False, "error": "No mandaste ningún personaje"}), 400
+
+    try:
+        usuarios_col.update_one({"username": session['username']}, {"$set": cambios})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+    return jsonify({"ok": True, "guardados": list(datos.keys())})
 
 
 # ══════════════════════════════════════════════════════════════════
