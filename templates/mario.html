@@ -73,6 +73,7 @@
             border-radius: 5px; padding: 1px 6px; color: #fff;
         }
         .p1 { color: #ff8787; } .p2 { color: #8ce99a; }
+        .p3 { color: #74c0fc; } .p4 { color: #ffd43b; }
 
         /* Controles táctiles (móvil) */
         .touch { display: none; gap: 10px; justify-content: space-between; padding: 12px; }
@@ -107,6 +108,46 @@
             letter-spacing: -.01em; color: #ffd43b;
         }
         .sk-tabs { display: flex; gap: 6px; }
+
+        /* ── Lobby online ── */
+        #lbOverlay .sk-modal { max-width: 560px; }
+        .lb-sec { margin-bottom: 16px; }
+        .lb-sec h4 {
+            margin: 0 0 8px; font-family: var(--font-mono, monospace); font-size: .7rem;
+            letter-spacing: .12em; text-transform: uppercase; color: var(--muted, #9aa0a6);
+        }
+        .lb-in {
+            width: 100%; padding: 9px 10px; border-radius: 9px; background: var(--bg-raised, #16181d);
+            border: 1px solid var(--border-md, #2a2d33); color: #e9ecef;
+            font-family: var(--font-mono, monospace); font-size: .82rem;
+        }
+        .lb-icons { display: flex; flex-wrap: wrap; gap: 6px; }
+        .lb-ic {
+            width: 38px; height: 38px; font-size: 1.15rem; line-height: 1; cursor: pointer;
+            background: var(--bg-raised, #16181d); border: 1px solid var(--border-md, #2a2d33);
+            border-radius: 9px; color: #fff;
+        }
+        .lb-ic.active { border-color: #ffd43b; background: rgba(255,212,59,.12); }
+        .lb-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .lb-code {
+            font-family: var(--font-mono, monospace); font-size: 1.5rem; letter-spacing: .3em;
+            color: #ffd43b; background: rgba(255,212,59,.08); border: 1px dashed rgba(255,212,59,.35);
+            border-radius: 10px; padding: 8px 14px;
+        }
+        .lb-list { display: flex; flex-direction: column; gap: 6px; }
+        .lb-pl {
+            display: flex; align-items: center; gap: 8px; padding: 7px 10px;
+            background: var(--bg-raised, #16181d); border: 1px solid var(--border-md, #2a2d33);
+            border-radius: 10px; font-size: .82rem;
+        }
+        .lb-pl .slot { font-family: var(--font-mono, monospace); font-size: .7rem; font-weight: 700; }
+        .lb-pl .tag {
+            margin-left: auto; font-size: .64rem; letter-spacing: .1em; text-transform: uppercase;
+            color: var(--muted, #9aa0a6);
+        }
+        .lb-msg { font-family: var(--font-mono, monospace); font-size: .72rem; color: #9aa0a6; min-height: 1.1em; }
+        .lb-msg.err { color: #ff8787; }
+        .lb-hr { height: 1px; background: var(--border-md, #2a2d33); margin: 14px 0; }
         .sk-tab.active { border-color: #ffd43b; color: #ffd43b; background: rgba(255,212,59,.08); }
         .sk-grid-wrap { display: flex; gap: 18px; flex-wrap: wrap; }
         .sk-left { flex: 0 0 auto; }
@@ -192,6 +233,7 @@
             <div class="stage-bar">
                 <button class="mbtn" type="button" id="btn1P">▶ 1 jugador</button>
                 <button class="mbtn" type="button" id="btn2P">👥 2 jugadores</button>
+                <button class="mbtn" type="button" id="btnOnline">🌐 Online</button>
                 <button class="mbtn" type="button" id="btnMenu">☰ Menú</button>
                 <button class="mbtn" type="button" id="btnSkin">🎨 Editor</button>
                 <button class="mbtn" type="button" id="btnMute">🔊 Sonido</button>
@@ -205,8 +247,10 @@
                 <div class="sk-top">
                     <h2>🎨 Editor de personaje</h2>
                     <div class="sk-tabs">
-                        <button class="mbtn sk-tab active" type="button" data-pl="0">Jugador 1</button>
-                        <button class="mbtn sk-tab" type="button" data-pl="1">Jugador 2</button>
+                        <button class="mbtn sk-tab active" type="button" data-pl="0">J1</button>
+                        <button class="mbtn sk-tab" type="button" data-pl="1">J2</button>
+                        <button class="mbtn sk-tab" type="button" data-pl="2">J3</button>
+                        <button class="mbtn sk-tab" type="button" data-pl="3">J4</button>
                         <button class="mbtn" type="button" id="skClose">✕ Cerrar</button>
                     </div>
                 </div>
@@ -294,10 +338,89 @@
                 </ul>
             </div>
             <div class="card">
-                <h3>Cooperativo</h3>
-                <p>Los dos comparten pantalla y cámara. Cada uno lleva sus vidas, monedas y puntaje; el que se queda atrás reaparece junto al otro.</p>
-                <p>El puntaje que se guarda en el ranking es la <strong>suma de los dos</strong>.</p>
+                <h3>Cooperativo local</h3>
+                <p>Hasta <strong>4 jugadores</strong> comparten pantalla y cámara. Cada uno lleva sus vidas, monedas y puntaje; el que se queda atrás reaparece junto a los demás.</p>
+                <p>En local, J3 comparte teclas con J1 (A D W S) y J4 con J2 (flechas). El puntaje que se guarda es la <strong>suma</strong>.</p>
             </div>
+            <div class="card">
+                <h3>🌐 Online</h3>
+                <p>Crea una sala (nombre + emblema), pásale el <strong>código de 5 letras</strong> a tus amigos y jueguen hasta 4 desde su propia compu.</p>
+                <p>Cada quien usa su teclado completo: <strong>WASD o flechas</strong>, indistintamente. Y cada quien guarda <strong>su propio puntaje</strong> en el ranking.</p>
+                <p>Si a alguien se le cae la conexión, la partida se termina y el puntaje queda guardado.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Lobby del modo online ── -->
+    <div class="sk-overlay" id="lbOverlay" role="dialog" aria-modal="true" aria-label="Jugar online">
+        <div class="sk-modal">
+            <div class="sk-top">
+                <h2>🌐 Jugar online</h2>
+                <button class="mbtn" type="button" id="lbClose">✕ Cerrar</button>
+            </div>
+
+            <!-- vista 1: crear o unirse -->
+            <div id="lbHome">
+                <div class="lb-sec">
+                    <h4>Emblema de la sala</h4>
+                    <div class="lb-icons" id="lbIcons">
+                        {% for ic in (iconos_sala or []) %}
+                        <button class="lb-ic{{ ' active' if loop.first else '' }}" type="button" data-ic="{{ ic }}">{{ ic }}</button>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="lb-sec">
+                    <h4>Crear una sala nueva</h4>
+                    <div class="lb-row">
+                        <input class="lb-in" id="lbName" type="text" maxlength="24" placeholder="Nombre de la sala" style="flex:1 1 200px">
+                        <button class="mbtn" type="button" id="lbCreate">Crear sala</button>
+                    </div>
+                </div>
+                <div class="lb-hr"></div>
+                <div class="lb-sec">
+                    <h4>Unirse con código</h4>
+                    <div class="lb-row">
+                        <input class="lb-in" id="lbCode" type="text" maxlength="7" placeholder="ABCDE"
+                               style="flex:1 1 160px; text-transform:uppercase; letter-spacing:.25em">
+                        <button class="mbtn" type="button" id="lbJoin">Unirme</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- vista 2: sala de espera -->
+            <div id="lbRoom" style="display:none">
+                <div class="lb-sec lb-row">
+                    <span style="font-size:1.8rem" id="lbRoomIcon">🍄</span>
+                    <strong id="lbRoomName" style="font-size:1rem">Sala</strong>
+                </div>
+                <div class="lb-sec">
+                    <h4>Código de la sala</h4>
+                    <div class="lb-row">
+                        <span class="lb-code" id="lbRoomCode">-----</span>
+                        <button class="mbtn" type="button" id="lbCopy">📋 Copiar código</button>
+                        <button class="mbtn" type="button" id="lbCopyLink">🔗 Copiar link</button>
+                    </div>
+                </div>
+                <div class="lb-sec">
+                    <h4>Jugadores (<span id="lbCount">1</span>/4)</h4>
+                    <div class="lb-list" id="lbPlayers"></div>
+                </div>
+                <div class="lb-sec">
+                    <h4>Tu emblema</h4>
+                    <div class="lb-icons" id="lbIcons2">
+                        {% for ic in (iconos_sala or []) %}
+                        <button class="lb-ic" type="button" data-ic="{{ ic }}">{{ ic }}</button>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="lb-row">
+                    <button class="mbtn" type="button" id="lbReady">✔ Estoy listo</button>
+                    <button class="mbtn" type="button" id="lbStart">▶ Empezar partida</button>
+                    <button class="mbtn" type="button" id="lbLeave">← Salir de la sala</button>
+                </div>
+            </div>
+
+            <p class="lb-msg" id="lbMsg"></p>
         </div>
     </div>
 
@@ -307,6 +430,8 @@
         window.MARIO_LOGGED = {{ 'true' if username else 'false' }};
     </script>
     <script src="{{ url_for('static', filename='js/mario.js') }}"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
+    <script src="{{ url_for('static', filename='js/mario_net.js') }}"></script>
     <script>
         (function () {
             'use strict';
@@ -685,10 +810,174 @@
                 var t = e.target || {};
                 var tag = (t.tagName || '').toLowerCase();
                 if (tag === 'input' || tag === 'textarea') return;
-                if (overlay && overlay.classList.contains('open')) return;
+                if (document.querySelector('.sk-overlay.open')) return;
                 var k = (e.key || '').toLowerCase();
                 if (k === ' ' || k.indexOf('arrow') === 0) e.preventDefault();
             }, { passive: false });
+
+            // ══════════ Lobby del modo online ══════════
+            var lb = document.getElementById('lbOverlay');
+            var lbIcon = null, lbRoomData = null;
+
+            function lbMsg(t, err) {
+                var el = document.getElementById('lbMsg');
+                if (!el) return;
+                el.textContent = t || '';
+                el.classList.toggle('err', !!err);
+            }
+            function lbShow(open) {
+                if (!lb) return;
+                lb.classList.toggle('open', !!open);
+                if (!open && canvas) canvas.focus();
+            }
+            function lbView(room) {
+                var h = document.getElementById('lbHome'), r = document.getElementById('lbRoom');
+                if (h) h.style.display = room ? 'none' : '';
+                if (r) r.style.display = room ? '' : 'none';
+            }
+            function pickIcons(wrap, cb) {
+                var el = document.getElementById(wrap);
+                if (!el) return;
+                el.querySelectorAll('.lb-ic').forEach(function (b) {
+                    b.addEventListener('click', function () {
+                        el.querySelectorAll('.lb-ic').forEach(function (o) { o.classList.remove('active'); });
+                        b.classList.add('active');
+                        lbIcon = b.dataset.ic;
+                        if (cb) cb(lbIcon);
+                    });
+                });
+            }
+            pickIcons('lbIcons', null);
+            pickIcons('lbIcons2', function (ic) { if (window.BB_NET) window.BB_NET.setIcon(ic); });
+
+            var PCOL = ['#ff8787', '#8ce99a', '#74c0fc', '#ffd43b'];
+
+            function renderRoom(r) {
+                lbRoomData = r;
+                lbView(true);
+                var g = function (id) { return document.getElementById(id); };
+                if (g('lbRoomIcon')) g('lbRoomIcon').textContent = r.icono || '🍄';
+                if (g('lbRoomName')) g('lbRoomName').textContent = r.nombre || 'Sala';
+                if (g('lbRoomCode')) g('lbRoomCode').textContent = r.code;
+                if (g('lbCount')) g('lbCount').textContent = r.players.length;
+                var list = g('lbPlayers');
+                if (list) {
+                    list.innerHTML = '';
+                    r.players.forEach(function (p) {
+                        var row = document.createElement('div');
+                        row.className = 'lb-pl';
+                        var slot = document.createElement('span');
+                        slot.className = 'slot';
+                        slot.style.color = PCOL[p.slot] || '#fff';
+                        slot.textContent = 'P' + (p.slot + 1);
+                        var ic = document.createElement('span');
+                        ic.textContent = p.icono || '🎮';
+                        var nm = document.createElement('span');
+                        nm.textContent = p.user + (p.me ? ' (tú)' : '');
+                        var tag = document.createElement('span');
+                        tag.className = 'tag';
+                        tag.textContent = (p.host ? 'anfitrión' : (p.listo ? 'listo' : 'esperando'));
+                        row.appendChild(slot); row.appendChild(ic); row.appendChild(nm); row.appendChild(tag);
+                        list.appendChild(row);
+                    });
+                }
+                var start = g('lbStart');
+                if (start) {
+                    var soyHost = window.BB_NET && window.BB_NET.isHost();
+                    start.style.display = soyHost ? '' : 'none';
+                    start.disabled = r.players.length < 2;
+                    start.textContent = r.players.length < 2 ? '▶ Falta gente…' : '▶ Empezar partida';
+                }
+                // mandamos nuestro personaje para que todos lo vean igual
+                if (window.BB_NET && api() && api().getSkin) {
+                    try { window.BB_NET.sendSkin(api().getSkin(0)); } catch (e) { }
+                }
+            }
+
+            if (window.BB_NET) {
+                window.BB_NET.on('room', function (r) { renderRoom(r); lbMsg('Sala ' + r.code + ' · comparte el código'); });
+                window.BB_NET.on('error', function (m) { lbMsg(m, true); });
+                window.BB_NET.on('start', function (d) {
+                    lbShow(false);
+                    document.body.classList.toggle('two-players', d.n > 1);
+                    if (canvas) canvas.focus();
+                });
+                window.BB_NET.on('end', function (d) {
+                    lbRoomData = null;
+                    lbView(false);
+                    lbMsg((d && d.msg) || 'La sala se cerró', true);
+                });
+            }
+
+            on('btnOnline', function () {
+                if (!window.MARIO_LOGGED) { alert('Inicia sesión para jugar online'); return; }
+                if (!window.BB_NET) { alert('No se pudo cargar el modo online'); return; }
+                lbShow(true);
+                lbView(!!lbRoomData);
+                lbMsg('');
+                window.BB_NET.connect();
+            });
+            on('lbClose', function () { lbShow(false); });
+            if (lb) lb.addEventListener('click', function (e) { if (e.target === lb) lbShow(false); });
+
+            on('lbCreate', function () {
+                var n = document.getElementById('lbName');
+                lbMsg('Creando sala…');
+                window.BB_NET.create((n && n.value) || '', lbIcon);
+            });
+            on('lbJoin', function () {
+                var c = document.getElementById('lbCode');
+                var code = ((c && c.value) || '').toUpperCase().replace(/\s+/g, '');
+                if (code.length < 5) { lbMsg('El código son 5 letras', true); return; }
+                lbMsg('Entrando a la sala…');
+                window.BB_NET.join(code, lbIcon);
+            });
+            on('lbReady', function () {
+                window.BB_NET.ready(true);
+                lbMsg('Listo ✓');
+            });
+            on('lbStart', function () { window.BB_NET.start(); });
+            on('lbLeave', function () {
+                window.BB_NET.leave();
+                lbRoomData = null;
+                lbView(false);
+                lbMsg('Saliste de la sala');
+            });
+
+            function copiar(txt, ok) {
+                var done = false;
+                try {
+                    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(txt); done = true; }
+                } catch (e) { done = false; }
+                lbMsg(done ? ok : ('Copia a mano: ' + txt), !done);
+            }
+            on('lbCopy', function () { if (lbRoomData) copiar(lbRoomData.code, 'Código copiado'); });
+            on('lbCopyLink', function () {
+                if (!lbRoomData) return;
+                var url = location.origin + location.pathname + '?sala=' + lbRoomData.code;
+                copiar(url, 'Link copiado');
+            });
+
+            // Que escribir en el lobby no mande teclas al juego
+            ['lbName', 'lbCode'].forEach(function (id) {
+                var el = document.getElementById(id);
+                if (!el) return;
+                ['keydown', 'keyup', 'keypress'].forEach(function (ev) {
+                    el.addEventListener(ev, function (e) { e.stopPropagation(); });
+                });
+            });
+
+            // Entrar directo con ?sala=CODIGO
+            (function () {
+                var m = /[?&]sala=([A-Za-z0-9]+)/.exec(location.search);
+                if (!m || !window.BB_NET || !window.MARIO_LOGGED) return;
+                var code = m[1].toUpperCase();
+                var c = document.getElementById('lbCode');
+                if (c) c.value = code;
+                lbShow(true);
+                lbMsg('Entrando a la sala ' + code + '…');
+                window.BB_NET.join(code, lbIcon);
+            })();
 
             if (canvas) canvas.focus();
         })();
