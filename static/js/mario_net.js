@@ -20,11 +20,22 @@
 
   function connect(cb) {
     if (typeof io === 'undefined') { emitEvt('error', 'No se pudo cargar socket.io'); return; }
-    if (sock) { if (cb) cb(); return; }
-    sock = io({ transports: ['websocket', 'polling'] });
+    if (sock) {
+      if (!cb) return;
+      if (sock.connected) cb(); else sock.once('connect', cb);
+      return;
+    }
+    /* Polling primero y luego subimos a websocket solos. Si el servidor no
+       tiene el worker de websockets, la partida igual funciona (más lenta)
+       en vez de morir con "no hay conexión". */
+    sock = io({ transports: ['polling', 'websocket'], reconnectionAttempts: 6, timeout: 20000 });
+    var fallos = 0;
 
-    sock.on('connect', function () { if (cb) cb(); });
-    sock.on('connect_error', function () { emitEvt('error', 'No hay conexión con el servidor'); });
+    sock.on('connect', function () { fallos = 0; emitEvt('conn', true); if (cb) cb(); });
+    sock.on('connect_error', function () {
+      fallos++;
+      if (fallos >= 3) emitEvt('error', 'No hay conexión con el servidor');
+    });
 
     sock.on('bb_room', function (r) {
       room = r;
@@ -88,12 +99,12 @@
     slot: function () { return mySlot; },
     isHost: function () { return amHost; },
     create: function (name, icon) {
-      connect(function () { sock.emit('bb_create', { name: name, icon: icon }); });
+      connect(function () { sock.emit('bb_create', { nombre: name, icono: icon }); });
     },
     join: function (code, icon) {
-      connect(function () { sock.emit('bb_join', { code: String(code || '').toUpperCase().trim(), icon: icon }); });
+      connect(function () { sock.emit('bb_join', { code: String(code || '').toUpperCase().trim(), icono: icon }); });
     },
-    setIcon: function (icon) { if (connected() && room) sock.emit('bb_icon', { code: room.code, icon: icon }); },
+    setIcon: function (icon) { if (connected() && room) sock.emit('bb_icon', { code: room.code, icono: icon }); },
     sendSkin: function (skin) { if (connected() && room) sock.emit('bb_skin', { code: room.code, skin: skin }); },
     ready: function (v) { if (connected() && room) sock.emit('bb_ready', { code: room.code, ready: !!v }); },
     start: function () {
