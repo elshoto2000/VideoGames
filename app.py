@@ -1193,6 +1193,13 @@ def _icono_valido(ic):
     return ic if ic in ICONOS_SALA else ICONOS_SALA[0]
 
 
+def _ico(data):
+    """Acepta la clave en español o en inglés (por si el navegador tiene cacheada
+    una versión vieja del JS, que mandaba 'icon')."""
+    d = data or {}
+    return _icono_valido(d.get('icono', d.get('icon')))
+
+
 def _slots_libres(sala):
     usados = {j['slot'] for j in sala['jugadores'].values()}
     for i in range(MAX_JUGADORES):
@@ -1246,15 +1253,15 @@ def bb_create(data):
     if request.sid in SID_SALA:
         bb_leave({})
     data = data or {}
-    nombre = str(data.get('nombre') or ('Sala de ' + user))[:24]
+    nombre = str(data.get('nombre') or data.get('name') or ('Sala de ' + user))[:24]
     code = _nuevo_codigo()
     u = get_usuario() or {}
     sala = {
-        "code": code, "nombre": nombre, "icono": _icono_valido(data.get('icono')),
+        "code": code, "nombre": nombre, "icono": _ico(data),
         "host": request.sid, "jugando": False, "tocada": time.time(),
         "jugadores": {request.sid: {
             "sid": request.sid, "user": user, "avatar": u.get('avatar', ''),
-            "icono": _icono_valido(data.get('icono')), "slot": 0, "listo": True
+            "icono": _ico(data), "slot": 0, "listo": True
         }}
     }
     SALAS[code] = sala
@@ -1290,7 +1297,7 @@ def bb_join(data):
     u = get_usuario() or {}
     sala['jugadores'][request.sid] = {
         "sid": request.sid, "user": user, "avatar": u.get('avatar', ''),
-        "icono": _icono_valido((data or {}).get('icono')), "slot": slot, "listo": False
+        "icono": _ico(data), "slot": slot, "listo": False
     }
     sala['tocada'] = time.time()
     SID_SALA[request.sid] = code
@@ -1306,7 +1313,7 @@ def bb_icon(data):
     j = sala['jugadores'].get(request.sid)
     if not j:
         return
-    j['icono'] = _icono_valido((data or {}).get('icono'))
+    j['icono'] = _ico(data)
     if sala['host'] == request.sid:
         sala['icono'] = j['icono']
     sala['tocada'] = time.time()
