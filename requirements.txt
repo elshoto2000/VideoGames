@@ -4,3 +4,11 @@ gunicorn==23.0.0
 pymongo==4.10.1
 dnspython==2.7.0
 
+# --- modo online de Bigote Bros ---
+Flask-SocketIO==5.4.1
+python-socketio==5.11.4
+python-engineio==4.9.1
+gevent==24.11.1
+gevent-websocket==0.10.1
+
+
