@@ -1,9 +1,12 @@
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, Response
+from flask_socketio import SocketIO, emit, join_room, leave_room
 from pymongo import MongoClient
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
 import re
 import time
+import random
+import string
 
 app = Flask(__name__)
 # SECRET_KEY larga y estable — NUNCA guardes datos grandes en la sesión
@@ -11,6 +14,14 @@ app.secret_key = os.environ.get("SECRET_KEY", "arcade_secret_2026_XyZ9qR")
 # Limitar cookie a solo datos pequeños
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_HTTPONLY'] = True
+
+# ─── SOCKET.IO (modo online de Bigote Bros) ───────────────────────
+# async_mode=None deja que flask-socketio elija lo mejor que haya instalado
+# (gevent en Render, threading en local). Las salas viven EN MEMORIA, así que
+# el servidor tiene que correr con UN SOLO worker:
+#   gunicorn -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker -w 1 app:app
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode=None,
+                    ping_timeout=25, ping_interval=10)
 
 # ⚠️ NUNCA dejes la contraseña en el código: el repo es público.
 # Configura MONGO_URI en Render → Environment.
@@ -302,8 +313,11 @@ def mario():
                            ranking_mario=r_mario,
                            mario_skins={
                                "p1": skins.get('p1'),
-                               "p2": skins.get('p2')
-                           })
+                               "p2": skins.get('p2'),
+                               "p3": skins.get('p3'),
+                               "p4": skins.get('p4')
+                           },
+                           iconos_sala=ICONOS_SALA)
 
 
 # ─── PUNTAJES Y RANKING ───────────────────────────────────────────
@@ -481,7 +495,7 @@ def eliminar_accesorio_snake():
 
 # ─── PERSONAJES DE BIGOTE BROS (editor 16x16) ─────────────────────
 # Se guardan dentro del documento del usuario, en el campo
-# "mario_skins": { "p1": {...}, "p2": {...} }
+# "mario_skins": { "p1": {...}, ... "p4": {...} }
 # Cada skin: { name, pal: {9 colores hex}, rows: [16 strings de 16] }
 
 MARIO_SKIN_SYMS = set('.coshebwyk')
@@ -538,13 +552,15 @@ def api_mario_skin():
     return jsonify({
         "ok": True,
         "p1": skins.get('p1'),
-        "p2": skins.get('p2')
+        "p2": skins.get('p2'),
+        "p3": skins.get('p3'),
+        "p4": skins.get('p4')
     })
 
 
 @app.route('/api/mario_skin', methods=['POST'])
 def guardar_mario_skin():
-    """Guarda la skin de p1 y/o p2 tras validarla en el servidor."""
+    """Guarda las skins p1..p4 tras validarlas en el servidor."""
     if 'username' not in session:
         return jsonify({"ok": False, "error": "Inicia sesión para guardar en tu cuenta"}), 401
 
@@ -555,7 +571,7 @@ def guardar_mario_skin():
 
     datos = request.json or {}
     cambios = {}
-    for clave in ('p1', 'p2'):
+    for clave in ('p1', 'p2', 'p3', 'p4'):
         if clave not in datos:
             continue
         skin = _validar_skin_mario(datos.get(clave))
@@ -1134,6 +1150,277 @@ def api_logros():
     return jsonify(resultado)
 
 
+
+# ══════════════════════════════════════════════════════════════════
+# ─── BIGOTE BROS ONLINE: salas de hasta 4 jugadores ───────────────
+# Todo vive en memoria (dict SALAS). Simple a propósito: en Render free
+# hay un solo worker y las partidas duran minutos, no hace falta Redis.
+# El HOST es autoritativo: simula, manda snapshots y el servidor solo
+# retransmite. Si alguien se cae, la partida termina y cada quien ya
+# guardó su puntaje desde el cliente.
+# ══════════════════════════════════════════════════════════════════
+
+ICONOS_SALA = ['🍄', '⭐', '🔥', '👾', '🐢', '👑', '🎩', '🍌',
+               '🦊', '🐙', '🤖', '🌵', '🍕', '⚡', '🌙', '🎮']
+
+MAX_JUGADORES = 4
+SALA_TTL = 3 * 3600          # 3 horas sin actividad y la sala se borra
+_ALFA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'   # sin I, O, 0, 1 (se confunden)
+
+SALAS = {}                   # code -> dict
+SID_SALA = {}                # sid -> code
+
+
+def _nuevo_codigo():
+    for _ in range(50):
+        code = ''.join(random.choice(_ALFA) for _ in range(5))
+        if code not in SALAS:
+            return code
+    return ''.join(random.choice(_ALFA) for _ in range(7))
+
+
+def _limpiar_salas():
+    ahora = time.time()
+    for code in list(SALAS.keys()):
+        sala = SALAS[code]
+        if ahora - sala['tocada'] > SALA_TTL or not sala['jugadores']:
+            for sid in list(sala['jugadores'].keys()):
+                SID_SALA.pop(sid, None)
+            SALAS.pop(code, None)
+
+
+def _icono_valido(ic):
+    return ic if ic in ICONOS_SALA else ICONOS_SALA[0]
+
+
+def _slots_libres(sala):
+    usados = {j['slot'] for j in sala['jugadores'].values()}
+    for i in range(MAX_JUGADORES):
+        if i not in usados:
+            return i
+    return None
+
+
+def _payload_sala(sala, para_sid):
+    jugadores = sorted(sala['jugadores'].values(), key=lambda j: j['slot'])
+    return {
+        "code": sala['code'],
+        "nombre": sala['nombre'],
+        "icono": sala['icono'],
+        "jugando": sala['jugando'],
+        "max": MAX_JUGADORES,
+        "players": [{
+            "slot": j['slot'],
+            "user": j['user'],
+            "avatar": j['avatar'],
+            "icono": j['icono'],
+            "listo": j['listo'],
+            "host": j['sid'] == sala['host'],
+            "me": j['sid'] == para_sid
+        } for j in jugadores]
+    }
+
+
+def _difundir_sala(sala):
+    for sid in list(sala['jugadores'].keys()):
+        socketio.emit('bb_room', _payload_sala(sala, sid), to=sid)
+
+
+def _sala_de(sid):
+    code = SID_SALA.get(sid)
+    return SALAS.get(code) if code else None
+
+
+def _usuario_socket():
+    """Los sockets heredan la cookie de sesión de Flask."""
+    return session.get('username')
+
+
+@socketio.on('bb_create')
+def bb_create(data):
+    _limpiar_salas()
+    user = _usuario_socket()
+    if not user:
+        emit('bb_error', {"msg": "Inicia sesión para jugar online"})
+        return
+    if request.sid in SID_SALA:
+        bb_leave({})
+    data = data or {}
+    nombre = str(data.get('nombre') or ('Sala de ' + user))[:24]
+    code = _nuevo_codigo()
+    u = get_usuario() or {}
+    sala = {
+        "code": code, "nombre": nombre, "icono": _icono_valido(data.get('icono')),
+        "host": request.sid, "jugando": False, "tocada": time.time(),
+        "jugadores": {request.sid: {
+            "sid": request.sid, "user": user, "avatar": u.get('avatar', ''),
+            "icono": _icono_valido(data.get('icono')), "slot": 0, "listo": True
+        }}
+    }
+    SALAS[code] = sala
+    SID_SALA[request.sid] = code
+    join_room(code)
+    _difundir_sala(sala)
+
+
+@socketio.on('bb_join')
+def bb_join(data):
+    _limpiar_salas()
+    user = _usuario_socket()
+    if not user:
+        emit('bb_error', {"msg": "Inicia sesión para jugar online"})
+        return
+    code = str((data or {}).get('code') or '').upper().strip()
+    sala = SALAS.get(code)
+    if not sala:
+        emit('bb_error', {"msg": "No existe esa sala"})
+        return
+    if sala['jugando']:
+        emit('bb_error', {"msg": "Esa partida ya empezó"})
+        return
+    if len(sala['jugadores']) >= MAX_JUGADORES:
+        emit('bb_error', {"msg": "La sala está llena (4 jugadores)"})
+        return
+    if request.sid in SID_SALA and SID_SALA[request.sid] != code:
+        bb_leave({})
+    slot = _slots_libres(sala)
+    if slot is None:
+        emit('bb_error', {"msg": "La sala está llena (4 jugadores)"})
+        return
+    u = get_usuario() or {}
+    sala['jugadores'][request.sid] = {
+        "sid": request.sid, "user": user, "avatar": u.get('avatar', ''),
+        "icono": _icono_valido((data or {}).get('icono')), "slot": slot, "listo": False
+    }
+    sala['tocada'] = time.time()
+    SID_SALA[request.sid] = code
+    join_room(code)
+    _difundir_sala(sala)
+
+
+@socketio.on('bb_icon')
+def bb_icon(data):
+    sala = _sala_de(request.sid)
+    if not sala:
+        return
+    j = sala['jugadores'].get(request.sid)
+    if not j:
+        return
+    j['icono'] = _icono_valido((data or {}).get('icono'))
+    if sala['host'] == request.sid:
+        sala['icono'] = j['icono']
+    sala['tocada'] = time.time()
+    _difundir_sala(sala)
+
+
+@socketio.on('bb_skin')
+def bb_skin(data):
+    """Cada quien manda SU personaje para que todos lo vean igual."""
+    sala = _sala_de(request.sid)
+    if not sala:
+        return
+    j = sala['jugadores'].get(request.sid)
+    if not j:
+        return
+    skin = _validar_skin_mario((data or {}).get('skin'))
+    if skin is not None:
+        j['skin'] = skin
+    sala['tocada'] = time.time()
+
+
+@socketio.on('bb_ready')
+def bb_ready(data):
+    sala = _sala_de(request.sid)
+    if not sala:
+        return
+    j = sala['jugadores'].get(request.sid)
+    if not j:
+        return
+    j['listo'] = bool((data or {}).get('ready'))
+    sala['tocada'] = time.time()
+    _difundir_sala(sala)
+
+
+@socketio.on('bb_start')
+def bb_start(data):
+    sala = _sala_de(request.sid)
+    if not sala or sala['host'] != request.sid:
+        return
+    if sala['jugando']:
+        return
+    jugadores = sorted(sala['jugadores'].values(), key=lambda j: j['slot'])
+    # los slots tienen que ser 0..n-1 seguidos para que el juego los reparta bien
+    for i, j in enumerate(jugadores):
+        j['slot'] = i
+    sala['jugando'] = True
+    sala['tocada'] = time.time()
+    skins = [j.get('skin') for j in jugadores]
+    if not any(skins):
+        skins = None
+    socketio.emit('bb_start', {
+        "n": len(jugadores),
+        "players": [{"slot": j['slot'], "user": j['user'], "icono": j['icono']} for j in jugadores],
+        "skins": skins
+    }, to=sala['code'])
+
+
+@socketio.on('bb_input')
+def bb_input(data):
+    """Retransmite el input de un jugador al resto (todos simulan igual)."""
+    sala = _sala_de(request.sid)
+    if not sala:
+        return
+    j = sala['jugadores'].get(request.sid)
+    if not j:
+        return
+    sala['tocada'] = time.time()
+    emit('bb_input', {"i": j['slot'], "d": (data or {}).get('d')},
+         to=sala['code'], include_self=False)
+
+
+@socketio.on('bb_state')
+def bb_state(data):
+    """Snapshot del host -> a todos los invitados."""
+    sala = _sala_de(request.sid)
+    if not sala or sala['host'] != request.sid:
+        return
+    sala['tocada'] = time.time()
+    emit('bb_state', (data or {}).get('s'), to=sala['code'], include_self=False)
+
+
+def _sacar_de_sala(sid, motivo):
+    code = SID_SALA.pop(sid, None)
+    sala = SALAS.get(code) if code else None
+    if not sala:
+        return
+    era_host = sala['host'] == sid
+    sala['jugadores'].pop(sid, None)
+    try:
+        leave_room(code, sid=sid)
+    except Exception:
+        pass
+    # Decisión del juego: si alguien se cae durante la partida, se acaba
+    # para todos (cada cliente ya guardó su puntaje).
+    if sala['jugando'] or era_host or not sala['jugadores']:
+        socketio.emit('bb_end', {"msg": motivo}, to=code)
+        for otro in list(sala['jugadores'].keys()):
+            SID_SALA.pop(otro, None)
+        SALAS.pop(code, None)
+    else:
+        sala['tocada'] = time.time()
+        _difundir_sala(sala)
+
+
+@socketio.on('bb_leave')
+def bb_leave(data):
+    _sacar_de_sala(request.sid, "Un jugador salió de la sala")
+
+
+@socketio.on('disconnect')
+def bb_disconnect():
+    _sacar_de_sala(request.sid, "Se desconectó un jugador · puntaje guardado")
+
+
 @app.route('/logros')
 def ver_logros():
     if 'username' not in session:
@@ -1142,5 +1429,6 @@ def ver_logros():
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+    # socketio.run levanta el mismo Flask de siempre + los websockets
+    socketio.run(app, host='0.0.0.0', port=port, allow_unsafe_werkzeug=True)
 
