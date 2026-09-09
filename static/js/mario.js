@@ -292,6 +292,13 @@ var LEVELS = [
     return out;
   }
   function cloneSkin(s) { return normalizeSkin(JSON.parse(JSON.stringify(s)), s); }
+  // Índice de skin válido 0..3 (acepta true/false por compatibilidad con el editor viejo)
+  function skinIdx(i) {
+    if (i === true) return 1;
+    if (i === false || i === undefined || i === null) return 0;
+    i = i | 0;
+    return i < 0 ? 0 : (i > 3 ? 3 : i);
+  }
 
   // ─── Código para compartir skins (base64 compacto) ──────────
   function encodeSkin(skin) {
@@ -339,17 +346,21 @@ var LEVELS = [
     } catch (e) { return null; }
   }
 
-  // Skins activas (P1 / P2)
-  var SKINS = [cloneSkin(SKIN_PRESETS[0]), cloneSkin(SKIN_PRESETS[1])];
+  // Skins activas (P1..P4). Por defecto: rojo, verde, robot, ninja.
+  var MAX_PLAYERS = 4;
+  var PCOL = ['#ff8787', '#8ce99a', '#74c0fc', '#ffd43b'];
+  var SKINS = [];
+  for (var _i = 0; _i < MAX_PLAYERS; _i++) SKINS.push(cloneSkin(SKIN_PRESETS[_i] || SKIN_PRESETS[0]));
 
   function loadSkins() {
-    var done = false;
+    var i, k, done = false;
     try {
       var w = window.MARIO_SKINS;
-      if (w && (w.p1 || w.p2)) {
-        if (w.p1) SKINS[0] = normalizeSkin(w.p1, SKIN_PRESETS[0]);
-        if (w.p2) SKINS[1] = normalizeSkin(w.p2, SKIN_PRESETS[1]);
-        done = true;
+      if (w) {
+        for (i = 0; i < MAX_PLAYERS; i++) {
+          k = 'p' + (i + 1);
+          if (w[k]) { SKINS[i] = normalizeSkin(w[k], SKIN_PRESETS[i] || SKIN_PRESETS[0]); done = true; }
+        }
       }
     } catch (e) { }
     if (done) return;
@@ -357,13 +368,19 @@ var LEVELS = [
       var raw = localStorage.getItem('bb_skins');
       if (raw) {
         var o = JSON.parse(raw);
-        if (o.p1) SKINS[0] = normalizeSkin(o.p1, SKIN_PRESETS[0]);
-        if (o.p2) SKINS[1] = normalizeSkin(o.p2, SKIN_PRESETS[1]);
+        for (i = 0; i < MAX_PLAYERS; i++) {
+          k = 'p' + (i + 1);
+          if (o[k]) SKINS[i] = normalizeSkin(o[k], SKIN_PRESETS[i] || SKIN_PRESETS[0]);
+        }
       }
     } catch (e) { }
   }
   function saveSkinsLocal() {
-    try { localStorage.setItem('bb_skins', JSON.stringify({ p1: SKINS[0], p2: SKINS[1] })); } catch (e) { }
+    try {
+      var o = {};
+      for (var i = 0; i < MAX_PLAYERS; i++) o['p' + (i + 1)] = SKINS[i];
+      localStorage.setItem('bb_skins', JSON.stringify(o));
+    } catch (e) { }
   }
 
   // ═══════════════ CUARTO SECRETO DE MONEDAS ═══════════════
@@ -479,18 +496,18 @@ var LEVELS = [
   var G = null, canvas = null, ctx = null, raf = 0, acc = 0, last = 0;
   var keys = {};
 
-  function newGame(twoP) {
+  function newGame(n, net) {
+    var count = (n === true) ? 2 : (n === false || n === undefined || n === null) ? 1 : Math.max(1, Math.min(MAX_PLAYERS, n | 0));
     G = {
-      state: 'card', twoP: !!twoP, levelIdx: 0,
+      state: 'card', twoP: count > 1, nPlayers: count, net: net || null, levelIdx: 0,
       grid: [], cols: 0, w: 0, h: ROWS * TILE,
       players: [], enemies: [], items: [], fires: [], parts: [], bumps: [], coins: [],
       boss: null, flag: null, cam: 0, shake: 0,
       freeze: 0, inBonus: false, saved: null, pipeCd: 0, camY: 0,
       time: 400, timeSub: 0, frame: 0, cardT: 150, msg: '', sub: '',
-      sent: 0, bossDead: false
+      sent: 0, bossDead: false, nidSeq: 1
     };
-    G.players.push(makePlayer(0));
-    if (twoP) G.players.push(makePlayer(1));
+    for (var i = 0; i < count; i++) G.players.push(makePlayer(i));
     loadLevel(0);
   }
 
@@ -517,13 +534,19 @@ var LEVELS = [
     G.freeze = 0; G.inBonus = false; G.saved = null; G.pipeCd = 0;
     G.time = (lv.world === 3) ? 300 : 400; G.timeSub = 0;
 
-    var spawn = [{ x: 2 * TILE, y: 11 * TILE }, { x: 4 * TILE, y: 11 * TILE }];
+    var spawn = [{ x: 2 * TILE, y: 11 * TILE }, { x: 4 * TILE, y: 11 * TILE },
+                 { x: 3 * TILE, y: 11 * TILE }, { x: 5 * TILE, y: 11 * TILE }];
     for (var r = 0; r < ROWS; r++) {
       for (var c = 0; c < G.cols; c++) {
         var ch = G.grid[r][c];
         var px = c * TILE, py = r * TILE;
         if (ch === '1') { spawn[0] = { x: px, y: py }; G.grid[r][c] = ' '; }
-        else if (ch === '2') { spawn[1] = { x: px + 4, y: py }; G.grid[r][c] = ' '; }
+        else if (ch === '2') {
+          spawn[1] = { x: px + 4, y: py };
+          spawn[2] = { x: px - 22, y: py };
+          spawn[3] = { x: px + 30, y: py };
+          G.grid[r][c] = ' ';
+        }
         else if (ch === 'o') { G.coins.push({ x: px + 10, y: py + 8, w: 12, h: 16, t: 0, got: false }); G.grid[r][c] = ' '; }
         else if (ch === 'g' || ch === 'k' || ch === 'j') { G.enemies.push(makeEnemy(ch, px, py, lv.world)); G.grid[r][c] = ' '; }
         else if (ch === 'f') { G.enemies.push(makeEnemy('f', px, py, lv.world)); G.grid[r][c] = ' '; }
@@ -532,15 +555,19 @@ var LEVELS = [
       }
     }
     G.players.forEach(function (p, i) {
-      var s = spawn[i] || spawn[0];
+      var s = spawn[i] || spawn[i % 2] || spawn[0];
       p.spawnX = s.x; p.spawnY = s.y;
       respawn(p, true);
       p.done = false; p.out = p.lives <= 0;
     });
+    G.enemies.forEach(function (e) { e.nid = G.nidSeq++; });
+    G.coins.forEach(function (q, i) { q.nid = i; });
+    if (G.net) G.net.tiles = [];
     G.state = 'card';
     G.cardT = 130;
     G.msg = 'MUNDO ' + lv.name;
-    G.sub = (lv.world === 3) ? '¡CUIDADO: JEFE FINAL!' : (G.twoP ? '2 JUGADORES' : '1 JUGADOR');
+    G.sub = (lv.world === 3) ? '¡CUIDADO: JEFE FINAL!'
+          : (G.nPlayers > 1 ? G.nPlayers + ' JUGADORES' : '1 JUGADOR');
   }
 
   function respawn(p, hard) {
@@ -563,7 +590,13 @@ var LEVELS = [
     return G.grid[r][c];
   }
   function solidAt(c, r) { return SOLID.indexOf(tile(c, r)) >= 0; }
-  function setTile(c, r, ch) { if (r >= 0 && r < ROWS && c >= 0 && c < G.cols) G.grid[r][c] = ch; }
+  function setTile(c, r, ch) {
+    if (r >= 0 && r < ROWS && c >= 0 && c < G.cols) {
+      G.grid[r][c] = ch;
+      // en online el host apunta el cambio para mandarlo en el próximo snapshot
+      if (G.net && G.net.host && !G.inBonus) G.net.tiles.push([c, r, ch]);
+    }
+  }
   function hazardAt(c, r) { return tile(c, r) === '~' || tile(c, r) === '^'; }
 
   // Colisión AABB contra tiles, resolviendo ejes por separado
@@ -625,6 +658,8 @@ var LEVELS = [
   }
 
   // ─── Enemigos ───────────────────────────────────────────────
+  function nextNid() { return G ? G.nidSeq++ : 0; }
+
   function makeEnemy(kind, px, py, world) {
     var wm = 1 + ((world || 1) - 1) * 0.16;      // mundos 2 y 3: más rápidos
     var e = {
@@ -757,7 +792,7 @@ var LEVELS = [
 
   // ─── Objetos (hongo, flor, estrella) ────────────────────────
   function makeItem(kind, x, y) {
-    return { kind: kind, x: x, y: y, w: 22, h: 22, vx: kind === 'flower' ? 0 : 1.6, vy: -2, t: 0 };
+    return { nid: nextNid(), kind: kind, x: x, y: y, w: 22, h: 22, vx: kind === 'flower' ? 0 : 1.6, vy: -2, t: 0 };
   }
   function updateItem(it) {
     it.t++;
@@ -775,7 +810,7 @@ var LEVELS = [
   function shoot(p) {
     if (p.power < 2 || p.shootCd > 0) return;
     p.shootCd = 22;
-    G.fires.push({ x: p.x + (p.face > 0 ? p.w : -10), y: p.y + p.h * 0.4, w: 12, h: 12, vx: 7 * p.face, vy: 1, t: 0, owner: p, enemy: false });
+    G.fires.push({ nid: nextNid(), x: p.x + (p.face > 0 ? p.w : -10), y: p.y + p.h * 0.4, w: 12, h: 12, vx: 7 * p.face, vy: 1, t: 0, owner: p, enemy: false });
     SFX.fire();
   }
   function updateFire(f) {
@@ -832,6 +867,7 @@ var LEVELS = [
         var n = b.phase === 2 ? 4 : 3;
         for (var i = 0; i < n; i++) {
           G.fires.push({
+            nid: nextNid(),
             x: b.x + (dir > 0 ? b.w : -12), y: b.y + 22, w: 14, h: 14,
             vx: dir * (4 + i * 0.7), vy: -3 - i * 0.8, t: 0, enemy: true
           });
@@ -938,9 +974,31 @@ var LEVELS = [
   }
 
   // ─── Jugador ────────────────────────────────────────────────
+  var LOCAL_CTRL = [
+    { left: 'a', right: 'd', jump: 'w', down: 's' },
+    { left: 'arrowleft', right: 'arrowright', jump: 'arrowup', down: 'arrowdown' }
+  ];
+  function readCtrl(m) {
+    return { left: !!keys[m.left], right: !!keys[m.right], jump: !!keys[m.jump], down: !!keys[m.down] };
+  }
+  // En online cada persona juega con SU teclado completo: sirven WASD y las flechas.
+  function readAnyCtrl() {
+    return {
+      left: !!(keys['a'] || keys['arrowleft']),
+      right: !!(keys['d'] || keys['arrowright']),
+      jump: !!(keys['w'] || keys['arrowup'] || keys[' ']),
+      down: !!(keys['s'] || keys['arrowdown'])
+    };
+  }
   function ctrlOf(p) {
-    if (p.id === 0) return { left: keys['a'], right: keys['d'], jump: keys['w'], down: keys['s'] };
-    return { left: keys['arrowleft'], right: keys['arrowright'], jump: keys['arrowup'], down: keys['arrowdown'] };
+    if (G.net) {
+      if (p.id === G.net.myId) return readAnyCtrl();
+      var r = G.net.inputs[p.id];
+      return r ? { left: !!r.l, right: !!r.r, jump: !!r.j, down: !!r.d }
+               : { left: false, right: false, jump: false, down: false };
+    }
+    // En local con 3-4 jugadores, P3 comparte teclas con P1 y P4 con P2.
+    return readCtrl(LOCAL_CTRL[p.id % LOCAL_CTRL.length]);
   }
 
   function updatePlayer(p) {
@@ -1086,6 +1144,7 @@ var LEVELS = [
 
   // ─── Fin de nivel / partida ─────────────────────────────────
   function levelClear() {
+    if (G && G.net && !G.net.host) return;
     G.state = 'clear'; G.cardT = 170; SFX.clear();
     var lv = LEVELS[G.levelIdx];
     G.msg = '¡MUNDO ' + lv.name + ' COMPLETADO!';
@@ -1093,6 +1152,7 @@ var LEVELS = [
     sendScore();
   }
   function gameOver() {
+    if (G && G.net && !G.net.host) return;
     if (G.state === 'over' || G.state === 'victory') return;
     G.state = 'over'; G.cardT = 99999;
     G.msg = 'FIN DEL JUEGO';
@@ -1100,12 +1160,14 @@ var LEVELS = [
     sendScore();
   }
   function victory() {
+    if (G && G.net && !G.net.host) return;
     G.state = 'victory'; G.cardT = 99999;
     G.msg = '¡GANARON!';
     G.sub = 'Derrotaron al Rey Espina · Enter para el menú';
     SFX.win(); sendScore();
   }
   function nextLevel() {
+    if (G && G.net && !G.net.host) return;
     if (G.levelIdx + 1 >= LEVELS.length) { victory(); return; }
     G.players.forEach(function (p) { p.done = false; });
     loadLevel(G.levelIdx + 1);
@@ -1113,8 +1175,12 @@ var LEVELS = [
   function totalScore() {
     return G.players.reduce(function (s, p) { return s + p.score; }, 0);
   }
+  function myScore() {
+    if (G.net) { var me = G.players[G.net.myId]; return me ? me.score : 0; }
+    return totalScore();
+  }
   function sendScore() {
-    var pts = totalScore();
+    var pts = myScore();
     if (pts <= G.sent) return;
     G.sent = pts;
     try {
@@ -1526,7 +1592,7 @@ var LEVELS = [
 
   // Personaje jugable: se dibuja con la skin 16x16 del editor
   function skinFor(p) {
-    var sk = SKINS[p.id] || SKIN_PRESETS[p.id === 0 ? 0 : 1];
+    var sk = SKINS[skinIdx(p.id)] || SKIN_PRESETS[skinIdx(p.id)] || SKIN_PRESETS[0];
     var pal = {};
     for (var k in sk.pal) pal[k] = sk.pal[k];
     if (p.power === 2) { pal.c = '#f8f9fa'; pal.o = '#e03131'; }   // forma fuego
@@ -1578,7 +1644,7 @@ var LEVELS = [
 
     // etiqueta P1/P2
     ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.font = 'bold 9px monospace'; ctx.textAlign = 'center';
-    ctx.fillText(p.id === 0 ? 'P1' : 'P2', p.x - G.cam + p.w / 2, p.y - 6);
+    ctx.fillText('P' + (p.id + 1), p.x - G.cam + p.w / 2, p.y - 6);
   }
 
   function drawEnemy(e) {
@@ -1714,19 +1780,37 @@ var LEVELS = [
 
   function drawHUD() {
     ctx.textAlign = 'left';
-    px(0, 0, VIEW_W, 34, 'rgba(0,0,0,0.42)');
-    ctx.font = 'bold 13px monospace';
+    var n = G.players.length;
+    var tall = n > 2;
+    px(0, 0, VIEW_W, tall ? 46 : 34, 'rgba(0,0,0,0.42)');
+    ctx.font = 'bold ' + (tall ? 11 : 13) + 'px monospace';
+    var colW = tall ? 176 : 250;
     G.players.forEach(function (p, i) {
-      var x = 12 + i * 250;
-      ctx.fillStyle = p.id === 0 ? '#ff8787' : '#8ce99a';
-      ctx.fillText((p.id === 0 ? 'P1' : 'P2') + (p.out ? ' FUERA' : ''), x, 15);
+      var x = 12 + (i % 2) * colW * (tall ? 1 : 1);
+      var y0 = 0;
+      if (tall) { x = 12 + i * colW; y0 = 0; }
+      ctx.fillStyle = PCOL[p.id] || '#fff';
+      var tag = 'P' + (p.id + 1);
+      if (G.net && p.id === G.net.myId) tag += '(tú)';
+      ctx.fillText(tag + (p.out ? ' FUERA' : ''), x, tall ? 14 : 15);
       ctx.fillStyle = '#fff';
-      ctx.fillText(('000000' + p.score).slice(-6) + '  ✖' + Math.max(0, p.lives) + '  ◉' + p.coins, x, 29);
-      if (p.power === 2) { ctx.fillStyle = '#ffd43b'; ctx.fillText('FUEGO', x + 150, 15); }
-      else if (p.power === 1) { ctx.fillStyle = '#ffa8a8'; ctx.fillText('GRANDE', x + 150, 15); }
-      if (p.star > 0) { ctx.fillStyle = '#ffe066'; ctx.fillText('★' + Math.ceil(p.star / 60), x + 205, 15); }
+      ctx.fillText(('000000' + p.score).slice(-6) + ' ✖' + Math.max(0, p.lives) + ' ◉' + p.coins, x, tall ? 27 : 29);
+      var extra = '';
+      if (p.power === 2) extra = 'FUEGO';
+      else if (p.power === 1) extra = 'GRANDE';
+      if (p.star > 0) extra += (extra ? ' ' : '') + '★' + Math.ceil(p.star / 60);
+      if (extra) {
+        ctx.fillStyle = p.star > 0 ? '#ffe066' : (p.power === 2 ? '#ffd43b' : '#ffa8a8');
+        if (tall) ctx.fillText(extra, x, 39);
+        else ctx.fillText(extra, x + 150, 15);
+      }
+      if (G.net && G.net.names && G.net.names[p.id]) {
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        ctx.fillText(String(G.net.names[p.id]).substring(0, 10), x + (tall ? 0 : 78), tall ? 14 : 15 - 0);
+      }
     });
     ctx.textAlign = 'right'; ctx.fillStyle = '#fff';
+    ctx.font = 'bold 13px monospace';
     ctx.fillText('MUNDO ' + LEVELS[G.levelIdx].name, VIEW_W - 12, 15);
     ctx.fillStyle = G.time < 60 ? '#ff6b6b' : '#fff';
     ctx.fillText('TIEMPO ' + G.time, VIEW_W - 12, 29);
@@ -1757,18 +1841,19 @@ var LEVELS = [
     ctx.fillStyle = '#fff'; ctx.font = 'bold 15px monospace';
     ctx.fillText('3 mundos · 7 niveles · jefe final', VIEW_W / 2, 152);
     ctx.font = 'bold 18px monospace';
-    ctx.fillStyle = sel === 0 ? '#51cf66' : '#868e96';
-    ctx.fillText((sel === 0 ? '▶ ' : '   ') + '1 JUGADOR', VIEW_W / 2, 220);
-    ctx.fillStyle = sel === 1 ? '#51cf66' : '#868e96';
-    ctx.fillText((sel === 1 ? '▶ ' : '   ') + '2 JUGADORES', VIEW_W / 2, 252);
+    for (var mi = 0; mi < 4; mi++) {
+      ctx.fillStyle = sel === mi ? '#51cf66' : '#868e96';
+      ctx.fillText((sel === mi ? '▶ ' : '   ') + (mi === 0 ? '1 JUGADOR' : (mi + 1) + ' JUGADORES'),
+        VIEW_W / 2, 208 + mi * 26);
+    }
     ctx.fillStyle = '#dee2e6'; ctx.font = '12px monospace';
-    ctx.fillText('W/S o ↑/↓ para elegir · ENTER para empezar', VIEW_W / 2, 296);
+    ctx.fillText('W/S o ↑/↓ para elegir · ENTER para empezar', VIEW_W / 2, 322);
     ctx.fillStyle = '#ffd8a8';
-    ctx.fillText('P1: A D mover · W saltar · S disparar', VIEW_W / 2, 330);
+    ctx.fillText('P1/P3: A D mover · W saltar · S disparar', VIEW_W / 2, 344);
     ctx.fillStyle = '#b2f2bb';
-    ctx.fillText('P2: ← → mover · ↑ saltar · ↓ disparar', VIEW_W / 2, 350);
+    ctx.fillText('P2/P4: ← → mover · ↑ saltar · ↓ disparar', VIEW_W / 2, 362);
     ctx.fillStyle = '#adb5bd';
-    ctx.fillText('P pausa · R reiniciar nivel', VIEW_W / 2, 374);
+    ctx.fillText('P pausa · R reiniciar nivel · 🌐 Online arriba', VIEW_W / 2, 382);
   }
 
   function render() {
@@ -1806,7 +1891,10 @@ var LEVELS = [
     var dt = Math.min(ts - last, 200); last = ts;
     acc += dt;
     var guard = 0;
-    while (acc >= STEP && guard++ < 5) { acc -= STEP; if (G && G.state !== 'pause' && G.state !== 'title') update(); }
+    while (acc >= STEP && guard++ < 5) {
+      acc -= STEP;
+      if (G && G.state !== 'pause' && G.state !== 'title') { update(); netTick(); }
+    }
     render();
   }
 
@@ -1827,9 +1915,9 @@ var LEVELS = [
     keys[k] = down;
     if (!down) return;
     if (!G || G.state === 'title') {
-      if (k === 'w' || k === 'arrowup') { sel = 0; }
-      if (k === 's' || k === 'arrowdown') { sel = 1; }
-      if (k === 'enter') { ac(); newGame(sel === 1); }
+      if (k === 'w' || k === 'arrowup') { sel = (sel + 3) % 4; }
+      if (k === 's' || k === 'arrowdown') { sel = (sel + 1) % 4; }
+      if (k === 'enter') { ac(); newGame(sel + 1); }
       return;
     }
     if (k === 'p') { G.state = G.state === 'pause' ? 'play' : (G.state === 'play' ? 'pause' : G.state); }
@@ -1852,6 +1940,197 @@ var LEVELS = [
     if (!raf) raf = requestAnimationFrame(frame);
   }
 
+
+  // ═══════════════ RED: modo online (host autoritativo) ═══════════════
+  // El host simula y manda snapshots ~15/s; todos simulan con los mismos
+  // inputs (el host retransmite los de todos) y el invitado se corrige
+  // suavemente con el snapshot. Así no hay input lag.
+  var NET_SNAP_EVERY = 4;   // ticks entre snapshots (60/4 = 15 por segundo)
+
+  function netStart(cfg) {
+    cfg = cfg || {};
+    var n = Math.max(1, Math.min(MAX_PLAYERS, cfg.nPlayers | 0 || 1));
+    ac();
+    newGame(n, {
+      on: true,
+      host: !!cfg.host,
+      myId: Math.max(0, Math.min(n - 1, cfg.myId | 0)),
+      inputs: {},
+      names: cfg.names || {},
+      tiles: [],
+      tick: 0
+    });
+  }
+  function netStop() { G = null; sel = 0; }
+  var netCb = null;                       // lo pone la capa de red (mario_net.js)
+  function onNet(fn) { netCb = fn; }
+  // Cada tick: manda el input local y, si soy host, el snapshot cada N ticks.
+  function netTick() {
+    if (!G || !G.net || !netCb) return;
+    G.net.tick++;
+    netCb('input', localInput());
+    if (G.net.host && G.net.tick % NET_SNAP_EVERY === 0) netCb('state', serializeState());
+  }
+  // Se corta la conexión de alguien: se acaba la partida y se guarda el puntaje.
+  function netAbort(msg) {
+    if (!G) return;
+    G.state = 'over'; G.cardT = 99999;
+    G.msg = 'PARTIDA TERMINADA';
+    G.sub = msg || 'Se desconectó un jugador · puntaje guardado';
+    sendScore();
+    G.net = null;
+  }
+  function setRemoteInput(id, r) {
+    if (!G || !G.net) return;
+    G.net.inputs[id | 0] = { l: !!(r && r.l), r: !!(r && r.r), j: !!(r && r.j), d: !!(r && r.d) };
+  }
+  function localInput() {
+    var c = readAnyCtrl();
+    return { l: c.left, r: c.right, j: c.jump, d: c.down };
+  }
+
+  function packPlayer(p) {
+    return {
+      i: p.id, x: Math.round(p.x * 10) / 10, y: Math.round(p.y * 10) / 10,
+      vx: Math.round(p.vx * 100) / 100, vy: Math.round(p.vy * 100) / 100,
+      w: p.w, h: p.h, pw: p.power, lv: p.lives, sc: p.score, cn: p.coins,
+      dd: p.dead ? 1 : 0, ou: p.out ? 1 : 0, dt: p.deadT, iv: p.invuln,
+      st: p.star, fc: p.face, og: p.onGround ? 1 : 0, dn: p.done ? 1 : 0
+    };
+  }
+  function packEnemy(e) {
+    return {
+      n: e.nid, k: e.kind, x: Math.round(e.x * 10) / 10, y: Math.round(e.y * 10) / 10,
+      vx: Math.round(e.vx * 100) / 100, vy: Math.round(e.vy * 100) / 100,
+      d: e.dir, dd: e.dead, s: e.state || '', t: e.t, aw: e.awake ? 1 : 0,
+      w: e.w, h: e.h
+    };
+  }
+  function packMover(o) {
+    return {
+      n: o.nid, k: o.kind || '', x: Math.round(o.x), y: Math.round(o.y),
+      vx: Math.round(o.vx * 100) / 100, vy: Math.round(o.vy * 100) / 100,
+      e: o.enemy ? 1 : 0
+    };
+  }
+  function inWindow(o, pad) {
+    return o.x > G.cam - pad && o.x < G.cam + VIEW_W + pad;
+  }
+
+  function serializeState() {
+    if (!G) return null;
+    var snap = {
+      f: G.frame, st: G.state, lv: G.levelIdx, cam: Math.round(G.cam * 10) / 10,
+      tm: G.time, cd: G.cardT, fz: G.freeze, bn: G.inBonus ? 1 : 0, bd: G.bossDead ? 1 : 0,
+      pl: G.players.map(packPlayer),
+      en: [], it: [], fi: [], co: [], td: G.net ? G.net.tiles : [],
+      bo: null, fl: G.flag ? (G.flag.taken ? 1 : 0) : 0
+    };
+    if (G.net) G.net.tiles = [];
+    var i;
+    for (i = 0; i < G.enemies.length; i++) if (inWindow(G.enemies[i], 260)) snap.en.push(packEnemy(G.enemies[i]));
+    for (i = 0; i < G.items.length; i++) snap.it.push(packMover(G.items[i]));
+    for (i = 0; i < G.fires.length; i++) snap.fi.push(packMover(G.fires[i]));
+    for (i = 0; i < G.coins.length; i++) if (G.coins[i].got) snap.co.push(i);
+    if (G.boss) {
+      var b = G.boss;
+      snap.bo = { x: Math.round(b.x), y: Math.round(b.y), hp: b.hp, ph: b.phase, dd: b.dead, t: b.t, ac: b.act, iv: b.inv };
+    }
+    return snap;
+  }
+
+  function lerpTo(o, x, y, hard) {
+    var dx = x - o.x, dy = y - o.y;
+    if (hard || Math.abs(dx) > 60 || Math.abs(dy) > 60) { o.x = x; o.y = y; return; }
+    o.x += dx * 0.35; o.y += dy * 0.35;
+  }
+
+  function applyState(snap) {
+    if (!G || !snap || !G.net || G.net.host) return;
+    var hard = false, i, j;
+
+    if (snap.lv !== G.levelIdx) { G.players.forEach(function (p) { p.done = false; }); loadLevel(snap.lv); hard = true; }
+    if (!!snap.bn !== !!G.inBonus) hard = true;   // entró/salió del cuarto secreto
+
+    // estado de la partida (lo decide el host)
+    if (snap.st !== G.state) {
+      G.state = snap.st;
+      if (snap.st === 'clear') {
+        G.msg = '¡MUNDO ' + LEVELS[G.levelIdx].name + ' COMPLETADO!';
+        G.sub = 'Bonus de tiempo: ' + (G.time * 10); SFX.clear(); sendScore();
+      } else if (snap.st === 'over') {
+        G.msg = 'FIN DEL JUEGO'; G.sub = 'Enter para volver a empezar'; sendScore();
+      } else if (snap.st === 'victory') {
+        G.msg = '¡GANARON!'; G.sub = 'Derrotaron al Rey Espina · Enter para el menú';
+        SFX.win(); sendScore();
+      }
+    }
+    G.time = snap.tm; G.cardT = snap.cd; G.bossDead = !!snap.bd;
+    G.cam += (snap.cam - G.cam) * (hard ? 1 : 0.4);
+
+    // tiles rotos / bloques usados
+    if (snap.td && snap.td.length) {
+      for (i = 0; i < snap.td.length; i++) {
+        var t = snap.td[i];
+        if (t[1] >= 0 && t[1] < ROWS && t[0] >= 0 && t[0] < G.cols) G.grid[t[1]][t[0]] = t[2];
+      }
+    }
+
+    // jugadores
+    for (i = 0; i < snap.pl.length; i++) {
+      var sp = snap.pl[i], p = G.players[sp.i];
+      if (!p) continue;
+      lerpTo(p, sp.x, sp.y, hard || sp.i !== G.net.myId);
+      p.vx = sp.vx; p.vy = sp.vy; p.w = sp.w; p.h = sp.h;
+      p.power = sp.pw; p.lives = sp.lv; p.score = sp.sc; p.coins = sp.cn;
+      p.dead = !!sp.dd; p.out = !!sp.ou; p.deadT = sp.dt; p.invuln = sp.iv;
+      p.star = sp.st; p.face = sp.fc; p.onGround = !!sp.og; p.done = !!sp.dn;
+    }
+
+    // enemigos: se casan por nid; los que ya no vienen y están a la vista, murieron
+    var byNid = {};
+    for (i = 0; i < snap.en.length; i++) byNid[snap.en[i].n] = snap.en[i];
+    var keep = [];
+    for (i = 0; i < G.enemies.length; i++) {
+      var e = G.enemies[i], se = byNid[e.nid];
+      if (se) {
+        lerpTo(e, se.x, se.y, hard);
+        e.vx = se.vx; e.vy = se.vy; e.dir = se.d; e.dead = se.dd;
+        e.state = se.s; e.t = se.t; e.awake = !!se.aw; e.w = se.w; e.h = se.h;
+        delete byNid[e.nid];
+        keep.push(e);
+      } else if (!inWindow(e, 200)) {
+        keep.push(e);            // fuera de la ventana del host: lo dejamos simulando
+      }
+    }
+    G.enemies = keep;
+
+    // items y bolas de fuego: se reconstruyen tal cual (son pocos)
+    G.items = snap.it.map(function (o) {
+      var old = null;
+      for (var k = 0; k < G.items.length; k++) if (G.items[k].nid === o.n) { old = G.items[k]; break; }
+      if (old) { lerpTo(old, o.x, o.y, hard); old.vx = o.vx; old.vy = o.vy; return old; }
+      return { nid: o.n, kind: o.k, x: o.x, y: o.y, w: 22, h: 22, vx: o.vx, vy: o.vy, t: 0 };
+    });
+    G.fires = snap.fi.map(function (o) {
+      return { nid: o.n, x: o.x, y: o.y, w: 12, h: 12, vx: o.vx, vy: o.vy, t: 0, owner: null, enemy: !!o.e };
+    });
+
+    // monedas recogidas
+    if (snap.co) {
+      var got = {};
+      for (i = 0; i < snap.co.length; i++) got[snap.co[i]] = 1;
+      for (i = 0; i < G.coins.length; i++) if (got[i] && !G.coins[i].got) G.coins[i].got = true;
+    }
+
+    if (G.boss && snap.bo) {
+      var b = G.boss, sb = snap.bo;
+      lerpTo(b, sb.x, sb.y, hard);
+      b.hp = sb.hp; b.phase = sb.ph; b.dead = sb.dd; b.t = sb.t; b.act = sb.ac; b.inv = sb.iv;
+    }
+    if (G.flag) G.flag.taken = !!snap.fl;
+  }
+
   window.BigoteBros = {
     init: init,
     // Para botones táctiles: BigoteBros.key('a', true) / ('a', false)
@@ -1859,8 +2138,25 @@ var LEVELS = [
       keys[String(name).toLowerCase()] = !!down;
       if (down && name === 'enter') onKey({ key: 'Enter', preventDefault: function () { } }, true);
     },
-    start2P: function () { ac(); newGame(true); },
-    start1P: function () { ac(); newGame(false); },
+    start2P: function () { ac(); newGame(2); },
+    start1P: function () { ac(); newGame(1); },
+    startN: function (n) { ac(); newGame(n); },
+
+    // ── Online ──
+    netStart: netStart,
+    onNet: onNet,
+    netStop: netStop,
+    netAbort: netAbort,
+    netInput: localInput,
+    netRemoteInput: setRemoteInput,
+    netSnapshot: serializeState,
+    netApply: applyState,
+    netIsHost: function () { return !!(G && G.net && G.net.host); },
+    netOn: function () { return !!(G && G.net); },
+    netTickEvery: NET_SNAP_EVERY,
+    frameNo: function () { return G ? G.frame : 0; },
+    state: function () { return G ? G.state : 'menu'; },
+    scores: function () { return G ? G.players.map(function (p) { return { id: p.id, score: p.score, lives: p.lives, out: p.out }; }) : []; },
     toMenu: function () { G = null; },
     // solo para pruebas: BigoteBros._level(6) salta al nivel del jefe
     _level: function (i) { if (!G) newGame(false); loadLevel(i); },
@@ -1868,10 +2164,10 @@ var LEVELS = [
 
     // ── Editor de personaje ──
     presets: function () { return SKIN_PRESETS.map(cloneSkin); },
-    getSkin: function (i) { return cloneSkin(SKINS[i ? 1 : 0]); },
+    getSkin: function (i) { return cloneSkin(SKINS[skinIdx(i)]); },
     setSkin: function (i, skin) {
-      var idx = i ? 1 : 0;
-      SKINS[idx] = normalizeSkin(skin, SKIN_PRESETS[idx]);
+      var idx = skinIdx(i);
+      SKINS[idx] = normalizeSkin(skin, SKIN_PRESETS[idx] || SKIN_PRESETS[0]);
       saveSkinsLocal();
       return cloneSkin(SKINS[idx]);
     },
