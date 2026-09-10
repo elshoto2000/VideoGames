@@ -1,8 +1,27 @@
+import os
+import sys
+
+# Parche de gevent: TIENE que ser lo primero que se ejecuta en todo el
+# archivo, antes de importar Flask/pymongo/lo que sea. Si se hace después
+# (como pasaba antes, cuando gunicorn lo aplicaba al arrancar el worker),
+# pymongo y Flask ya crearon candados (locks) de ssl/threading sin parchear,
+# y al llegar el parche tarde revienta con:
+#   ReferenceError: weakly-referenced object no longer exists
+# que es justo el crash que tumbaba el servicio en Render ("Reason: Worker
+# failed to boot"). "gunicorn" ya está en sys.modules cuando arranca (es
+# quien nos importa a nosotros), así que esto solo se activa ahí; en local,
+# con el servidor normal de Flask, no hace nada.
+if 'gunicorn' in sys.modules:
+    try:
+        from gevent import monkey
+        monkey.patch_all()
+    except ImportError:
+        pass
+
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, Response
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from pymongo import MongoClient
 from werkzeug.security import generate_password_hash, check_password_hash
-import os
 import re
 import time
 import random
