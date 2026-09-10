@@ -11,6 +11,26 @@ import string
 app = Flask(__name__)
 # SECRET_KEY larga y estable — NUNCA guardes datos grandes en la sesión
 app.secret_key = os.environ.get("SECRET_KEY", "arcade_secret_2026_XyZ9qR")
+
+# Versión de los estáticos de Bigote Bros: se calcula sola a partir del
+# contenido de mario.js/mario_net.js, así que cada vez que se edite alguno el
+# navegador de todos descarga el archivo nuevo en vez de quedarse con el
+# viejo cacheado (eso fue lo que causó ver "2 jugadores" en una máquina y
+# "4" en otra: dos versiones distintas del mismo mario.js en caché).
+def _calcular_asset_ver():
+    import hashlib
+    h = hashlib.sha1()
+    for rel in ('static/js/mario.js', 'static/js/mario_net.js'):
+        ruta = os.path.join(app.root_path, rel)
+        try:
+            with open(ruta, 'rb') as f:
+                h.update(f.read())
+        except OSError:
+            pass
+    return h.hexdigest()[:10]
+
+
+_ASSET_VER = _calcular_asset_ver()
 # Limitar cookie a solo datos pequeños
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_HTTPONLY'] = True
@@ -317,7 +337,8 @@ def mario():
                                "p3": skins.get('p3'),
                                "p4": skins.get('p4')
                            },
-                           iconos_sala=ICONOS_SALA)
+                           iconos_sala=ICONOS_SALA,
+                           asset_ver=_ASSET_VER)
 
 
 # ─── PUNTAJES Y RANKING ───────────────────────────────────────────
