@@ -429,9 +429,9 @@
         window.MARIO_SKINS = {{ (mario_skins or {})|tojson }};
         window.MARIO_LOGGED = {{ 'true' if username else 'false' }};
     </script>
-    <script src="{{ url_for('static', filename='js/mario.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/mario.js') }}?v={{ asset_ver }}"></script>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
-    <script src="{{ url_for('static', filename='js/mario_net.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/mario_net.js') }}?v={{ asset_ver }}"></script>
     <script>
         (function () {
             'use strict';
