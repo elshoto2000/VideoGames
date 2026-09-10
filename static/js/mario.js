@@ -1,3 +1,15 @@
+/* ============================================================
+   BIGOTE BROS — plataformero 2D, JavaScript puro (Canvas 2D)
+   Arcade de PixelHub · 1 o 2 jugadores en el mismo teclado
+   Sin librerías, sin imágenes: todo el arte es dibujado por código.
+
+   Controles
+     Jugador 1 (Rojo) : A / D mover · W saltar · S disparar
+     Jugador 2 (Verde): ← / → mover · ↑ saltar · ↓ disparar
+     P pausa · Enter confirmar · R reiniciar nivel
+
+   Mundos: 1-1, 1-2, 1-3 · 2-1, 2-2, 2-3 · 3-1 (JEFE FINAL)
+   ============================================================ */
 (function () {
   'use strict';
 
