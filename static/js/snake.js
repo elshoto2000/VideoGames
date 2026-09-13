@@ -221,7 +221,7 @@
        accesorios:   [{id, tipo:'sombrero', nombre, color}]
        equipadoId:   id del accesorio actualmente puesto, o null
     ───────────────────────────────────────────────────────── */
-    const DEFAULTS = { speedMode: 'normal', movingFood: false, colores: DEFAULT_COLORES.slice(), accesorios: [], equipadoId: null };
+    const DEFAULTS = { speedMode: 'normal', movingFood: false, sonido: true, colores: DEFAULT_COLORES.slice(), accesorios: [], equipadoId: null };
     let settings = loadSettingsLocal();
     let configReady = false;
 
@@ -296,6 +296,7 @@
     /* ── Estado ─────────────────────────────────────────── */
     let snake, foods, dx, dy, score, highScore, speed, running, lockInput;
     let applesEaten, particles, flashTimer, speedPreset;
+    let comboCount, comboTimeout, speedBoostTicks, popup, paused, pendingResume;
     let gameState = 'menu'; // menu | config | customize | playing | over
     let customizeTab = 'colores'; // colores | accesorios
     let draftColores = DEFAULT_COLORES.slice();
@@ -326,6 +327,45 @@
         }
     }
 
+    /* ── Sonido (Web Audio, sin archivos externos) ───────── */
+    let audioCtx = null;
+    function ensureAudio() {
+        if (!settings.sonido) return null;
+        if (!audioCtx) {
+            try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+            catch (e) { return null; }
+        }
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        return audioCtx;
+    }
+    function beep(freq, dur, type, vol) {
+        const ac = ensureAudio();
+        if (!ac) return;
+        try {
+            const osc = ac.createOscillator();
+            const gain = ac.createGain();
+            osc.type = type || 'sine';
+            osc.frequency.value = freq;
+            const t0 = ac.currentTime;
+            gain.gain.setValueAtTime(vol || 0.05, t0);
+            gain.gain.exponentialRampToValueAtTime(0.001, t0 + (dur || 0.1));
+            osc.connect(gain);
+            gain.connect(ac.destination);
+            osc.start(t0);
+            osc.stop(t0 + (dur || 0.1) + 0.02);
+        } catch (e) {}
+    }
+    function playSfx(kind) {
+        switch (kind) {
+            case 'eat':    beep(520, 0.07, 'square', 0.05); break;
+            case 'gold':   beep(880, 0.05, 'square', 0.06); setTimeout(() => beep(1180, 0.09, 'square', 0.06), 60); break;
+            case 'speed':  beep(300, 0.16, 'sawtooth', 0.05); break;
+            case 'shrink': beep(200, 0.14, 'triangle', 0.05); break;
+            case 'die':    beep(140, 0.35, 'sawtooth', 0.06); break;
+            case 'pause':  beep(440, 0.05, 'sine', 0.03); break;
+        }
+    }
+
     /* ═══════════════════════════════════════════════════════
        MENÚ / PANELES
     ═══════════════════════════════════════════════════════ */
@@ -349,6 +389,7 @@
                 <button class="snk-btn primary" data-act="play">▶ Jugar</button>
                 <button class="snk-btn" data-act="config">⚙ Configuración</button>
                 <button class="snk-btn" data-act="customize">🎨 Personalizar serpiente</button>
+                <p class="snk-hint">Flechas o WASD para moverte · Espacio/Esc pausa</p>
             </div>
         `;
         container.appendChild(overlayEl);
@@ -379,6 +420,11 @@
                     <span>Comida en movimiento</span>
                     <div class="snk-switch ${settings.movingFood ? 'on' : ''}" data-act="toggle-food"></div>
                 </div>
+                <div class="snk-toggle">
+                    <span>Sonido</span>
+                    <div class="snk-switch ${settings.sonido ? 'on' : ''}" data-act="toggle-sound"></div>
+                </div>
+                <p class="snk-hint">Power-ups: ⭐ oro (puntos extra) · ⚡ velocidad · 💊 encoger. Espacio o Esc pausa la partida.</p>
                 <button class="snk-btn primary" data-act="play">▶ Jugar</button>
             </div>
         `;
@@ -393,6 +439,11 @@
         });
         overlayEl.querySelector('[data-act="toggle-food"]').onclick = () => {
             settings.movingFood = !settings.movingFood;
+            saveSettingsLocal();
+            renderConfig();
+        };
+        overlayEl.querySelector('[data-act="toggle-sound"]').onclick = () => {
+            settings.sonido = !settings.sonido;
             saveSettingsLocal();
             renderConfig();
         };
@@ -723,6 +774,12 @@
         applesEaten = 0;
         particles = [];
         flashTimer = 0;
+        comboCount = 0;
+        comboTimeout = 0;
+        speedBoostTicks = 0;
+        popup = null;
+        paused = false;
+        pendingResume = false;
         gameState = 'playing';
         showGear();
 
@@ -731,7 +788,17 @@
         requestAnimationFrame(loop);
     }
 
-    /* ── Comida ─────────────────────────────────────────── */
+    /* ── Comida (normal + power-ups) ─────────────────────── */
+    // gold: puntos extra · speed: velocidad temporal · shrink: encoge la cola
+    function decideFoodType() {
+        if (foods.some(f => f.type && f.type !== 'normal')) return 'normal'; // solo un power-up a la vez en el tablero
+        const r = Math.random();
+        if (r < 0.05) return 'gold';
+        if (r < 0.10) return 'speed';
+        if (r < 0.14) return 'shrink';
+        return 'normal';
+    }
+
     function spawnFood() {
         let f, tries = 0;
         do {
@@ -744,6 +811,7 @@
         );
         f.pulse = 0;
         f.moveIn = 3 + Math.floor(Math.random() * 3); // ticks hasta el próximo movimiento
+        f.type = decideFoodType();
         foods.push(f);
     }
 
@@ -770,9 +838,14 @@
 
     /* ── Loop principal ─────────────────────────────────── */
     let lastTick = 0;
+    function currentInterval() {
+        // mientras dura el power-up de velocidad, el tick corre más rápido
+        return speedBoostTicks > 0 ? Math.max(30, speed * 0.55) : speed;
+    }
     function loop(ts = 0) {
         if (!running) return;
-        if (ts - lastTick >= speed) {
+        if (pendingResume) { lastTick = ts; pendingResume = false; }
+        if (!paused && ts - lastTick >= currentInterval()) {
             lastTick = ts;
             update();
         }
@@ -780,7 +853,18 @@
         requestAnimationFrame(loop);
     }
 
+    function togglePause() {
+        if (gameState !== 'playing') return;
+        paused = !paused;
+        if (!paused) pendingResume = true; // evita que el loop "recupere" el tiempo pausado de golpe
+        playSfx('pause');
+    }
+
     function update() {
+        if (comboTimeout > 0) { comboTimeout--; if (comboTimeout === 0) comboCount = 0; }
+        if (speedBoostTicks > 0) speedBoostTicks--;
+        if (popup) { popup.ticks--; if (popup.ticks <= 0) popup = null; }
+
         const head = { x: snake[0].x + dx, y: snake[0].y + dy };
 
         if (head.x < 0 || head.x >= COLS || head.y < 0 || head.y >= ROWS ||
@@ -792,14 +876,47 @@
         const fi = foods.findIndex(f => f.x === head.x && f.y === head.y);
 
         if (fi !== -1) {
-            score += 10 + Math.floor(applesEaten / 5) * 2;
+            const eaten = foods[fi];
+            comboCount++;
+            comboTimeout = 20;
+            const multiplier = Math.min(5, 1 + Math.floor((comboCount - 1) / 2));
+            let gained = (10 + Math.floor(applesEaten / 5) * 2) * multiplier;
+            let particleColor = colorAt(0);
+            let particleCount = 10;
+            let sfx = 'eat';
+
+            if (eaten.type === 'gold') {
+                gained += 40;
+                particleColor = '#ffd93d';
+                particleCount = 18;
+                sfx = 'gold';
+                popup = { text: `+${gained} ⭐`, ticks: 30, color: '#ffd93d' };
+            } else if (eaten.type === 'speed') {
+                speedBoostTicks = 45;
+                particleColor = '#4fd0ff';
+                particleCount = 16;
+                sfx = 'speed';
+                popup = { text: 'VELOCIDAD ⚡', ticks: 30, color: '#4fd0ff' };
+            } else if (eaten.type === 'shrink') {
+                gained += 5;
+                particleColor = '#c56aff';
+                particleCount = 16;
+                sfx = 'shrink';
+                popup = { text: 'ENCOGER 💊', ticks: 30, color: '#c56aff' };
+                for (let k = 0; k < 3 && snake.length > 4; k++) snake.pop();
+            } else if (multiplier > 1) {
+                popup = { text: `COMBO x${multiplier}`, ticks: 24, color: '#ffd93d' };
+            }
+
+            score += gained;
             applesEaten++;
             speed = Math.max(speedPreset.min, speed - speedPreset.dec);
             flashTimer = 6;
 
             const px = (head.x + 0.5) * CELL;
             const py = (head.y + 0.5) * CELL;
-            spawnParticles(px, py, colorAt(0), 10);
+            spawnParticles(px, py, particleColor, particleCount);
+            playSfx(sfx);
 
             foods.splice(fi, 1);
             spawnFood();
@@ -815,6 +932,8 @@
     function die(gotoCustomize) {
         running = false;
         gameState = 'over';
+        paused = false;
+        if (!gotoCustomize) playSfx('die');
 
         if (score > highScore) {
             highScore = score;
@@ -874,23 +993,34 @@
             ctx.beginPath();
             ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2);
             ctx.fill();
-            p.x += p.vx; p.y += p.vy;
-            p.vy += 0.12;
-            p.life -= 0.045;
+            if (!paused) {
+                p.x += p.vx; p.y += p.vy;
+                p.vy += 0.12;
+                p.life -= 0.045;
+            }
         });
         ctx.globalAlpha = 1;
 
+        const FOOD_STYLE = {
+            normal: { color: '#e8445a', icon: null },
+            gold:   { color: '#ffd93d', icon: '⭐' },
+            speed:  { color: '#4fd0ff', icon: '⚡' },
+            shrink: { color: '#c56aff', icon: '💊' },
+        };
+
         foods.forEach(f => {
-            f.pulse = (f.pulse || 0) + 0.08;
-            const fp = (Math.sin(f.pulse) * 0.12 + 0.88);
+            if (!paused) f.pulse = (f.pulse || 0) + 0.08;
+            const style = FOOD_STYLE[f.type] || FOOD_STYLE.normal;
+            const isPower = f.type && f.type !== 'normal';
+            const fp = (Math.sin(f.pulse || 0) * (isPower ? 0.2 : 0.12) + (isPower ? 0.9 : 0.88));
             const fx = (f.x + 0.5) * CELL;
             const fy = (f.y + 0.5) * CELL;
-            const fr = (CELL * 0.36) * fp;
+            const fr = (CELL * (isPower ? 0.42 : 0.36)) * fp;
 
             ctx.save();
-            ctx.shadowBlur = 14;
-            ctx.shadowColor = '#e8445a';
-            ctx.fillStyle = '#e8445a';
+            ctx.shadowBlur = isPower ? 20 : 14;
+            ctx.shadowColor = style.color;
+            ctx.fillStyle = style.color;
             ctx.beginPath();
             ctx.arc(fx, fy, fr, 0, Math.PI * 2);
             ctx.fill();
@@ -899,6 +1029,14 @@
             ctx.arc(fx - fr * 0.25, fy - fr * 0.25, fr * 0.3, 0, Math.PI * 2);
             ctx.fill();
             ctx.shadowBlur = 0;
+            if (style.icon) {
+                ctx.font = `${Math.round(CELL * 0.55)}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(style.icon, fx, fy + 1);
+                ctx.textBaseline = 'alphabetic';
+                ctx.textAlign = 'left';
+            }
             ctx.restore();
         });
 
@@ -941,7 +1079,33 @@
             }
         });
 
+        // texto flotante de bonus/combo
+        if (popup) {
+            ctx.save();
+            ctx.globalAlpha = Math.max(0, Math.min(1, popup.ticks / 12));
+            ctx.font = `bold ${Math.round(CELL * 0.55)}px "DM Mono", monospace`;
+            ctx.fillStyle = popup.color || '#ffd93d';
+            ctx.textAlign = 'center';
+            ctx.fillText(popup.text, W / 2, 62);
+            ctx.restore();
+            ctx.textAlign = 'left';
+        }
+
         drawHUD(W);
+
+        if (gameState === 'playing' && paused) {
+            const H2 = canvas.height;
+            ctx.fillStyle = 'rgba(4,4,10,0.62)';
+            ctx.fillRect(0, 0, W, H2);
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#eeeef5';
+            ctx.font = `bold ${Math.round(CELL * 0.9)}px "DM Mono", monospace`;
+            ctx.fillText('PAUSA', W / 2, H2 / 2 - 8);
+            ctx.fillStyle = '#8888a8';
+            ctx.font = `${Math.round(CELL * 0.42)}px "DM Mono", monospace`;
+            ctx.fillText('Espacio / Esc para continuar', W / 2, H2 / 2 + 20);
+            ctx.textAlign = 'left';
+        }
     }
 
     function drawHUD(W) {
@@ -962,15 +1126,41 @@
         ctx.fillText(USER.slice(0, 12), W - 12, 22);
 
         ctx.textAlign = 'left';
+
+        // etiquetas de combo / power-up activo, justo debajo del HUD
+        if (gameState === 'playing') {
+            let tagX = 12;
+            const tagY = 34 + 18;
+            const mult = comboCount >= 3 ? Math.min(5, 1 + Math.floor((comboCount - 1) / 2)) : 0;
+            if (mult > 1) {
+                ctx.font = `bold ${Math.round(CELL * 0.48)}px "DM Mono", monospace`;
+                ctx.fillStyle = '#ffd93d';
+                const txt = `COMBO x${mult}`;
+                ctx.fillText(txt, tagX, tagY);
+                tagX += ctx.measureText(txt).width + 14;
+            }
+            if (speedBoostTicks > 0) {
+                ctx.font = `${Math.round(CELL * 0.48)}px "DM Mono", monospace`;
+                ctx.fillStyle = '#4fd0ff';
+                ctx.fillText(`⚡ x${speedBoostTicks}`, tagX, tagY);
+            }
+        }
     }
 
     /* ── Controles teclado ───────────────────────────────── */
     window.addEventListener('keydown', e => {
-        if (gameState !== 'playing' || lockInput) return;
-        if (e.key === 'ArrowUp'    && dy === 0)  { dx = 0;  dy = -1; lockInput = true; }
-        if (e.key === 'ArrowDown'  && dy === 0)  { dx = 0;  dy =  1; lockInput = true; }
-        if (e.key === 'ArrowLeft'  && dx === 0)  { dx = -1; dy =  0; lockInput = true; }
-        if (e.key === 'ArrowRight' && dx === 0)  { dx =  1; dy =  0; lockInput = true; }
+        if (gameState !== 'playing') return;
+        if (e.key === ' ' || e.code === 'Space' || e.key === 'Escape') {
+            e.preventDefault();
+            togglePause();
+            return;
+        }
+        if (paused || lockInput) return;
+        const k = e.key;
+        if ((k === 'ArrowUp'    || k === 'w' || k === 'W') && dy === 0) { dx = 0;  dy = -1; lockInput = true; }
+        if ((k === 'ArrowDown'  || k === 's' || k === 'S') && dy === 0) { dx = 0;  dy =  1; lockInput = true; }
+        if ((k === 'ArrowLeft'  || k === 'a' || k === 'A') && dx === 0) { dx = -1; dy =  0; lockInput = true; }
+        if ((k === 'ArrowRight' || k === 'd' || k === 'D') && dx === 0) { dx =  1; dy =  0; lockInput = true; }
     });
 
     /* ── Controles táctiles ──────────────────────────────── */
@@ -982,9 +1172,11 @@
     }, { passive: false });
 
     canvas.addEventListener('touchend', e => {
-        if (gameState !== 'playing' || lockInput) return;
+        if (gameState !== 'playing') return;
         const dtx = e.changedTouches[0].clientX - tx0;
         const dty = e.changedTouches[0].clientY - ty0;
+        if (Math.abs(dtx) < 12 && Math.abs(dty) < 12) { togglePause(); return; } // toque simple = pausa
+        if (paused || lockInput) return;
         if (Math.abs(dtx) > Math.abs(dty)) {
             if (dtx > 20 && dx === 0)  { dx =  1; dy = 0; lockInput = true; }
             if (dtx < -20 && dx === 0) { dx = -1; dy = 0; lockInput = true; }
