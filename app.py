@@ -23,6 +23,7 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 from pymongo import MongoClient
 from werkzeug.security import generate_password_hash, check_password_hash
 import re
+from datetime import datetime
 import time
 import random
 import string
@@ -30,6 +31,16 @@ import string
 app = Flask(__name__)
 # SECRET_KEY larga y estable — NUNCA guardes datos grandes en la sesión
 app.secret_key = os.environ.get("SECRET_KEY", "arcade_secret_2026_XyZ9qR")
+
+# URL publica donde vive Voxel Miner (app aparte, publicada en Runable).
+# Se embebe como <iframe> en /juego/voxel -- no es un script suelto porque
+# es una app completa (React + servidor propio + base de datos).
+# Reemplaza el valor por defecto con la URL real una vez publicado,
+# o define la variable de entorno VOXEL_MINER_URL en Render.
+VOXEL_MINER_URL = os.environ.get(
+    "VOXEL_MINER_URL",
+    "/voxel",
+)
 
 # Versión de los estáticos de Bigote Bros: se calcula sola a partir del
 # contenido de mario.js/mario_net.js, así que cada vez que se edite alguno el
@@ -303,6 +314,61 @@ def home():
     return render_template('index.html')
 
 
+# ─────────────────────────────────────────────
+#  VOXEL MINER — API de mundos guardados (MongoDB, por usuario)
+#  El juego (static/voxel/) llama a estas rutas desde el iframe.
+# ─────────────────────────────────────────────
+voxel_col = db.voxel_worlds
+
+@app.route('/voxel')
+def voxel_index():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    return app.send_static_file('voxel/index.html')
+
+@app.route('/api/voxel/worlds', methods=['GET'])
+def voxel_list():
+    if 'username' not in session:
+        return jsonify([]), 401
+    rows = voxel_col.find({"user": session['username']},
+                          {"name": 1, "mode": 1, "updatedAt": 1}).sort("updatedAt", -1)
+    return jsonify([{"name": r["name"], "mode": r["mode"],
+                     "updatedAt": r["updatedAt"].isoformat() + "Z"} for r in rows])
+
+@app.route('/api/voxel/worlds/<name>', methods=['GET'])
+def voxel_get(name):
+    if 'username' not in session:
+        return jsonify(None), 401
+    r = voxel_col.find_one({"user": session['username'], "name": name})
+    if not r:
+        return jsonify(None)
+    r.pop("_id", None); r.pop("user", None)
+    r["updatedAt"] = r["updatedAt"].isoformat() + "Z"
+    return jsonify(r)
+
+@app.route('/api/voxel/worlds', methods=['POST'])
+def voxel_save():
+    if 'username' not in session:
+        return jsonify({"ok": False}), 401
+    d = request.get_json(silent=True) or {}
+    name = str(d.get("name", "")).strip()[:40]
+    if not name:
+        return jsonify({"ok": False}), 400
+    doc = {k: d.get(k) for k in ("mode", "seed", "tilesData", "surfaceData",
+                                  "playerX", "playerY", "hp", "dayTime", "inventory")}
+    doc["updatedAt"] = datetime.utcnow()
+    voxel_col.update_one({"user": session['username'], "name": name},
+                         {"$set": doc}, upsert=True)
+    return jsonify({"ok": True})
+
+@app.route('/api/voxel/worlds/<name>', methods=['DELETE'])
+def voxel_delete(name):
+    if 'username' not in session:
+        return jsonify({"ok": False}), 401
+    voxel_col.delete_one({"user": session['username'], "name": name})
+    return jsonify({"ok": True})
+
+
 @app.route('/juego/<nombre_juego>')
 def cargar_juego(nombre_juego):
     if 'username' not in session:
@@ -332,7 +398,8 @@ def cargar_juego(nombre_juego):
                            ranking_simon=r_simon,
                            ranking_geo=r_geo,
                            ranking_tamagochi=r_tama,
-                           ranking_mario=r_mario)
+                           ranking_mario=r_mario,
+                           voxel_miner_url=VOXEL_MINER_URL)
 
 
 @app.route('/mario')
