@@ -195,6 +195,19 @@
                 </div>
 
                 <div class="game-container">
+                    {% if juego.lower() == 'voxel' %}
+                    <div class="canvas-placeholder" id="canvas-wrap">
+
+                        <!-- Botón fullscreen -->
+                        <button class="fullscreen-btn" id="fs-btn" title="Pantalla completa" onclick="toggleFullscreen()">⛶</button>
+
+                        <!-- Voxel Miner: app externa embebida via iframe -->
+                        <iframe id="voxel-miner-frame" src="{{ voxel_miner_url }}"
+                                style="width:100%;height:100%;border:0;background:#080810;display:block;"
+                                allow="fullscreen; gamepad; autoplay"
+                                allowfullscreen></iframe>
+                    </div>
+                    {% else %}
                     <div class="canvas-placeholder" id="canvas-wrap">
 
                         <!-- Botón fullscreen -->
@@ -213,6 +226,7 @@
                             </a>
                         </div>
                     </div>
+                    {% endif %}
                 </div>
             </div>
 
@@ -263,6 +277,8 @@
                         {% else %}
                             <li>Nadie ha jugado aún…</li>
                         {% endfor %}
+                    {% elif j == 'voxel' %}
+                        <li>Este juego aún no tiene ranking…</li>
                     {% else %}
                         <li>Nadie ha jugado aún…</li>
                     {% endif %}
@@ -283,6 +299,9 @@
         };
 
         function cargarScriptJuego() {
+            // Voxel Miner es una app externa (iframe), no carga scripts propios.
+            if (window.JUEGO_ACTUAL === 'voxel') return;
+
             document.getElementById('game-over-screen').style.display = 'none';
             const sc = document.getElementById('simon-game-container');
             if (sc) sc.style.display = 'block';
