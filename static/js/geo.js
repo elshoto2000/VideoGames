@@ -2,6 +2,7 @@
 (function() {
     const container = document.querySelector('.canvas-placeholder') || document.getElementById('simon-game-container');
     if (!container) return;
+    if (getComputedStyle(container).position === 'static') container.style.position = 'relative';
  
     const goScreen = document.getElementById('game-over-screen');
     if (goScreen) goScreen.style.display = 'none';
@@ -31,6 +32,19 @@
         .geo-btn:hover { background:var(--accent,#7c6aff); border-color:var(--accent,#7c6aff); transform:translateY(-1px); }
         #geo-jump-btn { background:var(--accent,#7c6aff); border-color:var(--accent,#7c6aff); padding:10px 30px; font-size:0.9rem; }
         #geo-jump-btn:active { transform:scale(0.95); }
+        #geo-main-menu { position:absolute; inset:0; z-index:20; display:flex; align-items:center; justify-content:center; box-sizing:border-box; padding:14px; background:rgba(5,6,18,.72); backdrop-filter:blur(4px); border-radius:12px; }
+        .geo-menu-panel { width:min(100%,440px); padding:clamp(14px,4vw,24px); box-sizing:border-box; text-align:center; border:1px solid rgba(255,255,255,.15); border-radius:18px; background:linear-gradient(145deg,rgba(21,18,44,.96),rgba(9,13,28,.96)); box-shadow:0 18px 60px rgba(0,0,0,.48),0 0 35px rgba(124,106,255,.16); }
+        .geo-menu-title { margin:0; color:#fff; font:800 clamp(24px,6vw,34px)/1.1 var(--font-display,sans-serif); letter-spacing:.06em; text-shadow:0 0 24px rgba(124,106,255,.55); }
+        .geo-menu-subtitle { margin:8px 0 18px; color:rgba(255,255,255,.62); font:500 12px/1.4 var(--font-body,sans-serif); letter-spacing:.08em; text-transform:uppercase; }
+        .geo-menu-options { display:grid; grid-template-columns:1fr 1.08fr 1fr; align-items:stretch; gap:8px; }
+        .geo-menu-option { min-width:0; min-height:78px; padding:10px 5px; border:1px solid rgba(255,255,255,.14); border-radius:12px; color:#e9e8ff; background:rgba(255,255,255,.055); font:700 clamp(10px,2.8vw,13px)/1.25 var(--font-body,sans-serif); }
+        .geo-menu-option small { display:block; margin-top:6px; color:rgba(255,255,255,.46); font:500 9px/1.2 var(--font-body,sans-serif); }
+        .geo-menu-option:disabled { opacity:.48; cursor:not-allowed; filter:saturate(.55); }
+        .geo-menu-option.geo-play { cursor:pointer; border-color:#8d7cff; color:#fff; background:linear-gradient(145deg,#806bff,#5945d6); box-shadow:0 7px 22px rgba(112,89,255,.32); font-size:clamp(12px,3vw,15px); }
+        .geo-menu-option.geo-play:hover { transform:translateY(-2px); filter:brightness(1.12); }
+        .geo-menu-option.geo-play:active { transform:scale(.97); }
+        #fs-btn { z-index:25; }
+        @media(max-width:380px){ #geo-main-menu{padding:8px}.geo-menu-panel{padding:14px 10px}.geo-menu-options{gap:5px}.geo-menu-option{min-height:72px;padding:8px 3px} }
         @media(min-width:769px){ #geo-jump-btn{ display:none; } }
     `;
     document.head.appendChild(st);
@@ -56,6 +70,26 @@
     const levelLabel = document.getElementById('geo-level-label');
     const startBtn   = document.getElementById('geo-start-btn');
     const jumpBtn    = document.getElementById('geo-jump-btn');
+    const menuOverlay = document.createElement('div');
+    menuOverlay.id = 'geo-main-menu';
+    menuOverlay.innerHTML = `
+        <div class="geo-menu-panel" role="dialog" aria-label="Menú principal de Geo Dash">
+            <h1 class="geo-menu-title">GEO DASH</h1>
+            <p class="geo-menu-subtitle">Salta · esquiva · supera tu récord</p>
+            <div class="geo-menu-options">
+                <button class="geo-menu-option" type="button" disabled aria-disabled="true" title="Disponible próximamente">
+                    🎨 PERSONAJE<small>Bloqueado por ahora</small>
+                </button>
+                <button class="geo-menu-option geo-play" id="geo-menu-play" type="button">
+                    ▶ JUGAR<small>Empezar partida</small>
+                </button>
+                <button class="geo-menu-option" type="button" disabled aria-disabled="true" title="Disponible próximamente">
+                    🧱 CREAR MAPAS<small>Bloqueado por ahora</small>
+                </button>
+            </div>
+        </div>`;
+    container.appendChild(menuOverlay);
+    const menuPlayBtn = menuOverlay.querySelector('#geo-menu-play');
  
     // ── Constantes ───────────────────────────────────
     const GROUND      = H - 55;
@@ -73,7 +107,7 @@
     ];
  
     // ── Estado ───────────────────────────────────────
-    let gameRunning = false, animId = null;
+    let gameRunning = false, animId = null, menuOpen = true;
     let player, obstacles, bgStars, bgPlatforms, particles;
     let score, speed, frameCount, nivel, palette, jumpsLeft;
  
@@ -122,30 +156,35 @@
     // ── Spawn obstáculos ─────────────────────────────
     function spawnObstacle() {
         const r = Math.random();
-        if (r < 0.35) {
+        if (r < 0.22) {
             // Spike simple
             obstacles.push({ x: W + 10, y: GROUND - 30, w: 30, h: 30, type: 'spike' });
-        } else if (r < 0.55) {
-            // Doble spike
-            obstacles.push({ x: W + 10, y: GROUND - 30, w: 30, h: 30, type: 'spike' });
-            obstacles.push({ x: W + 48, y: GROUND - 30, w: 30, h: 30, type: 'spike' });
-        } else if (r < 0.75) {
-            // Bloque alto
-            const h = 36 + Math.random() * 24;
+        } else if (r < 0.39) {
+            // Dos pinchos juntos
+            for (let i = 0; i < 2; i++) obstacles.push({ x: W + 10 + i * 38, y: GROUND - 30, w: 30, h: 30, type: 'spike' });
+        } else if (r < 0.53) {
+            // Bloque bajo: cambia el ritmo y exige saltar con precisión
+            const h = 27 + Math.random() * 10;
             obstacles.push({ x: W + 10, y: GROUND - h, w: 34, h, type: 'block' });
-        } else if (r < 0.88) {
+        } else if (r < 0.66) {
+            // Bloque alto
+            const h = 42 + Math.random() * 20;
+            obstacles.push({ x: W + 10, y: GROUND - h, w: 34, h, type: 'block' });
+        } else if (r < 0.78) {
             // Bloque + spike encima
-            const bh = 30;
+            const bh = 28 + Math.random() * 6;
             obstacles.push({ x: W + 10, y: GROUND - bh, w: 34, h: bh, type: 'block' });
             obstacles.push({ x: W + 13, y: GROUND - bh - 28, w: 28, h: 28, type: 'spike' });
+        } else if (r < 0.92) {
+            // Sierra giratoria elevada: añade un peligro distinto a los pinchos
+            const size = 30 + Math.random() * 6;
+            obstacles.push({ x: W + 10, y: GROUND - 54 - Math.random() * 12, w: size, h: size, type: 'saw', angle: 0 });
         } else {
-            // Triple spike (solo en nivel 3+)
+            // Ráfaga de pinchos en niveles avanzados; antes, doble pincho
             if (nivel >= 3) {
-                obstacles.push({ x: W + 10, y: GROUND - 30, w: 30, h: 30, type: 'spike' });
-                obstacles.push({ x: W + 46, y: GROUND - 30, w: 30, h: 30, type: 'spike' });
-                obstacles.push({ x: W + 82, y: GROUND - 30, w: 30, h: 30, type: 'spike' });
+                for (let i = 0; i < 3; i++) obstacles.push({ x: W + 10 + i * 35, y: GROUND - 30, w: 30, h: 30, type: 'spike' });
             } else {
-                obstacles.push({ x: W + 10, y: GROUND - 30, w: 30, h: 30, type: 'spike' });
+                for (let i = 0; i < 2; i++) obstacles.push({ x: W + 10 + i * 38, y: GROUND - 30, w: 30, h: 30, type: 'spike' });
             }
         }
     }
@@ -235,7 +274,28 @@
         // Obstáculos
         obstacles.forEach(o => {
             ctx.save();
-            if (o.type === 'spike') {
+            if (o.type === 'saw') {
+                const cx = o.x + o.w / 2, cy = o.y + o.h / 2, radius = o.w * 0.43;
+                ctx.translate(cx, cy);
+                ctx.rotate(o.angle || 0);
+                ctx.shadowBlur = 10; ctx.shadowColor = '#ff4466';
+                ctx.fillStyle = '#ff4466';
+                ctx.beginPath();
+                for (let tooth = 0; tooth < 24; tooth++) {
+                    const a = tooth * Math.PI / 12;
+                    const r = tooth % 2 === 0 ? radius : radius * 0.78;
+                    if (tooth === 0) ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+                    else ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+                }
+                ctx.closePath(); ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#22243a'; ctx.beginPath(); ctx.arc(0, 0, radius * 0.56, 0, Math.PI * 2); ctx.fill();
+                ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 2;
+                for (let spoke = 0; spoke < 4; spoke++) {
+                    ctx.rotate(Math.PI / 2); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(radius * 0.46, 0); ctx.stroke();
+                }
+                ctx.fillStyle = '#ffb2bd'; ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI * 2); ctx.fill();
+            } else if (o.type === 'spike') {
                 ctx.shadowBlur = 8; ctx.shadowColor = '#ff4466';
                 ctx.fillStyle = '#ff4466';
                 ctx.beginPath();
@@ -302,7 +362,7 @@
         ctx.globalAlpha = 1;
  
         // Pantalla de inicio
-        if (!gameRunning && score === 0) {
+        if (!gameRunning && score === 0 && !menuOpen) {
             ctx.fillStyle = 'rgba(0,0,0,0.65)';
             ctx.fillRect(0, 0, W, H);
             ctx.fillStyle = palette.player;
@@ -366,11 +426,11 @@
         }
  
         // Spawn
-        const gap = Math.max(42, 85 - nivel * 7);
+        const gap = Math.max(42, 78 - nivel * 6);
         if (frameCount % gap === 0) spawnObstacle();
- 
+
         // Mover y limpiar obstáculos
-        obstacles.forEach(o => { o.x -= speed; });
+        obstacles.forEach(o => { o.x -= speed; if (o.type === 'saw') o.angle += 0.16; });
         obstacles = obstacles.filter(o => o.x + o.w > -10);
  
         // Partículas trail
@@ -442,12 +502,15 @@
         if (goScreen) goScreen.style.display = 'none';
         cancelAnimationFrame(animId);
         initState();
+        menuOpen = false;
+        menuOverlay.style.display = 'none';
         gameRunning = true;
         startBtn.textContent = '↺ REINICIAR';
         animId = requestAnimationFrame(loop);
     }
- 
+
     // ── Controles ────────────────────────────────────
+    menuPlayBtn.addEventListener('click', startGame);
     startBtn.addEventListener('click', startGame);
     jumpBtn.addEventListener('click', jump);
     jumpBtn.addEventListener('touchstart', e => { e.preventDefault(); jump(); }, { passive: false });
