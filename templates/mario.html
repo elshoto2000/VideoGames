@@ -12,7 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <style>
-        .mario-wrap { max-width: 1000px; margin: 0 auto; padding: 24px 16px 60px; }
+        .mario-wrap { max-width: 1080px; margin: 0 auto; padding: 30px 18px 64px; position: relative; z-index: 1; }
         .mario-head {
             display: flex; align-items: center; justify-content: space-between;
             gap: 14px; flex-wrap: wrap; margin-bottom: 16px;
@@ -24,6 +24,7 @@
             background: linear-gradient(92deg, #ffd43b, #ff922b 60%, #e03131);
             -webkit-background-clip: text; background-clip: text; color: transparent;
         }
+        .mario-tagline { margin: 4px 0 0; color: #9298ad; font: 500 .72rem var(--font-mono, monospace); letter-spacing: .08em; text-transform: uppercase; }
         .mario-back {
             font-family: var(--font-mono, 'DM Mono', monospace); font-size: 0.8rem;
             text-decoration: none; color: var(--muted, #9aa0a6);
@@ -34,10 +35,11 @@
 
         .stage {
             position: relative; background: #05070d;
-            border: 1px solid var(--border-md, #2a2d33);
-            border-radius: var(--radius-lg, 14px);
-            overflow: hidden; box-shadow: 0 18px 50px rgba(0,0,0,.45);
+            border: 1px solid rgba(255,212,59,.24);
+            border-radius: 18px; overflow: hidden;
+            box-shadow: 0 22px 64px rgba(0,0,0,.58), 0 0 36px rgba(255,173,51,.07);
         }
+        .stage::before { content: ''; position: absolute; inset: 0 0 auto; height: 2px; z-index: 2; pointer-events: none; background: linear-gradient(90deg, transparent, rgba(255,212,59,.8), #ff922b, transparent); }
         #marioCanvas {
             display: block; width: 100%; height: auto;
             image-rendering: pixelated; image-rendering: crisp-edges;
@@ -45,22 +47,25 @@
         }
         .stage-bar {
             display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
-            padding: 10px 12px; border-top: 1px solid var(--border, #1e2126);
-            background: rgba(255,255,255,.02);
+            padding: 12px 14px; border-top: 1px solid rgba(255,255,255,.08);
+            background: linear-gradient(180deg, rgba(18,19,28,.98), rgba(10,11,17,.98));
         }
         .mbtn {
-            font-family: var(--font-mono, monospace); font-size: .75rem;
-            background: var(--bg-raised, #16181d); color: var(--text, #eee);
-            border: 1px solid var(--border-md, #2a2d33); border-radius: 8px;
-            padding: 7px 12px; cursor: pointer; transition: .18s;
+            min-height: 38px; font-family: var(--font-mono, monospace); font-size: .75rem;
+            background: linear-gradient(180deg, #1a1c26, #11121a); color: var(--text, #eee);
+            border: 1px solid rgba(255,255,255,.11); border-radius: 10px;
+            padding: 8px 13px; cursor: pointer; transition: transform .16s, border-color .16s, color .16s, box-shadow .16s;
         }
-        .mbtn:hover { border-color: #ffd43b; color: #ffd43b; }
+        .mbtn:hover { border-color: #ffd43b; color: #ffd43b; box-shadow: 0 0 16px rgba(255,212,59,.12); transform: translateY(-1px); }
+        .mbtn:focus-visible, .mario-back:focus-visible, .touch button:focus-visible { outline: 2px solid #ffd43b; outline-offset: 3px; }
 
         .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 18px; }
         .card {
-            background: var(--bg-card, #101216); border: 1px solid var(--border, #1e2126);
-            border-radius: var(--radius-lg, 14px); padding: 16px 18px;
+            background: linear-gradient(145deg, rgba(20,21,31,.97), rgba(12,13,19,.97)); border: 1px solid rgba(255,255,255,.08);
+            border-radius: 16px; padding: 18px 20px; box-shadow: 0 10px 28px rgba(0,0,0,.16);
+            transition: border-color .2s, transform .2s;
         }
+        .card:hover { border-color: rgba(255,212,59,.24); transform: translateY(-2px); }
         .card h3 {
             margin: 0 0 10px; font-size: .82rem; letter-spacing: .12em; text-transform: uppercase;
             font-family: var(--font-mono, monospace); color: #ffd43b;
@@ -79,16 +84,30 @@
         .touch { display: none; gap: 10px; justify-content: space-between; padding: 12px; }
         .touch .pad { display: flex; gap: 10px; }
         .touch button {
-            width: 60px; height: 60px; border-radius: 50%;
-            background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18);
-            color: #fff; font-size: 1.2rem; font-weight: 700; user-select: none;
+            width: 60px; height: 60px; border-radius: 18px;
+            background: linear-gradient(145deg, rgba(42,45,59,.95), rgba(17,19,27,.98)); border: 1px solid rgba(255,255,255,.18);
+            color: #fff; font-size: 1.2rem; font-weight: 700; user-select: none; touch-action: none;
+            box-shadow: 0 5px 14px rgba(0,0,0,.3); transition: transform .12s, background .12s, border-color .12s;
             -webkit-tap-highlight-color: transparent;
         }
-        .touch button:active { background: #ffd43b; color: #111; }
+        .touch button:active { transform: scale(.94); background: #ffd43b; color: #111; border-color: #ffe066; }
         .touch.touch-p2 { border-top: 1px dashed rgba(255,255,255,.10); }
         .touch.touch-p2 button { border-color: rgba(140,233,154,.35); }
         body:not(.two-players) .touch-p2 { display: none !important; }
         @media (max-width: 820px) { .touch { display: flex; } }
+        @media (max-width: 600px) {
+            .mario-wrap { padding: 20px 10px 42px; }
+            .mario-head { align-items: flex-start; }
+            .mario-tagline { font-size: .62rem; }
+            .stage { border-radius: 13px; }
+            .stage-bar { gap: 7px; padding: 10px; }
+            .stage-bar .mbtn { flex: 1 1 auto; padding: 8px 9px; font-size: .68rem; }
+            .touch { padding: 10px; gap: 8px; }
+            .touch .pad { gap: 8px; }
+            .touch button { width: 52px; height: 52px; border-radius: 15px; }
+            .cards { grid-template-columns: 1fr; gap: 9px; margin-top: 12px; }
+            .card { padding: 15px 16px; }
+        }
 
         /* ── Editor de personaje ── */
         .sk-overlay {
@@ -193,7 +212,10 @@
 <body>
     <div class="mario-wrap">
         <div class="mario-head">
-            <h1 class="mario-title">Bigote Bros</h1>
+            <div>
+                <h1 class="mario-title">Bigote Bros</h1>
+                <p class="mario-tagline">Arcade cooperativo · 3 mundos · hasta 4 jugadores</p>
+            </div>
             <div style="display:flex;align-items:center;gap:10px;">
                 {% if username %}
                 <span class="mario-back" style="cursor:default;">
@@ -428,6 +450,11 @@
         // Skins guardadas en la cuenta (MongoDB). mario.js las lee al arrancar.
         window.MARIO_SKINS = {{ (mario_skins or {})|tojson }};
         window.MARIO_LOGGED = {{ 'true' if username else 'false' }};
+        window.BIGOTE_BROS_ART = {
+            1: {{ url_for('static', filename='img/mario-world1-bg.webp')|tojson }},
+            2: {{ url_for('static', filename='img/mario-world2-bg.webp')|tojson }},
+            3: {{ url_for('static', filename='img/mario-world3-bg.webp')|tojson }}
+        };
     </script>
     <script src="{{ url_for('static', filename='js/mario.js') }}?v={{ asset_ver }}"></script>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
