@@ -518,7 +518,7 @@ var LEVELS = [
       onGround: false, face: 1, power: 0, invuln: 0, star: 0,
       lives: 3, score: 0, coins: 0, dead: false, deadT: 0, out: false,
       jumpHeld: false, coyote: 0, jumpBuf: 0, shootCd: 0, anim: 0,
-      sq: 1, vyPrev: 0, skid: 0,
+      sq: 1, vyPrev: 0, skid: 0, visualGrowth: 0, formT: 0,
       spawnX: 0, spawnY: 0, done: false, crouch: false
     };
   }
@@ -1004,6 +1004,12 @@ var LEVELS = [
 
   function updatePlayer(p) {
     if (p.out) return;
+    // La hitbox cambia de inmediato para el juego; el sprite transforma
+    // suavemente y conserva los pies alineados con el suelo.
+    var growthTarget = p.power > 0 ? 1 : 0;
+    p.visualGrowth += (growthTarget - p.visualGrowth) * 0.16;
+    if (Math.abs(growthTarget - p.visualGrowth) < 0.012) p.visualGrowth = growthTarget;
+    if (p.formT > 0) p.formT--;
     if (p.dead) {
       p.deadT--;
       p.vy = Math.min(p.vy + GRAV * 0.7, MAX_FALL); p.y += p.vy;
@@ -1124,12 +1130,19 @@ var LEVELS = [
     p.power = lvl;
     p.w = 22; p.h = 40;
     if (wasSmall) p.y -= 14;
+    p.formT = 24;
+    for (var i = 0; i < 10; i++) {
+      G.parts.push({ x: p.x + p.w / 2 + rnd(-10, 10), y: p.y + p.h - rnd(4, 22),
+        vx: rnd(-1.7, 1.7), vy: rnd(-2.8, -0.6), t: 18 + Math.random() * 10,
+        col: i % 2 ? '#ffe066' : '#fff3bf', s: 2 + Math.random() * 2 });
+    }
   }
   function hurt(p) {
     if (p.invuln > 0 || p.star > 0 || p.dead) return;
     if (p.power > 0) {
       p.power = p.power === 2 ? 1 : 0;
       if (p.power === 0) { p.w = 20; p.h = 26; p.y += 14; }
+      p.formT = 14;
       p.invuln = 100; G.freeze = Math.max(G.freeze, 6); SFX.hurt();
     } else die(p);
   }
@@ -1654,10 +1667,19 @@ var LEVELS = [
     if (p.invuln > 0 && !p.dead && Math.floor(G.frame / 4) % 2 === 0) return;
     var info = skinFor(p), sk = info.sk, pal = info.pal;
     var sq = clamp(p.sq || 1, 0.6, 1.3);
-    var h = p.h * sq, w = p.w * (2 - sq);
-    var x = p.x - G.cam - (w - p.w) / 2, y = p.y + p.h - h;
+    var growth = clamp(Number.isFinite(p.visualGrowth) ? p.visualGrowth : (p.power > 0 ? 1 : 0), 0, 1);
+    var baseH = 26 + 14 * growth, baseW = 20 + 4 * growth;
+    var h = baseH * sq, w = baseW * (2 - sq);
+    var x = p.x - G.cam + (p.w - w) / 2, y = p.y + p.h - h;
 
     ctx.save();
+    if (p.formT > 0) {
+      var pulse = 0.3 + 0.35 * Math.abs(Math.sin(G.frame / 2));
+      ctx.globalAlpha = pulse;
+      px(x - 3, y - 2, w + 6, 2, '#fff3bf');
+      px(x - 3, y + h, w + 6, 2, '#ffd43b');
+      ctx.globalAlpha = 1;
+    }
     if (p.dead) {
       ctx.translate(x + w / 2, y + h / 2);
       ctx.rotate(Math.sin(G.frame / 6) * 0.5);
@@ -2144,6 +2166,7 @@ var LEVELS = [
       var p = G.players[sp.i];
       if (!p || !Number.isFinite(sp.x) || !Number.isFinite(sp.y)) continue;
       var isDead = !!sp.dd, isOut = !!sp.ou;
+      var previousPower = p.power;
       // La muerte y el respawn son discontinuidades: interpolarlas mezcla dos
       // tamaños/posiciones y genera el efecto de sprite aplastado.
       var lifeTransition = p.dead !== isDead || p.out !== isOut;
@@ -2153,6 +2176,7 @@ var LEVELS = [
       p.w = Number.isFinite(sp.w) ? clamp(sp.w, 12, 32) : 20;
       p.h = Number.isFinite(sp.h) ? clamp(sp.h, 20, 48) : 26;
       p.power = Number.isFinite(sp.pw) ? clamp(sp.pw | 0, 0, 2) : 0;
+      if (p.power !== previousPower) p.formT = 18;
       p.lives = Number.isFinite(sp.lv) ? Math.max(0, sp.lv | 0) : p.lives;
       p.score = Number.isFinite(sp.sc) ? Math.max(0, sp.sc | 0) : p.score;
       p.coins = Number.isFinite(sp.cn) ? Math.max(0, sp.cn | 0) : p.coins;
