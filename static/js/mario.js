@@ -935,8 +935,8 @@ var LEVELS = [
   }
 
   // ─── Tuberías secretas y cuarto de monedas ──────────────────
-  function enterBonus() {
-    if (G.inBonus || G.pipeCd > 0) return;
+  function enterBonus(force) {
+    if (G.inBonus || (!force && G.pipeCd > 0)) return;
     G.saved = {
       grid: G.grid, cols: G.cols, w: G.w, enemies: G.enemies, coins: G.coins,
       items: G.items, fires: G.fires, boss: G.boss, flag: G.flag, cam: G.cam,
@@ -959,8 +959,8 @@ var LEVELS = [
     });
     SFX.power();
   }
-  function exitBonus() {
-    if (!G.inBonus || !G.saved || G.pipeCd > 0) return;
+  function exitBonus(force) {
+    if (!G.inBonus || !G.saved || (!force && G.pipeCd > 0)) return;
     var sv = G.saved;
     G.grid = sv.grid; G.cols = sv.cols; G.w = sv.w;
     G.enemies = sv.enemies; G.coins = sv.coins; G.items = sv.items;
@@ -2056,7 +2056,13 @@ var LEVELS = [
     var hard = false, i, j;
 
     if (snap.lv !== G.levelIdx) { G.players.forEach(function (p) { p.done = false; }); loadLevel(snap.lv); hard = true; }
-    if (!!snap.bn !== !!G.inBonus) hard = true;   // entró/salió del cuarto secreto
+    if (!!snap.bn !== !!G.inBonus) {
+      // La bandera por sí sola no basta: el invitado debe cargar/restaurar
+      // también el mapa, los objetos, la cámara y las posiciones guardadas.
+      if (snap.bn) enterBonus(true);
+      else exitBonus(true);
+      hard = true;
+    }
 
     // estado de la partida (lo decide el host)
     if (snap.st !== G.state) {
@@ -2075,7 +2081,7 @@ var LEVELS = [
     G.cam += (snap.cam - G.cam) * (hard ? 1 : 0.4);
 
     // tiles rotos / bloques usados
-    if (snap.td && snap.td.length) {
+    if (!snap.bn && snap.td && snap.td.length) {
       for (i = 0; i < snap.td.length; i++) {
         var t = snap.td[i];
         if (t[1] >= 0 && t[1] < ROWS && t[0] >= 0 && t[0] < G.cols) G.grid[t[1]][t[0]] = t[2];
