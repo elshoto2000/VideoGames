@@ -1607,6 +1607,9 @@ var LEVELS = [
 
   function drawPlayer(p) {
     if (p.out) return;
+    // Un snapshot incompleto/corrupto no debe contaminar el contexto de dibujo.
+    if (!Number.isFinite(p.x) || !Number.isFinite(p.y) ||
+        !Number.isFinite(p.w) || !Number.isFinite(p.h) || p.w < 1 || p.h < 1) return;
     if (p.invuln > 0 && !p.dead && Math.floor(G.frame / 4) % 2 === 0) return;
     var info = skinFor(p), sk = info.sk, pal = info.pal;
     var sq = clamp(p.sq || 1, 0.6, 1.3);
@@ -2046,7 +2049,10 @@ var LEVELS = [
   }
 
   function applyState(snap) {
-    if (!G || !snap || !G.net || G.net.host) return;
+    if (!G || !snap || typeof snap !== 'object' || !G.net || G.net.host) return;
+    if (!Array.isArray(snap.pl) || !Array.isArray(snap.en) ||
+        !Array.isArray(snap.it) || !Array.isArray(snap.fi)) return;
+    if (snap.lv !== undefined && (!Number.isInteger(snap.lv) || snap.lv < 0 || snap.lv >= LEVELS.length)) return;
     var hard = false, i, j;
 
     if (snap.lv !== G.levelIdx) { G.players.forEach(function (p) { p.done = false; }); loadLevel(snap.lv); hard = true; }
@@ -2078,13 +2084,29 @@ var LEVELS = [
 
     // jugadores
     for (i = 0; i < snap.pl.length; i++) {
-      var sp = snap.pl[i], p = G.players[sp.i];
-      if (!p) continue;
-      lerpTo(p, sp.x, sp.y, hard || sp.i !== G.net.myId);
-      p.vx = sp.vx; p.vy = sp.vy; p.w = sp.w; p.h = sp.h;
-      p.power = sp.pw; p.lives = sp.lv; p.score = sp.sc; p.coins = sp.cn;
-      p.dead = !!sp.dd; p.out = !!sp.ou; p.deadT = sp.dt; p.invuln = sp.iv;
-      p.star = sp.st; p.face = sp.fc; p.onGround = !!sp.og; p.done = !!sp.dn;
+      var sp = snap.pl[i];
+      if (!sp || !Number.isInteger(sp.i) || sp.i < 0 || sp.i >= G.players.length) continue;
+      var p = G.players[sp.i];
+      if (!p || !Number.isFinite(sp.x) || !Number.isFinite(sp.y)) continue;
+      var isDead = !!sp.dd, isOut = !!sp.ou;
+      // La muerte y el respawn son discontinuidades: interpolarlas mezcla dos
+      // tamaños/posiciones y genera el efecto de sprite aplastado.
+      var lifeTransition = p.dead !== isDead || p.out !== isOut;
+      lerpTo(p, sp.x, sp.y, hard || lifeTransition || sp.i !== G.net.myId);
+      p.vx = Number.isFinite(sp.vx) ? sp.vx : 0;
+      p.vy = Number.isFinite(sp.vy) ? sp.vy : 0;
+      p.w = Number.isFinite(sp.w) ? clamp(sp.w, 12, 32) : 20;
+      p.h = Number.isFinite(sp.h) ? clamp(sp.h, 20, 48) : 26;
+      p.power = Number.isFinite(sp.pw) ? clamp(sp.pw | 0, 0, 2) : 0;
+      p.lives = Number.isFinite(sp.lv) ? Math.max(0, sp.lv | 0) : p.lives;
+      p.score = Number.isFinite(sp.sc) ? Math.max(0, sp.sc | 0) : p.score;
+      p.coins = Number.isFinite(sp.cn) ? Math.max(0, sp.cn | 0) : p.coins;
+      p.dead = isDead; p.out = isOut;
+      p.deadT = Number.isFinite(sp.dt) ? Math.max(0, sp.dt | 0) : 0;
+      p.invuln = Number.isFinite(sp.iv) ? Math.max(0, sp.iv | 0) : 0;
+      p.star = Number.isFinite(sp.st) ? Math.max(0, sp.st | 0) : 0;
+      p.face = sp.fc < 0 ? -1 : 1; p.onGround = !!sp.og; p.done = !!sp.dn;
+      if (p.dead || p.out) { p.sq = 1; p.jumpHeld = false; p.jumpBuf = 0; }
     }
 
     // enemigos: se casan por nid; los que ya no vienen y están a la vista, murieron
