@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "tileSize": 32,
+  "artDirection": {
+    "name": "Cantera Viva",
+    "description": "Pixel art 2D original, cálido y legible; tierra y madera tostadas, piedra azul pizarra y acentos de musgo y mineral.",
+    "palette": ["#553823", "#9a6538", "#5b6870", "#79a84b", "#cf8d55", "#e9c77c"]
+  },
+  "blocks": {
+    "1": "blocks/terrain/grass_block.png",
+    "2": "blocks/terrain/dirt.png",
+    "3": "blocks/terrain/stone.png",
+    "4": "blocks/wood/oak_log.png",
+    "5": "blocks/wood/oak_leaves.png",
+    "7": "blocks/ores/iron_ore.png"
+  },
+  "entities": {
+    "player": "entities/player/player.png",
+    "cow": "entities/animals/cow.png"
+  }
+}
